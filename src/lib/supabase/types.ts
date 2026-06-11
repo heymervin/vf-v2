@@ -39,6 +39,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      contacts: {
+        Row: {
+          budget_minor: number | null
+          created_at: string
+          custom: Json
+          email: string | null
+          email_status: string
+          first_name: string
+          guest_count: number | null
+          id: string
+          last_name: string | null
+          partner_first_name: string | null
+          partner_last_name: string | null
+          phone: string | null
+          source: string | null
+          updated_at: string
+          venue_id: string
+          wedding_date: string | null
+          wedding_date_flexible: boolean
+        }
+        Insert: {
+          budget_minor?: number | null
+          created_at?: string
+          custom?: Json
+          email?: string | null
+          email_status?: string
+          first_name: string
+          guest_count?: number | null
+          id?: string
+          last_name?: string | null
+          partner_first_name?: string | null
+          partner_last_name?: string | null
+          phone?: string | null
+          source?: string | null
+          updated_at?: string
+          venue_id: string
+          wedding_date?: string | null
+          wedding_date_flexible?: boolean
+        }
+        Update: {
+          budget_minor?: number | null
+          created_at?: string
+          custom?: Json
+          email?: string | null
+          email_status?: string
+          first_name?: string
+          guest_count?: number | null
+          id?: string
+          last_name?: string | null
+          partner_first_name?: string | null
+          partner_last_name?: string | null
+          phone?: string | null
+          source?: string | null
+          updated_at?: string
+          venue_id?: string
+          wedding_date?: string | null
+          wedding_date_flexible?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memberships: {
         Row: {
           created_at: string
@@ -67,6 +135,54 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "memberships_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opportunities: {
+        Row: {
+          archived_at: string | null
+          contact_id: string
+          created_at: string
+          id: string
+          sort_index: number
+          stage: Database["public"]["Enums"]["pipeline_stage"]
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          contact_id: string
+          created_at?: string
+          id?: string
+          sort_index?: number
+          stage?: Database["public"]["Enums"]["pipeline_stage"]
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          contact_id?: string
+          created_at?: string
+          id?: string
+          sort_index?: number
+          stage?: Database["public"]["Enums"]["pipeline_stage"]
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
@@ -108,6 +224,51 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "spaces_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stage_events: {
+        Row: {
+          changed_by: string | null
+          from_stage: Database["public"]["Enums"]["pipeline_stage"] | null
+          id: string
+          occurred_at: string
+          opportunity_id: string
+          to_stage: Database["public"]["Enums"]["pipeline_stage"]
+          venue_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          from_stage?: Database["public"]["Enums"]["pipeline_stage"] | null
+          id?: string
+          occurred_at?: string
+          opportunity_id: string
+          to_stage: Database["public"]["Enums"]["pipeline_stage"]
+          venue_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          from_stage?: Database["public"]["Enums"]["pipeline_stage"] | null
+          id?: string
+          occurred_at?: string
+          opportunity_id?: string
+          to_stage?: Database["public"]["Enums"]["pipeline_stage"]
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_events_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_events_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
@@ -197,6 +358,47 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_contact_with_opportunity: {
+        Args: {
+          p_budget_minor?: number
+          p_email?: string
+          p_first_name: string
+          p_guest_count?: number
+          p_last_name?: string
+          p_partner_first_name?: string
+          p_partner_last_name?: string
+          p_phone?: string
+          p_source?: string
+          p_venue_id: string
+          p_wedding_date?: string
+          p_wedding_date_flexible?: boolean
+        }
+        Returns: {
+          budget_minor: number | null
+          created_at: string
+          custom: Json
+          email: string | null
+          email_status: string
+          first_name: string
+          guest_count: number | null
+          id: string
+          last_name: string | null
+          partner_first_name: string | null
+          partner_last_name: string | null
+          phone: string | null
+          source: string | null
+          updated_at: string
+          venue_id: string
+          wedding_date: string | null
+          wedding_date_flexible: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "contacts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_venue_with_owner: {
         Args: { p_name: string; p_slug: string }
         Returns: {
@@ -225,7 +427,15 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
-      [_ in never]: never
+      pipeline_stage:
+        | "inbound_enquiry"
+        | "responded"
+        | "viewing_interest"
+        | "appointment_booked"
+        | "appointment_attended"
+        | "date_on_hold"
+        | "wedding_booked"
+        | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -355,6 +565,17 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      pipeline_stage: [
+        "inbound_enquiry",
+        "responded",
+        "viewing_interest",
+        "appointment_booked",
+        "appointment_attended",
+        "date_on_hold",
+        "wedding_booked",
+        "archived",
+      ],
+    },
   },
 } as const

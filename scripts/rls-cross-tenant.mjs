@@ -248,6 +248,37 @@ async function runTests() {
     console.log('  OK    Venue hours B inserted');
   }
 
+  // -------------------------------------------------------------------------
+  // Step 3c: Seed contact + opportunity in each venue via RPC
+  // (create_contact_with_opportunity auto-creates the opening opportunity at
+  //  inbound_enquiry, which fires the trigger → a stage_events row)
+  // -------------------------------------------------------------------------
+  console.log('\n--- Step 3c: Seed contacts + opportunities via RPC ---');
+  let contactIdA = null, contactIdB = null;
+  let oppIdA = null, oppIdB = null;
+  {
+    const { data: cA, error: eA } = await anonClientA.rpc('create_contact_with_opportunity', {
+      p_venue_id: venueIdA, p_first_name: `Lead A ${rand}`, p_email: `lead-a+${rand}@example.com`,
+    });
+    if (eA) { console.error(`FATAL: create_contact_with_opportunity A: ${eA.message}`); return; }
+    contactIdA = cA.id;
+    console.log(`  OK    Contact A created: ${contactIdA}`);
+
+    const { data: cB, error: eB } = await anonClientB.rpc('create_contact_with_opportunity', {
+      p_venue_id: venueIdB, p_first_name: `Lead B ${rand}`, p_email: `lead-b+${rand}@example.com`,
+    });
+    if (eB) { console.error(`FATAL: create_contact_with_opportunity B: ${eB.message}`); return; }
+    contactIdB = cB.id;
+    console.log(`  OK    Contact B created: ${contactIdB}`);
+
+    // Resolve the auto-created opportunity ids via service role
+    const { data: oA } = await serviceClient.from('opportunities').select('id').eq('contact_id', contactIdA).single();
+    oppIdA = oA?.id;
+    const { data: oB } = await serviceClient.from('opportunities').select('id').eq('contact_id', contactIdB).single();
+    oppIdB = oB?.id;
+    console.log(`  OK    Opportunities resolved: A=${oppIdA} B=${oppIdB}`);
+  }
+
   // =========================================================================
   // Step 4: RLS ASSERTIONS
   // =========================================================================
@@ -495,22 +526,138 @@ async function runTests() {
   }
 
   // =========================================================================
+  // Step 4b: M2 ASSERTIONS — contacts / opportunities / stage_events
+  // =========================================================================
+  console.log('\n--- M2 positive controls (own data visible) ---');
+  {
+    const { data, error } = await anonClientA.from('contacts').select('id').eq('venue_id', venueIdA);
+    assert('User A can read own contacts', !error && data?.length === 1, JSON.stringify({ error, count: data?.length }));
+  }
+  {
+    const { data, error } = await anonClientA.from('opportunities').select('id').eq('venue_id', venueIdA);
+    assert('User A can read own opportunities', !error && data?.length === 1, JSON.stringify({ error, count: data?.length }));
+  }
+  {
+    const { data, error } = await anonClientA.from('stage_events').select('id').eq('venue_id', venueIdA);
+    assert('User A can read own stage_events (trigger wrote ≥1)', !error && data?.length >= 1, JSON.stringify({ error, count: data?.length }));
+  }
+  {
+    const { data, error } = await anonClientB.from('contacts').select('id').eq('venue_id', venueIdB);
+    assert('User B can read own contacts', !error && data?.length === 1, JSON.stringify({ error, count: data?.length }));
+  }
+  {
+    const { data, error } = await anonClientB.from('opportunities').select('id').eq('venue_id', venueIdB);
+    assert('User B can read own opportunities', !error && data?.length === 1, JSON.stringify({ error, count: data?.length }));
+  }
+  {
+    const { data, error } = await anonClientB.from('stage_events').select('id').eq('venue_id', venueIdB);
+    assert('User B can read own stage_events (trigger wrote ≥1)', !error && data?.length >= 1, JSON.stringify({ error, count: data?.length }));
+  }
+
+  console.log('\n--- M2 SELECT isolation (filtered by other venue id → 0 rows) ---');
+  for (const table of ['contacts', 'opportunities', 'stage_events']) {
+    const { data, error } = await anonClientA.from(table).select('id').eq('venue_id', venueIdB);
+    assert(`A→B: ${table} filtered by venueB → 0 rows`, !error && data?.length === 0, JSON.stringify({ error, count: data?.length }));
+  }
+  for (const table of ['contacts', 'opportunities', 'stage_events']) {
+    const { data, error } = await anonClientB.from(table).select('id').eq('venue_id', venueIdA);
+    assert(`B→A: ${table} filtered by venueA → 0 rows`, !error && data?.length === 0, JSON.stringify({ error, count: data?.length }));
+  }
+
+  console.log('\n--- M2 SELECT isolation (unfiltered — no leakage) ---');
+  for (const table of ['contacts', 'opportunities', 'stage_events']) {
+    const { data, error } = await anonClientA.from(table).select('venue_id');
+    const leaked = data?.some(r => r.venue_id === venueIdB);
+    assert(`A unfiltered ${table} does not contain venueB`, !error && !leaked, JSON.stringify({ error }));
+  }
+  for (const table of ['contacts', 'opportunities', 'stage_events']) {
+    const { data, error } = await anonClientB.from(table).select('venue_id');
+    const leaked = data?.some(r => r.venue_id === venueIdA);
+    assert(`B unfiltered ${table} does not contain venueA`, !error && !leaked, JSON.stringify({ error }));
+  }
+
+  console.log('\n--- M2 INSERT isolation: contacts / opportunities into other venue → rejected ---');
+  {
+    const { data, error } = await anonClientA.from('contacts')
+      .insert({ venue_id: venueIdB, first_name: 'Injected by A' });
+    assert('A→B: insert contact into venueB → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+  {
+    const { data, error } = await anonClientB.from('contacts')
+      .insert({ venue_id: venueIdA, first_name: 'Injected by B' });
+    assert('B→A: insert contact into venueA → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+  {
+    const { data, error } = await anonClientA.from('opportunities')
+      .insert({ venue_id: venueIdB, contact_id: contactIdB });
+    assert('A→B: insert opportunity into venueB → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+  // Verify no rogue contact landed
+  {
+    const { data } = await serviceClient.from('contacts').select('first_name').eq('venue_id', venueIdB);
+    const rogue = data?.some(c => c.first_name === 'Injected by A');
+    assert('venueB contacts: no row injected by A', !rogue, JSON.stringify(data));
+  }
+
+  console.log('\n--- M2 stage_events is append-only (direct insert blocked even for own venue) ---');
+  {
+    const { data, error } = await anonClientA.from('stage_events')
+      .insert({ venue_id: venueIdA, opportunity_id: oppIdA, to_stage: 'wedding_booked' });
+    assert('A: direct insert into own stage_events → rejected (writer = trigger only)', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+  {
+    const { data } = await serviceClient.from('stage_events').select('to_stage').eq('opportunity_id', oppIdA);
+    const rogue = data?.some(e => e.to_stage === 'wedding_booked');
+    assert('venueA stage_events: no direct-insert row landed', !rogue, JSON.stringify(data));
+  }
+
+  console.log('\n--- M2 UPDATE isolation: move other venue\'s opportunity → blocked ---');
+  {
+    const { data, error } = await anonClientA.from('opportunities')
+      .update({ stage: 'wedding_booked' }).eq('id', oppIdB).select();
+    assert('A→B: move venueB opportunity → blocked (0 rows or error)', error != null || (data != null && data.length === 0), JSON.stringify({ error: error?.message, rows: data?.length }));
+  }
+  {
+    const { data } = await serviceClient.from('opportunities').select('stage').eq('id', oppIdB).single();
+    assert('venueB opportunity stage unchanged after A attempt', data?.stage === 'inbound_enquiry', `actual: ${data?.stage}`);
+  }
+
+  console.log('\n--- M2 cross-tenant RPC: create_contact_with_opportunity for other venue → rejected ---');
+  {
+    const { data, error } = await anonClientA.rpc('create_contact_with_opportunity', {
+      p_venue_id: venueIdB, p_first_name: 'RPC intrusion by A', p_email: `intrusion+${rand}@example.com`,
+    });
+    assert('A→B: RPC create_contact for venueB → rejected (not a member)', error != null, JSON.stringify({ error: error?.message, data }));
+  }
+  {
+    const { data } = await serviceClient.from('contacts').select('first_name').eq('venue_id', venueIdB);
+    const rogue = data?.some(c => c.first_name === 'RPC intrusion by A');
+    assert('venueB contacts: no RPC-injected row by A', !rogue, JSON.stringify(data));
+  }
+
+  // =========================================================================
   // Step 4: Storage assertions
   // =========================================================================
   console.log('\n--- Storage: own upload (should succeed) ---');
-  const textContent = new TextEncoder().encode('hello venueflow rls test');
+  // venue-assets bucket only allows image/png|jpeg|webp (M1 hardening), so the
+  // payload must be a real PNG — otherwise the rejection would be MIME, not RLS,
+  // making the cross-tenant assertions below ambiguous. 1x1 transparent PNG:
+  const pngContent = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    'base64',
+  );
 
   // Own uploads must succeed
   {
     const { error } = await anonClientA.storage
       .from('venue-assets')
-      .upload(`${venueIdA}/test.txt`, textContent, { contentType: 'text/plain', upsert: true });
+      .upload(`${venueIdA}/test.png`, pngContent, { contentType: 'image/png', upsert: true });
     assert('User A upload to own folder succeeds', !error, error?.message ?? '');
   }
   {
     const { error } = await anonClientB.storage
       .from('venue-assets')
-      .upload(`${venueIdB}/test.txt`, textContent, { contentType: 'text/plain', upsert: true });
+      .upload(`${venueIdB}/test.png`, pngContent, { contentType: 'image/png', upsert: true });
     assert('User B upload to own folder succeeds', !error, error?.message ?? '');
   }
 
@@ -518,7 +665,7 @@ async function runTests() {
   {
     const { data, error } = await anonClientA.storage
       .from('venue-assets')
-      .upload(`${venueIdB}/intrusion.txt`, textContent, { contentType: 'text/plain', upsert: true });
+      .upload(`${venueIdB}/intrusion.png`, pngContent, { contentType: 'image/png', upsert: true });
     const blocked = error != null;
     assert('A→B: upload to venueB folder → rejected', blocked,
       blocked ? '' : `data: ${JSON.stringify(data)}`);
@@ -526,7 +673,7 @@ async function runTests() {
   {
     const { data, error } = await anonClientB.storage
       .from('venue-assets')
-      .upload(`${venueIdA}/intrusion.txt`, textContent, { contentType: 'text/plain', upsert: true });
+      .upload(`${venueIdA}/intrusion.png`, pngContent, { contentType: 'image/png', upsert: true });
     const blocked = error != null;
     assert('B→A: upload to venueA folder → rejected', blocked,
       blocked ? '' : `data: ${JSON.stringify(data)}`);
@@ -536,17 +683,17 @@ async function runTests() {
   {
     const { data, error } = await anonClientA.storage
       .from('venue-assets')
-      .download(`${venueIdB}/test.txt`);
+      .download(`${venueIdB}/test.png`);
     const blocked = error != null || data === null;
-    assert('A→B: download venueB/test.txt → rejected', blocked,
+    assert('A→B: download venueB/test.png → rejected', blocked,
       blocked ? '' : 'download returned data');
   }
   {
     const { data, error } = await anonClientB.storage
       .from('venue-assets')
-      .download(`${venueIdA}/test.txt`);
+      .download(`${venueIdA}/test.png`);
     const blocked = error != null || data === null;
-    assert('B→A: download venueA/test.txt → rejected', blocked,
+    assert('B→A: download venueA/test.png → rejected', blocked,
       blocked ? '' : 'download returned data');
   }
 
@@ -554,7 +701,7 @@ async function runTests() {
   // Step 5: Anon (no session) select on all four tables → 0 rows / denied
   // =========================================================================
   console.log('\n--- Anon (unauthenticated) access → must return 0 rows ---');
-  for (const table of ['venues', 'memberships', 'spaces', 'venue_hours']) {
+  for (const table of ['venues', 'memberships', 'spaces', 'venue_hours', 'contacts', 'opportunities', 'stage_events']) {
     const { data, error } = await anonClientNoSession.from(table).select('id');
     // RLS can either return an error OR an empty array — both are acceptable
     const blocked = error != null || (Array.isArray(data) && data.length === 0);
