@@ -145,6 +145,30 @@ async function run() {
   }
   console.log(`  ${count} contacts + opportunities across 8 stages`);
 
+  // 5. Brochure (minimal PDF) + email settings, so the public form is end-to-end.
+  const pdf = Buffer.from(
+    "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF",
+  );
+  await admin.storage
+    .from("brochures")
+    .upload(`${venue.id}/brochure.pdf`, pdf, {
+      contentType: "application/pdf",
+      upsert: true,
+    });
+  await admin.from("brochures").insert({
+    venue_id: venue.id,
+    file_path: `${venue.id}/brochure.pdf`,
+    title: "The Old Barn — 2027 Wedding Brochure",
+    is_active: true,
+  });
+  await admin.from("venue_email_settings").insert({
+    venue_id: venue.id,
+    from_name: "The Old Barn",
+    reply_to: "weddings@theoldbarn.example.com",
+  });
+  console.log("  brochure + email settings");
+
+  console.log("\n  Public form:  /f/the-old-barn-demo");
   console.log("\n=== Done. Log in at /login ===");
   console.log(`  email:    ${DEMO_EMAIL}`);
   console.log(`  password: ${DEMO_PASSWORD}\n`);
