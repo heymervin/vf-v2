@@ -173,10 +173,16 @@ export async function submitLeadForm(
     .eq("id", submission.id);
 
   // 5. Downstream: brochure delivery (and future nurture enrollment).
-  await inngest.send({
-    name: "lead/captured",
-    data: { venueId, contactId, submissionId: submission.id },
-  });
+  // Best-effort — the lead is already captured; a send failure must not fail
+  // the submission.
+  try {
+    await inngest.send({
+      name: "lead/captured",
+      data: { venueId, contactId, submissionId: submission.id },
+    });
+  } catch (e) {
+    console.error("lead/captured event send failed:", (e as Error).message);
+  }
 
   return ok(undefined);
 }
