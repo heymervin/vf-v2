@@ -39,6 +39,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      brochures: {
+        Row: {
+          created_at: string
+          download_count: number
+          download_token: string
+          file_path: string
+          id: string
+          is_active: boolean
+          last_downloaded_at: string | null
+          title: string | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          download_count?: number
+          download_token?: string
+          file_path: string
+          id?: string
+          is_active?: boolean
+          last_downloaded_at?: string | null
+          title?: string | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          download_count?: number
+          download_token?: string
+          file_path?: string
+          id?: string
+          is_active?: boolean
+          last_downloaded_at?: string | null
+          title?: string | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brochures_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           budget_minor: number | null
@@ -100,6 +147,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "contacts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_submissions: {
+        Row: {
+          contact_id: string | null
+          created_at: string
+          id: string
+          ip: unknown | null
+          payload: Json
+          processed_at: string | null
+          referrer: string | null
+          utm: Json | null
+          venue_id: string
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          ip?: unknown | null
+          payload: Json
+          processed_at?: string | null
+          referrer?: string | null
+          utm?: Json | null
+          venue_id: string
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          ip?: unknown | null
+          payload?: Json
+          processed_at?: string | null
+          referrer?: string | null
+          utm?: Json | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submissions_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
@@ -269,6 +367,41 @@ export type Database = {
           },
           {
             foreignKeyName: "stage_events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_email_settings: {
+        Row: {
+          created_at: string
+          from_name: string | null
+          id: string
+          reply_to: string | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_name?: string | null
+          id?: string
+          reply_to?: string | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          from_name?: string | null
+          id?: string
+          reply_to?: string | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_email_settings_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"

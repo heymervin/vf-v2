@@ -636,6 +636,61 @@ async function runTests() {
   }
 
   // =========================================================================
+  // Step 4c: M3 ASSERTIONS — form_submissions / brochures / venue_email_settings
+  // =========================================================================
+  console.log('\n--- M3 seed (service role) ---');
+  {
+    await serviceClient.from('brochures').insert([
+      { venue_id: venueIdA, file_path: `${venueIdA}/a.pdf`, title: 'A brochure' },
+      { venue_id: venueIdB, file_path: `${venueIdB}/b.pdf`, title: 'B brochure' },
+    ]);
+    await serviceClient.from('venue_email_settings').insert([
+      { venue_id: venueIdA, from_name: 'Venue A', reply_to: 'a@example.com' },
+      { venue_id: venueIdB, from_name: 'Venue B', reply_to: 'b@example.com' },
+    ]);
+    await serviceClient.from('form_submissions').insert([
+      { venue_id: venueIdA, payload: { email: `lead-a+${rand}@example.com` } },
+      { venue_id: venueIdB, payload: { email: `lead-b+${rand}@example.com` } },
+    ]);
+    console.log('  OK    seeded brochures + email settings + form_submissions');
+  }
+
+  console.log('\n--- M3 positive controls (own data visible) ---');
+  for (const table of ['form_submissions', 'brochures', 'venue_email_settings']) {
+    const { data, error } = await anonClientA.from(table).select('id').eq('venue_id', venueIdA);
+    assert(`User A can read own ${table}`, !error && data?.length === 1, JSON.stringify({ error, count: data?.length }));
+  }
+
+  console.log('\n--- M3 SELECT isolation (other venue → 0 rows) ---');
+  for (const table of ['form_submissions', 'brochures', 'venue_email_settings']) {
+    const { data, error } = await anonClientA.from(table).select('id').eq('venue_id', venueIdB);
+    assert(`A→B: ${table} filtered by venueB → 0 rows`, !error && data?.length === 0, JSON.stringify({ error, count: data?.length }));
+  }
+  for (const table of ['form_submissions', 'brochures', 'venue_email_settings']) {
+    const { data, error } = await anonClientB.from(table).select('id').eq('venue_id', venueIdA);
+    assert(`B→A: ${table} filtered by venueA → 0 rows`, !error && data?.length === 0, JSON.stringify({ error, count: data?.length }));
+  }
+
+  console.log('\n--- M3 form_submissions has NO client INSERT (admin-write only) ---');
+  {
+    const { data, error } = await anonClientA.from('form_submissions')
+      .insert({ venue_id: venueIdA, payload: { x: 1 } });
+    assert('A: direct insert into own form_submissions → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+
+  console.log('\n--- M3 INSERT isolation: brochures / email settings into other venue → rejected ---');
+  {
+    const { data, error } = await anonClientA.from('brochures')
+      .insert({ venue_id: venueIdB, file_path: `${venueIdB}/intrusion.pdf` });
+    assert('A→B: insert brochure into venueB → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+  {
+    const { data, error } = await anonClientA.from('venue_email_settings')
+      .insert({ venue_id: venueIdB, from_name: 'Injected' });
+    assert('A→B: insert email settings into venueB → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+
+  // =========================================================================
   // Step 4: Storage assertions
   // =========================================================================
   console.log('\n--- Storage: own upload (should succeed) ---');
@@ -701,7 +756,7 @@ async function runTests() {
   // Step 5: Anon (no session) select on all four tables → 0 rows / denied
   // =========================================================================
   console.log('\n--- Anon (unauthenticated) access → must return 0 rows ---');
-  for (const table of ['venues', 'memberships', 'spaces', 'venue_hours', 'contacts', 'opportunities', 'stage_events']) {
+  for (const table of ['venues', 'memberships', 'spaces', 'venue_hours', 'contacts', 'opportunities', 'stage_events', 'form_submissions', 'brochures', 'venue_email_settings']) {
     const { data, error } = await anonClientNoSession.from(table).select('id');
     // RLS can either return an error OR an empty array — both are acceptable
     const blocked = error != null || (Array.isArray(data) && data.length === 0);
