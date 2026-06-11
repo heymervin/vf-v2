@@ -37,6 +37,38 @@ export async function deleteSmokeUser(userId: string) {
   await admin.auth.admin.deleteUser(userId);
 }
 
+/**
+ * Seed a fully-onboarded venue + owner membership for `userId`, so a test can
+ * log in and land straight on the app (skipping the onboarding wizard).
+ */
+export async function createCompletedVenue(userId: string, slug: string) {
+  const admin = adminClient();
+  const { data: venue, error } = await admin
+    .from("venues")
+    .insert({
+      name: `Contacts Venue ${slug}`,
+      slug,
+      timezone: "Europe/London",
+      onboarding_step: 3,
+      onboarding_completed_at: new Date().toISOString(),
+      trial_ends_at: new Date(Date.now() + 14 * 86_400_000).toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (error || !venue) {
+    throw new Error(`Failed to create venue: ${error?.message}`);
+  }
+
+  const { error: mErr } = await admin
+    .from("memberships")
+    .insert({ venue_id: venue.id, user_id: userId, role: "owner" });
+
+  if (mErr) throw new Error(`Failed to create membership: ${mErr.message}`);
+
+  return venue.id as string;
+}
+
 export async function deleteVenuesForUser(userId: string) {
   const admin = adminClient();
   // Get membership → venue IDs

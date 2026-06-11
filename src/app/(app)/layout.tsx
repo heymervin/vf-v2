@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/tenant";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
+import { Toaster } from "@/components/ui/sonner";
 
 /**
  * App shell layout — server component.
@@ -43,6 +44,8 @@ export default async function AppLayout({
           {children}
         </main>
       </div>
+
+      <Toaster />
     </div>
   );
 }
