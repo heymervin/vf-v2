@@ -1,13 +1,14 @@
 import { Button } from "@/components/ui/button";
 
+// Fixed stage-chip mapping per DESIGN.md: pastel bg + navy text, one hue per stage.
 const stages = [
-  { name: "Inbound enquiry", bg: "bg-fun-blue/40", fg: "text-fun-blue-strong" },
-  { name: "Responded", bg: "bg-fun-teal/40", fg: "text-fun-teal-strong" },
-  { name: "Viewing interest", bg: "bg-fun-teal/25", fg: "text-fun-teal-strong" },
-  { name: "Appointment booked", bg: "bg-fun-blue/30", fg: "text-fun-blue-strong" },
-  { name: "Appointment attended", bg: "bg-fun-pink/40", fg: "text-fun-pink-strong" },
+  { name: "Inbound enquiry", bg: "bg-accent", fg: "text-accent-foreground" },
+  { name: "Responded", bg: "bg-fun-teal", fg: "text-foreground" },
+  { name: "Viewing interest", bg: "bg-mint", fg: "text-foreground" },
+  { name: "Appointment booked", bg: "bg-fun-blue", fg: "text-foreground" },
+  { name: "Appointment attended", bg: "bg-fun-pink", fg: "text-fun-pink-foreground" },
   { name: "Date on hold", bg: "bg-warning", fg: "text-warning-foreground" },
-  { name: "Wedding booked", bg: "bg-fun-green/50", fg: "text-fun-green-strong" },
+  { name: "Wedding booked", bg: "bg-fun-green", fg: "text-foreground" },
   { name: "Archived", bg: "bg-muted", fg: "text-muted-foreground" },
 ];
 
@@ -23,10 +24,10 @@ export default function Home() {
 
       <div className="flex flex-1 flex-col justify-center px-6 py-16 sm:px-16">
         <div className="max-w-xl">
-          <p className="text-xs font-semibold tracking-[0.18em] uppercase text-muted-foreground">
+          <p className="text-xs font-semibold tracking-[0.08em] uppercase text-muted-foreground">
             The Wedding Marketers
           </p>
-          <h1 className="title-shimmer-underline mt-3 text-4xl font-bold tracking-[-0.022em] text-foreground sm:text-5xl">
+          <h1 className="mt-3 text-4xl font-bold tracking-[-0.022em] text-foreground">
             VenueFlow
           </h1>
           <p className="mt-7 text-base leading-relaxed text-muted-foreground">
@@ -43,7 +44,7 @@ export default function Home() {
         </div>
 
         <div className="mt-16 max-w-2xl">
-          <p className="text-xs font-semibold tracking-[0.18em] uppercase text-muted-foreground">
+          <p className="text-xs font-semibold tracking-[0.08em] uppercase text-muted-foreground">
             Eight stages, one source of truth
           </p>
           <div className="mt-4 flex flex-wrap gap-2">

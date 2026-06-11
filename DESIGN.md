@@ -53,12 +53,14 @@ Color strategy: **Restrained** on app surfaces — navy-tinted neutrals, the dar
 
 ```css
 --fun-pink: oklch(0.906 0.073 319);    --fun-pink-strong: oklch(0.703 0.189 319);
+--fun-pink-foreground: oklch(0.217 0.053 269);
 --fun-green: oklch(0.934 0.076 134);   --fun-green-strong: oklch(0.774 0.161 135);
 --fun-blue: oklch(0.782 0.087 275);    --fun-blue-strong: oklch(0.584 0.152 272);
 --fun-teal: oklch(0.882 0.062 195);    --fun-teal-strong: oklch(0.731 0.1 194);
+--mint: oklch(0.935 0.035 195);
 ```
 
-Pastel surfaces always pair with their `-strong` or navy foreground; never pastel-on-pastel text.
+Text on pastel surfaces is always deep navy (`--foreground` or the matching `-foreground` pair); `-strong` variants are for icons and accents on light backgrounds, never for text on their own pastel (fails AA).
 
 ### Sidebar (permanently dark navy, even in light mode — signature)
 
@@ -104,7 +106,20 @@ Pastel surfaces always pair with their `-strong` or navy foreground; never paste
 
 ### Pipeline stage colors
 
-Each of the 8 stages gets a fixed pastel chip (background + `-strong` foreground), assigned once and used consistently in kanban headers, stage badges, and reports: inbound = fun-blue · responded = fun-teal · viewing interest = mint · appointment booked = periwinkle · appointment attended = fun-pink · date on hold = warning/amber · wedding booked = fun-green (celebration moment) · archived = muted. Stage name always rendered alongside color (AA, no color-only state).
+Each of the 8 stages gets a fixed pastel chip (pastel background + navy text), assigned once and used consistently in kanban headers, stage badges, and reports:
+
+| Stage | bg | text |
+|---|---|---|
+| Inbound enquiry | `--accent` (soft navy) | `--accent-foreground` |
+| Responded | `--fun-teal` | `--foreground` |
+| Viewing interest | `--mint` | `--foreground` |
+| Appointment booked | `--fun-blue` (periwinkle) | `--foreground` |
+| Appointment attended | `--fun-pink` | `--fun-pink-foreground` |
+| Date on hold | `--warning` | `--warning-foreground` |
+| Wedding booked | `--fun-green` (celebration moment) | `--foreground` |
+| Archived | `--muted` | `--muted-foreground` |
+
+No opacity-diluted variants; chips use these tokens at full strength. Stage name always rendered alongside color (AA, no color-only state).
 
 ## Typography
 

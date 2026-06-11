@@ -19,8 +19,13 @@ export async function createClient() {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
-          for (const { name, value, options } of cookiesToSet) {
-            cookieStore.set(name, value, options);
+          try {
+            for (const { name, value, options } of cookiesToSet) {
+              cookieStore.set(name, value, options);
+            }
+          } catch {
+            // cookies().set() throws during Server Component rendering.
+            // Safe to ignore: proxy.ts (middleware) refreshes sessions.
           }
         },
       },
