@@ -50,11 +50,17 @@ export const step2Schema = z.object({
 export type Step2Input = z.infer<typeof step2Schema>;
 
 // weekday: 0=Sunday, 1=Monday ... 6=Saturday (matches venue_hours.weekday)
+// PostgREST serializes time as "HH:MM:SS"; accept both and normalise to "HH:MM"
+const timeStringSchema = z
+  .string()
+  .regex(/^\d{2}:\d{2}(:\d{2})?$/)
+  .transform((v) => v.slice(0, 5));
+
 export const hourRowSchema = z.object({
   weekday: z.number().int().min(0).max(6),
   open: z.boolean(),
-  open_time: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
-  close_time: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
+  open_time: timeStringSchema.nullable(),
+  close_time: timeStringSchema.nullable(),
 });
 
 export const step3Schema = z.object({

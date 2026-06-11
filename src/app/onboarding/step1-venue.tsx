@@ -18,6 +18,7 @@ interface Step1Props {
   initialName?: string;
   initialSlug?: string;
   initialTimezone?: string;
+  existingVenueId?: string;
   onComplete: (venueId: string) => void;
 }
 
@@ -34,6 +35,7 @@ export function Step1Venue({
   initialName = "",
   initialSlug = "",
   initialTimezone = "Europe/London",
+  existingVenueId,
   onComplete,
 }: Step1Props) {
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -98,6 +100,7 @@ export function Step1Venue({
     fd.set("name", values.name);
     fd.set("slug", values.slug);
     fd.set("timezone", values.timezone);
+    if (existingVenueId) fd.set("venueId", existingVenueId);
     if (logoFile) fd.set("logo", logoFile);
 
     const result = await createVenueWithProfile(fd);
@@ -191,7 +194,7 @@ export function Step1Venue({
                 <button
                   type="button"
                   onClick={removeLogo}
-                  className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
+                  className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground pointer-coarse:size-11 pointer-coarse:-top-4 pointer-coarse:-right-4"
                   aria-label="Remove logo"
                 >
                   <X className="size-2.5" />
@@ -222,13 +225,13 @@ export function Step1Venue({
           >
             <Upload className="mb-1.5 size-5 opacity-50" />
             <span>Drop image here or click to browse</span>
-            <span className="mt-0.5 text-xs opacity-60">PNG, JPG, WebP or SVG, max 2 MB</span>
+            <span className="mt-0.5 text-xs opacity-60">PNG, JPG or WebP, max 2 MB</span>
           </div>
 
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            accept="image/png,image/jpeg,image/webp"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];

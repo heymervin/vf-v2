@@ -48,6 +48,8 @@ export async function setActiveVenue(
     httpOnly: true,
     sameSite: "lax",
     path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    secure: process.env.NODE_ENV === "production",
   });
 
   return ok(undefined);

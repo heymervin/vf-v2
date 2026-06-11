@@ -59,20 +59,28 @@ export async function proxy(request: NextRequest) {
 
   const isAuthenticated = !!user;
 
+  // Helper: build a redirect that carries any Set-Cookie headers token rotation wrote
+  // onto `response`. Without this, token-refreshed cookies are dropped on redirects.
+  function redirectWithCookies(url: URL): NextResponse {
+    const redirect = NextResponse.redirect(url);
+    for (const cookie of response.cookies.getAll()) {
+      redirect.cookies.set(cookie);
+    }
+    return redirect;
+  }
+
   // Gate: unauthenticated user hitting a protected prefix → redirect to /login
   const isProtected = PROTECTED_PREFIXES.some((prefix) =>
     pathname.startsWith(prefix),
   );
   if (isProtected && !isAuthenticated) {
-    const loginUrl = new URL("/login", request.url);
-    return NextResponse.redirect(loginUrl);
+    return redirectWithCookies(new URL("/login", request.url));
   }
 
   // Gate: authenticated user hitting /login or /signup → redirect to /dashboard
   const isAuthPage = AUTH_PATHS.includes(pathname);
   if (isAuthPage && isAuthenticated) {
-    const dashboardUrl = new URL("/dashboard", request.url);
-    return NextResponse.redirect(dashboardUrl);
+    return redirectWithCookies(new URL("/dashboard", request.url));
   }
 
   // Venue resolution is intentionally NOT done here — handled in getTenantContext()

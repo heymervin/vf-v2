@@ -252,8 +252,8 @@ function MobileNav({ venueName, userEmail }: AppSidebarProps) {
           </button>
         </SheetTrigger>
         <SheetContent
-          side="left"
-          className="p-0 w-[280px] bg-sidebar border-sidebar-border"
+          side="bottom"
+          className="p-0 h-auto max-h-[80dvh] rounded-t-xl bg-sidebar border-sidebar-border"
           showCloseButton={false}
         >
           <SheetHeader className="sr-only">

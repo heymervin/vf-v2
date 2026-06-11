@@ -56,10 +56,13 @@ export function OnboardingWizard({ initial }: WizardProps) {
   }
 
   function handleStep3Complete() {
-    // Brief celebration pulse on brand panel, then redirect
-    setCelebrating(true);
+    // On desktop: brief one-shot spring pulse on brand panel (≤550ms), then redirect.
+    // On mobile: panel is hidden — redirect immediately (no dead wait).
+    // prefers-reduced-motion: redirect immediately via the global animation kill.
+    const isMobile = !window.matchMedia("(min-width: 768px)").matches;
     const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const delay = prefersReduced ? 0 : 600;
+    const delay = isMobile || prefersReduced ? 0 : 560;
+    setCelebrating(true);
     setTimeout(() => {
       router.push("/dashboard");
       router.refresh();
@@ -75,12 +78,13 @@ export function OnboardingWizard({ initial }: WizardProps) {
         className={[
           "hidden md:flex md:w-[40%] shrink-0 flex-col justify-between p-10",
           "relative overflow-hidden",
-          // Soft 135deg gradient wash: fun-pink → mint over near-white
-          "bg-gradient-to-br from-[oklch(0.97_0.015_319)] via-[oklch(0.975_0.008_273)] to-[oklch(0.97_0.015_195)]",
-          // Celebration pulse
-          celebrating ? "animate-pulse" : "",
+          // 135deg wash: fun-pink → background → mint, full-chroma token stops
+          // so the hue reads clearly (Committed register)
+          "bg-[linear-gradient(135deg,var(--fun-pink)_0%,var(--background)_50%,var(--mint)_100%)]",
+          // One-shot celebration spring pulse
+          celebrating ? "animate-celebrate" : "",
         ].join(" ")}
-        aria-hidden="true"
+        aria-label="Onboarding progress"
       >
         {/* Wordmark */}
         <div>
@@ -91,7 +95,7 @@ export function OnboardingWizard({ initial }: WizardProps) {
 
         {/* Per-step encouragement */}
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Step {step} of 3
           </p>
           <h1 className="text-3xl font-bold leading-tight tracking-tight text-foreground">
@@ -124,7 +128,7 @@ export function OnboardingWizard({ initial }: WizardProps) {
       <div className="flex flex-1 flex-col overflow-y-auto bg-background">
         {/* Mobile brand band */}
         <div
-          className="flex items-center justify-between bg-gradient-to-r from-[oklch(0.97_0.015_319)] to-[oklch(0.97_0.015_195)] px-5 py-4 md:hidden"
+          className="flex items-center justify-between px-5 py-4 md:hidden bg-[linear-gradient(90deg,var(--fun-pink)_0%,var(--mint)_100%)]"
         >
           <span className="text-sm font-semibold tracking-tight text-foreground">
             VenueFlow
@@ -152,6 +156,7 @@ export function OnboardingWizard({ initial }: WizardProps) {
                 initialName={initial.venueName}
                 initialSlug={initial.venueSlug}
                 initialTimezone={initial.venueTimezone ?? "Europe/London"}
+                existingVenueId={venueId}
                 onComplete={handleStep1Complete}
               />
             )}

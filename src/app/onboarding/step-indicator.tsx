@@ -14,7 +14,11 @@ const STEPS = [
 
 export function StepIndicator({ current }: StepIndicatorProps) {
   return (
-    <div className="flex items-center gap-1" role="list" aria-label="Onboarding steps">
+    <div
+      className="flex items-center gap-1"
+      role="list"
+      aria-label="Onboarding steps"
+    >
       {STEPS.map((step, idx) => {
         const isComplete = step.n < current;
         const isActive = step.n === current;
@@ -26,6 +30,7 @@ export function StepIndicator({ current }: StepIndicatorProps) {
               <div
                 className={cn(
                   "h-1.5 w-16 rounded-full transition-colors",
+                  // Pink stays in the bar; labels use foreground tokens (Finding 10)
                   isComplete
                     ? "bg-fun-pink"
                     : isActive
@@ -37,14 +42,21 @@ export function StepIndicator({ current }: StepIndicatorProps) {
               <span
                 className={cn(
                   "text-xs font-medium",
-                  isActive
+                  // AA-compliant: completed + active use --foreground; upcoming use --muted-foreground
+                  isActive || isComplete
                     ? "text-foreground"
-                    : isComplete
-                      ? "text-fun-pink-strong"
-                      : "text-muted-foreground",
+                    : "text-muted-foreground",
                 )}
+                // Finding 9: aria-current on the active step; sr-only state context
+                aria-current={isActive ? "step" : undefined}
               >
                 {step.label}
+                {isComplete && (
+                  <span className="sr-only"> (completed)</span>
+                )}
+                {isActive && (
+                  <span className="sr-only"> (current step)</span>
+                )}
               </span>
             </div>
 

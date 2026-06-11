@@ -171,6 +171,11 @@
 }
 
 @layer components {
+  /* One-shot celebration spring pulse — used on onboarding completion (DESIGN.md) */
+  .animate-celebrate {
+    animation: celebrate-pulse 550ms var(--ease-spring) 1 forwards;
+  }
+
   /* Skeleton shimmer loader (DESIGN.md: skeletons, never spinners) */
   .skeleton {
     border-radius: var(--radius-md);
@@ -214,6 +219,21 @@
   }
   100% {
     background-position: -200% 0;
+  }
+}
+
+@keyframes celebrate-pulse {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  40% {
+    transform: scale(1.015);
+    filter: brightness(1.06);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
   }
 }
 

@@ -132,7 +132,7 @@ export function Step3Hours({ venueId, initialRows, onComplete, onBack }: Step3Pr
                     value={row.open_time ?? "09:00"}
                     onChange={(e) => updateRow(weekday, { open_time: e.target.value })}
                     disabled={isBusy}
-                    className="h-8 w-28 text-sm"
+                    className="w-28"
                   />
                   <span className="text-sm text-muted-foreground">to</span>
                   <Label htmlFor={`close-${weekday}`} className="sr-only">
@@ -144,7 +144,7 @@ export function Step3Hours({ venueId, initialRows, onComplete, onBack }: Step3Pr
                     value={row.close_time ?? "17:00"}
                     onChange={(e) => updateRow(weekday, { close_time: e.target.value })}
                     disabled={isBusy}
-                    className="h-8 w-28 text-sm"
+                    className="w-28"
                   />
                 </div>
               ) : (

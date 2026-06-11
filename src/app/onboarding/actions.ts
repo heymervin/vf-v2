@@ -49,46 +49,113 @@ export async function createVenueWithProfile(
 
   const { name, slug, timezone } = parsed.data;
 
-  // Call RPC — handles venue insert + membership insert atomically
-  const { data: venue, error: rpcError } = await supabase.rpc(
-    "create_venue_with_owner",
-    { p_name: name, p_slug: slug },
-  );
+  // Check if an existing venueId was threaded from the wizard (back-from-step-2 resume)
+  const existingVenueId = formData.get("venueId");
 
-  if (rpcError) {
-    // Slug uniqueness constraint surfaces here
-    if (
-      rpcError.message.toLowerCase().includes("unique") ||
-      rpcError.message.toLowerCase().includes("slug")
-    ) {
-      return err("SLUG_TAKEN");
+  let venueId: string;
+
+  if (existingVenueId && typeof existingVenueId === "string") {
+    // UPDATE path: user already owns this venue — patch name/slug/timezone.
+    // RLS policy ensures the user can only update venues they own/admin.
+    const { error: updateError } = await supabase
+      .from("venues")
+      .update({ name, slug, timezone, onboarding_step: 2 })
+      .eq("id", existingVenueId);
+
+    if (updateError) {
+      if (
+        updateError.message.toLowerCase().includes("unique") ||
+        updateError.message.toLowerCase().includes("slug")
+      ) {
+        return err("SLUG_TAKEN");
+      }
+      console.error("[createVenueWithProfile] update error:", updateError);
+      return err("Could not save, try again.");
     }
-    return err(rpcError.message);
+
+    venueId = existingVenueId;
+  } else {
+    // CREATE path: check for stale incomplete venue before calling RPC
+    // (guards against stale-resume where the client lost its venueId)
+    const { data: staleMembership } = await supabase
+      .from("memberships")
+      .select("venue_id, venues!inner(id, onboarding_completed_at)")
+      .eq("user_id", user.id)
+      .is("venues.onboarding_completed_at", null)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    type MembershipWithVenue = {
+      venue_id: string;
+      venues: { id: string; onboarding_completed_at: string | null };
+    };
+
+    const stale = staleMembership as MembershipWithVenue | null;
+
+    if (stale?.venue_id) {
+      // Reuse the stale venue instead of creating a duplicate
+      const { error: updateError } = await supabase
+        .from("venues")
+        .update({ name, slug, timezone, onboarding_step: 2 })
+        .eq("id", stale.venue_id);
+
+      if (updateError) {
+        if (
+          updateError.message.toLowerCase().includes("unique") ||
+          updateError.message.toLowerCase().includes("slug")
+        ) {
+          return err("SLUG_TAKEN");
+        }
+        console.error("[createVenueWithProfile] stale-update error:", updateError);
+        return err("Could not save, try again.");
+      }
+
+      venueId = stale.venue_id;
+    } else {
+      // No existing incomplete venue — call RPC to create
+      const { data: venue, error: rpcError } = await supabase.rpc(
+        "create_venue_with_owner",
+        { p_name: name, p_slug: slug },
+      );
+
+      if (rpcError) {
+        if (
+          rpcError.message.toLowerCase().includes("unique") ||
+          rpcError.message.toLowerCase().includes("slug")
+        ) {
+          return err("SLUG_TAKEN");
+        }
+        console.error("[createVenueWithProfile] rpc error:", rpcError);
+        return err("Could not save, try again.");
+      }
+
+      if (!venue) {
+        return err("Could not save, try again.");
+      }
+
+      venueId = venue.id;
+
+      // Update timezone (RPC only takes name+slug; default is UTC)
+      const { error: tzError } = await supabase
+        .from("venues")
+        .update({ timezone })
+        .eq("id", venueId);
+
+      if (tzError) {
+        console.error("[createVenueWithProfile] tz update error:", tzError);
+        return err("Could not save, try again.");
+      }
+    }
   }
 
-  if (!venue) {
-    return err("Venue creation failed — no data returned.");
-  }
-
-  const venueId = venue.id;
-
-  // Update timezone (RPC only takes name+slug; default is UTC)
-  const { error: tzError } = await supabase
-    .from("venues")
-    .update({ timezone })
-    .eq("id", venueId);
-
-  if (tzError) {
-    return err(tzError.message);
-  }
-
-  // Optional logo upload — must happen AFTER venue creation (storage RLS needs membership)
+  // Optional logo upload — must happen AFTER venue exists (storage RLS needs membership)
   const logoFile = formData.get("logo");
   if (logoFile instanceof File && logoFile.size > 0) {
     const uploadResult = await uploadLogo(supabase, venueId, logoFile);
     if (!uploadResult.ok) {
-      // Non-fatal: venue is created, just log the error
-      // We still advance — the user can re-upload in settings
+      // Non-fatal: venue is created/updated, just log the error
+      console.error("[createVenueWithProfile] logo upload failed:", uploadResult.error);
     } else {
       await supabase
         .from("venues")
@@ -97,7 +164,7 @@ export async function createVenueWithProfile(
     }
   }
 
-  // Advance onboarding step to 2
+  // Ensure onboarding_step is 2 (already set above in update paths, set here for the RPC path)
   await supabase
     .from("venues")
     .update({ onboarding_step: 2 })
@@ -113,17 +180,17 @@ async function uploadLogo(
   venueId: string,
   file: File,
 ): Promise<ActionResult<string>> {
-  const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
-  const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
+  const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
+  const MAX_SIZE = 2 * 1024 * 1024; // 2 MB — matches bucket allowed_mime_types
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    return err("Logo must be PNG, JPG, WebP, or SVG.");
+    return err("Logo must be PNG, JPG, or WebP.");
   }
   if (file.size > MAX_SIZE) {
     return err("Logo must be 2 MB or smaller.");
   }
 
-  const ext = file.type === "image/svg+xml" ? "svg" : file.type.split("/")[1];
+  const ext = file.type.split("/")[1];
   const path = `${venueId}/logo.${ext}`;
 
   const arrayBuffer = await file.arrayBuffer();
@@ -137,7 +204,8 @@ async function uploadLogo(
     });
 
   if (uploadError) {
-    return err(uploadError.message);
+    console.error("[uploadLogo] storage upload error:", uploadError);
+    return err("Could not upload logo.");
   }
 
   return ok(path);
@@ -199,17 +267,25 @@ export async function saveSpace(
       .single();
 
     if (spaceError) {
-      return err(spaceError.message);
+      console.error("[saveSpace] space insert error:", spaceError);
+      return err("Could not save, try again.");
     }
 
     spaceId = space.id;
   }
 
   // Advance onboarding step to 3
-  await supabase
+  const { error: stepError } = await supabase
     .from("venues")
     .update({ onboarding_step: 3 })
-    .eq("id", venueId);
+    .eq("id", venueId)
+    .select("id")
+    .single();
+
+  if (stepError) {
+    console.error("[saveSpace] onboarding_step update error:", stepError);
+    return err("Could not save, try again.");
+  }
 
   revalidatePath("/onboarding");
 
@@ -256,17 +332,21 @@ export async function finishHours(
     .upsert(upsertRows, { onConflict: "venue_id,weekday" });
 
   if (hoursError) {
-    return err(hoursError.message);
+    console.error("[finishHours] hours upsert error:", hoursError);
+    return err("Could not save, try again.");
   }
 
   // Mark onboarding complete
   const { error: updateError } = await supabase
     .from("venues")
     .update({ onboarding_completed_at: new Date().toISOString() })
-    .eq("id", venueId);
+    .eq("id", venueId)
+    .select("id")
+    .single();
 
   if (updateError) {
-    return err(updateError.message);
+    console.error("[finishHours] complete update error:", updateError);
+    return err("Could not save, try again.");
   }
 
   revalidatePath("/onboarding");

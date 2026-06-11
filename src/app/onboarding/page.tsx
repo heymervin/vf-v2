@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getTenantContext } from "@/lib/tenant";
 import { OnboardingWizard, type WizardInitialState } from "./wizard";
 import type { HourRow } from "@/lib/zod-schemas/onboarding";
 import type { Metadata } from "next";
+import { signOut } from "@/app/(app)/actions";
 
 export const metadata: Metadata = {
   title: "Set up your venue | VenueFlow",
@@ -13,79 +15,94 @@ export const metadata: Metadata = {
  *
  * Lives at /onboarding (NOT inside (app) — that layout redirects here).
  *
- * Resolution logic:
- * 1. Authenticate; null user → /login
- * 2. If venue exists and onboarding complete → /dashboard
- * 3. If venue exists → resume from onboarding_step with preloaded data
- * 4. No venue → step 1
+ * Resolution logic (uses getTenantContext for cookie-aware active-venue selection):
+ * 1. Unauthenticated → /login
+ * 2. No venue at all (reason: 'no-venue') → fresh step 1
+ * 3. Venue exists + onboarding complete → /dashboard
+ * 4. Role is 'member' + onboarding incomplete → waiting state (member can't write)
+ * 5. Venue exists, incomplete + owner/admin → resume from onboarding_step
  */
 export default async function OnboardingPage() {
-  const supabase = await createClient();
+  const ctx = await getTenantContext();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Look for an existing venue via membership
-  const { data: memberships } = await supabase
-    .from("memberships")
-    .select("venue_id, venues(*)")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: true })
-    .limit(1);
-
-  type VenueRow = {
-    id: string;
-    name: string;
-    slug: string;
-    timezone: string;
-    onboarding_step: number;
-    onboarding_completed_at: string | null;
-  };
-
-  const venue = memberships?.[0]?.venues as VenueRow | null | undefined;
-
-  // Already completed → dashboard
-  if (venue?.onboarding_completed_at) {
-    redirect("/dashboard");
-  }
-
-  // No venue yet → step 1
-  if (!venue) {
+  if (!ctx.ok) {
+    if (ctx.reason === "unauthenticated") {
+      redirect("/login");
+    }
+    // reason === 'no-venue': fresh start
     const initial: WizardInitialState = { step: 1 };
     return <OnboardingWizard initial={initial} />;
   }
 
-  // Venue exists but incomplete — load saved state for the saved step
-  const savedStep = (venue.onboarding_step ?? 1) as 1 | 2 | 3;
+  // Venue exists + completed → dashboard
+  if (ctx.venue.onboardingCompletedAt !== null) {
+    redirect("/dashboard");
+  }
+
+  // Plain member whose venue is still being set up — they cannot write via RLS
+  if (ctx.role === "member") {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background px-6">
+        <div className="max-w-sm text-center space-y-4">
+          <p className="text-base font-medium text-foreground">
+            Your venue is still being set up by the owner.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            You will get access as soon as they finish.
+          </p>
+          <form
+            action={async () => {
+              "use server";
+              await signOut();
+            }}
+          >
+            <button
+              type="submit"
+              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Owner or admin — look up current onboarding_step from raw DB row
+  // (getTenantContext intentionally omits it)
+  const supabase = await createClient();
+  const { data: venueRow } = await supabase
+    .from("venues")
+    .select("onboarding_step")
+    .eq("id", ctx.venue.id)
+    .single();
+
+  const step = (venueRow?.onboarding_step ?? 1) as 1 | 2 | 3;
 
   let existingHours: HourRow[] | undefined;
-  if (savedStep === 3) {
+  if (step === 3) {
     const { data: hoursRows } = await supabase
       .from("venue_hours")
       .select("weekday, open_time, close_time")
-      .eq("venue_id", venue.id);
+      .eq("venue_id", ctx.venue.id);
 
     if (hoursRows && hoursRows.length > 0) {
       existingHours = hoursRows.map((r) => ({
         weekday: r.weekday,
         open: r.open_time !== null,
-        open_time: r.open_time,
-        close_time: r.close_time,
+        // PostgREST returns "HH:MM:SS" — normalise to "HH:MM" before passing to client
+        open_time: r.open_time ? r.open_time.slice(0, 5) : null,
+        close_time: r.close_time ? r.close_time.slice(0, 5) : null,
       }));
     }
   }
 
   const initial: WizardInitialState = {
-    step: savedStep,
-    venueId: venue.id,
-    venueName: venue.name,
-    venueSlug: venue.slug,
-    venueTimezone: venue.timezone,
+    step,
+    venueId: ctx.venue.id,
+    venueName: ctx.venue.name,
+    venueSlug: ctx.venue.slug,
+    venueTimezone: ctx.venue.timezone,
     existingHours,
   };
 

@@ -33,7 +33,7 @@ export default async function DashboardPage() {
 
       {/* Single empty-state panel — teaches the next step */}
       <div className="rounded-xl border border-border bg-card p-8 shadow-sm max-w-xl">
-        <p className="mb-1 text-[11px] font-600 uppercase tracking-[0.08em] text-muted-foreground">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           Getting started
         </p>
         <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">

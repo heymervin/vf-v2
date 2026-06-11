@@ -150,8 +150,9 @@ test("resume: after completing step 1, reload /onboarding lands on step 2", asyn
       page.getByText("Tell us about your spaces.").first(),
     ).toBeVisible({ timeout: 10_000 });
 
-    // Step indicator should show "Space" as active (exact match on the indicator label span)
-    await expect(page.getByText("Space", { exact: true })).toBeVisible();
+    // Step indicator should show "Space" as current step.
+    // The span now includes sr-only state text so we match the aria-current attribute instead.
+    await expect(page.locator('[aria-current="step"]')).toBeVisible();
   } finally {
     if (userId) {
       await deleteVenuesForUser(userId).catch(() => {});
