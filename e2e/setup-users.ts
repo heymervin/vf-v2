@@ -69,6 +69,39 @@ export async function createCompletedVenue(userId: string, slug: string) {
   return venue.id as string;
 }
 
+/** Insert a contact + one opportunity at `stage` for board tests. */
+export async function seedOpportunity(
+  venueId: string,
+  firstName: string,
+  lastName: string,
+  stage: string,
+  sortIndex: number,
+) {
+  const admin = adminClient();
+  const { data: contact, error: cErr } = await admin
+    .from("contacts")
+    .insert({
+      venue_id: venueId,
+      first_name: firstName,
+      last_name: lastName,
+      email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+      wedding_date: "2027-08-14",
+      guest_count: 110,
+      source: "Website",
+    })
+    .select("id")
+    .single();
+  if (cErr || !contact) throw new Error(`seed contact: ${cErr?.message}`);
+
+  const { error: oErr } = await admin.from("opportunities").insert({
+    venue_id: venueId,
+    contact_id: contact.id,
+    stage,
+    sort_index: sortIndex,
+  });
+  if (oErr) throw new Error(`seed opportunity: ${oErr.message}`);
+}
+
 export async function deleteVenuesForUser(userId: string) {
   const admin = adminClient();
   // Get membership → venue IDs
