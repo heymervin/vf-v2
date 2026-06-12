@@ -39,6 +39,243 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_messages: {
+        Row: {
+          contact_id: string
+          created_at: string
+          enrollment_id: string | null
+          id: string
+          idempotency_key: string | null
+          provider_id: string | null
+          status: Database["public"]["Enums"]["email_message_status"]
+          step_number: number | null
+          subject: string
+          venue_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          enrollment_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          provider_id?: string | null
+          status?: Database["public"]["Enums"]["email_message_status"]
+          step_number?: number | null
+          subject: string
+          venue_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          enrollment_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          provider_id?: string | null
+          status?: Database["public"]["Enums"]["email_message_status"]
+          step_number?: number | null
+          subject?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_messages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_messages_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "sequence_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_messages_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_suppressions: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          reason: string
+          venue_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          reason: string
+          venue_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          reason?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_suppressions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sequence_enrollments: {
+        Row: {
+          contact_id: string
+          created_at: string
+          current_step: number
+          id: string
+          opportunity_id: string
+          status: Database["public"]["Enums"]["enrollment_status"]
+          stopped_reason: string | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          current_step?: number
+          id?: string
+          opportunity_id: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          stopped_reason?: string | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          current_step?: number
+          id?: string
+          opportunity_id?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          stopped_reason?: string | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sequence_enrollments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequence_enrollments_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequence_enrollments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sequence_steps: {
+        Row: {
+          body: string
+          created_at: string
+          delay_hours: number
+          enabled: boolean
+          id: string
+          sequence_id: string
+          step_number: number
+          subject: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          delay_hours?: number
+          enabled?: boolean
+          id?: string
+          sequence_id: string
+          step_number: number
+          subject: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          delay_hours?: number
+          enabled?: boolean
+          id?: string
+          sequence_id?: string
+          step_number?: number
+          subject?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sequence_steps_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "sequences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequence_steps_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sequences: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sequences_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brochures: {
         Row: {
           created_at: string
@@ -491,6 +728,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_or_create_sequence: {
+        Args: { p_venue_id: string }
+        Returns: {
+          created_at: string
+          enabled: boolean
+          id: string
+          updated_at: string
+          venue_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sequences"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_contact_with_opportunity: {
         Args: {
           p_budget_minor?: number
@@ -560,6 +813,8 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
+      email_message_status: "sent" | "skipped" | "failed"
+      enrollment_status: "active" | "completed" | "stopped"
       pipeline_stage:
         | "inbound_enquiry"
         | "responded"
@@ -699,6 +954,8 @@ export const Constants = {
   },
   public: {
     Enums: {
+      email_message_status: ["sent", "skipped", "failed"],
+      enrollment_status: ["active", "completed", "stopped"],
       pipeline_stage: [
         "inbound_enquiry",
         "responded",

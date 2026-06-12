@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantContext } from "@/lib/tenant";
 import { ok, err, type ActionResult } from "@/lib/actions";
 import { STAGE_VALUES } from "@/lib/pipeline";
@@ -46,8 +47,59 @@ export async function moveOpportunity(
   }
   if (!data) return err("Opportunity not found.");
 
+  // Eagerly stop any active nurture enrollment when the opportunity leaves
+  // inbound_enquiry. The sequence-run Inngest function rechecks before each
+  // send, but this DB write makes the stop immediate and avoids a wasted sleep.
+  if (stage !== "inbound_enquiry") {
+    const admin = createAdminClient();
+    await admin
+      .from("sequence_enrollments")
+      .update({ status: "stopped", stopped_reason: "stage_moved" })
+      .eq("opportunity_id", data.id)
+      .eq("venue_id", ctx.venue.id)
+      .eq("status", "active");
+  }
+
   // Stage shown on contact surfaces — keep those fresh (board is optimistic).
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${data.contact_id}`);
   return ok({ id: data.id });
+}
+
+const stopEnrollmentSchema = z.object({
+  opportunityId: z.string().uuid(),
+  reason: z.enum(["stage_moved", "replied", "bounced", "disabled", "manual"]),
+});
+
+/**
+ * Manually stop the active nurture enrollment for an opportunity.
+ * Usable from the contact detail UI (e.g. "mark as replied").
+ * Scoped to the caller's venue via getTenantContext + explicit venue_id filter.
+ */
+export async function stopEnrollment(
+  input: unknown,
+): Promise<ActionResult<{ stopped: boolean }>> {
+  const ctx = await getTenantContext();
+  if (!ctx.ok) return err("Not authenticated.");
+
+  const parsed = stopEnrollmentSchema.safeParse(input);
+  if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "Invalid input.");
+  const { opportunityId, reason } = parsed.data;
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("sequence_enrollments")
+    .update({ status: "stopped", stopped_reason: reason })
+    .eq("opportunity_id", opportunityId)
+    .eq("venue_id", ctx.venue.id)
+    .eq("status", "active")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("stopEnrollment failed:", error.message);
+    return err("Could not stop enrollment, try again.");
+  }
+
+  return ok({ stopped: data !== null });
 }
