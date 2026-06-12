@@ -35,6 +35,31 @@ Warm, crisp, dependable. The TWM "Pulse" character — candy-pastel accents on d
 4. **One brand, two audiences.** Staff app: efficient, familiar, best-tool patterns (Linear/Notion fluency). Couple-facing public pages: warmer, more generous spacing, the venue's name forward.
 5. **Earned familiarity.** Standard affordances everywhere — same button vocabulary, predictable navigation, no invented controls. Delight is saved for moments (a booked wedding), not pages.
 
+## Configurability
+
+The governing rule: **venues configure their content and identity; they never configure structure or logic.** Opinionated structure is the product — it is what replaces GoHighLevel's config maze. Adding a settings toggle is a cost (every option is a decision the venue must make and we must support), not a feature.
+
+**Venue-configurable (content + identity):**
+- Venue profile: name, logo, timezone, opening hours
+- Spaces (names, capacities, description)
+- Team members + roles
+- Brochure PDF (one active)
+- Email identity: from-name + reply-to (`venue_email_settings`)
+- Nurture sequence *content*: subjects, bodies, delays, on/off (3 fixed steps — no builder)
+- Staff availability + per-meeting-type duration/buffer
+- Public form intro/heading copy
+
+**Deliberately fixed (the opinionated spine — do not make configurable):**
+- The 8 pipeline stages (the state machine reports, sequences, and booking all depend on)
+- The 3-step sequence *structure* (no sequence builder)
+- The 2 meeting types as a *set* (viewing + call; tune their settings, don't invent new ones)
+- The contact field schema and the public form's field set (`custom jsonb` is the escape hatch, not a field-builder)
+- The brand / visual system and form colors (the embed is transparent and inherits the host site)
+
+**Gray-zone calls (decided, revisit only post-launch):** stage *renaming* (labels only, states fixed) — maybe later; form field show/hide toggles — hold the line; adding a pipeline stage — hard no (breaks reports, stop-rules, booking automation).
+
+When a venue asks for a new toggle, the default answer is no: find the opinionated default that makes the toggle unnecessary.
+
 ## Accessibility & Inclusion
 
 - WCAG 2.1 AA across app and public surfaces.
