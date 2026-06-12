@@ -1,0 +1,248 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-fun-pink: var(--fun-pink);
+  --color-fun-pink-foreground: var(--fun-pink-foreground);
+  --color-fun-pink-strong: var(--fun-pink-strong);
+  --color-fun-green: var(--fun-green);
+  --color-fun-green-strong: var(--fun-green-strong);
+  --color-fun-blue: var(--fun-blue);
+  --color-fun-blue-strong: var(--fun-blue-strong);
+  --color-fun-teal: var(--fun-teal);
+  --color-fun-teal-strong: var(--fun-teal-strong);
+  --color-mint: var(--mint);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* VenueFlow — TWM "Pulse" brand, OKLCH (see DESIGN.md) */
+:root {
+  --background: oklch(0.965 0.006 273);
+  --foreground: oklch(0.217 0.053 269);
+  --card: oklch(0.992 0.003 273);
+  --card-foreground: oklch(0.217 0.053 269);
+  --popover: oklch(0.992 0.003 273);
+  --popover-foreground: oklch(0.217 0.053 269);
+  --primary: oklch(0.42 0.13 268);
+  --primary-foreground: oklch(0.985 0.004 273);
+  --secondary: oklch(0.845 0.071 195);
+  --secondary-foreground: oklch(0.377 0.05 194);
+  --muted: oklch(0.933 0.008 273);
+  --muted-foreground: oklch(0.541 0.061 271);
+  --accent: oklch(0.923 0.023 272);
+  --accent-foreground: oklch(0.278 0.077 268);
+  --success: oklch(0.93 0.068 134);
+  --success-foreground: oklch(0.447 0.098 135);
+  --warning: oklch(0.938 0.051 81);
+  --warning-foreground: oklch(0.477 0.09 76);
+  --destructive: oklch(0.594 0.186 25);
+  --destructive-foreground: oklch(0.985 0.004 273);
+  --border: oklch(0.899 0.013 273);
+  --input: oklch(0.881 0.015 272);
+  --ring: oklch(0.42 0.13 268);
+  --chart-1: oklch(0.584 0.152 272);
+  --chart-2: oklch(0.731 0.1 194);
+  --chart-3: oklch(0.703 0.189 319);
+  --chart-4: oklch(0.774 0.161 135);
+  --chart-5: oklch(0.477 0.09 76);
+  --radius: 0.75rem;
+  --fun-pink: oklch(0.906 0.073 319);
+  --fun-pink-foreground: oklch(0.217 0.053 269);
+  --fun-pink-strong: oklch(0.703 0.189 319);
+  --fun-green: oklch(0.934 0.076 134);
+  --fun-green-strong: oklch(0.774 0.161 135);
+  --fun-blue: oklch(0.782 0.087 275);
+  --fun-blue-strong: oklch(0.584 0.152 272);
+  --fun-teal: oklch(0.882 0.062 195);
+  --fun-teal-strong: oklch(0.731 0.1 194);
+  --mint: oklch(0.935 0.035 195);
+  /* Sidebar: permanently dark navy with pink active state (signature) */
+  --sidebar: oklch(0.199 0.046 269);
+  --sidebar-foreground: oklch(0.828 0.031 264);
+  --sidebar-primary: oklch(0.906 0.073 319);
+  --sidebar-primary-foreground: oklch(0.199 0.046 269);
+  --sidebar-accent: oklch(0.906 0.073 319);
+  --sidebar-accent-foreground: oklch(0.199 0.046 269);
+  --sidebar-border: oklch(0.267 0.057 270);
+  --sidebar-ring: oklch(0.703 0.189 319);
+}
+
+.dark {
+  --background: oklch(0.163 0.031 270);
+  --foreground: oklch(0.934 0.007 273);
+  --card: oklch(0.192 0.039 270);
+  --card-foreground: oklch(0.934 0.007 273);
+  --popover: oklch(0.192 0.039 270);
+  --popover-foreground: oklch(0.934 0.007 273);
+  --primary: oklch(0.708 0.128 250);
+  --primary-foreground: oklch(0.163 0.031 270);
+  --secondary: oklch(0.402 0.042 194);
+  --secondary-foreground: oklch(0.895 0.043 195);
+  --muted: oklch(0.241 0.046 270);
+  --muted-foreground: oklch(0.585 0.044 272);
+  --accent: oklch(0.302 0.081 319);
+  --accent-foreground: oklch(0.881 0.078 319);
+  --success: oklch(0.338 0.059 134);
+  --success-foreground: oklch(0.892 0.083 134);
+  --warning: oklch(0.337 0.05 79);
+  --warning-foreground: oklch(0.897 0.059 81);
+  --destructive: oklch(0.514 0.163 25);
+  --destructive-foreground: oklch(0.985 0.004 273);
+  --fun-pink: oklch(0.906 0.073 319);
+  --fun-pink-foreground: oklch(0.217 0.053 269);
+  --mint: oklch(0.935 0.035 195);
+  --border: oklch(0.259 0.051 270);
+  --input: oklch(0.241 0.046 270);
+  --ring: oklch(0.708 0.128 250);
+  --chart-1: oklch(0.764 0.102 249);
+  --chart-2: oklch(0.731 0.1 194);
+  --chart-3: oklch(0.881 0.078 319);
+  --chart-4: oklch(0.892 0.083 134);
+  --chart-5: oklch(0.897 0.059 81);
+  --sidebar: oklch(0.171 0.037 269);
+  --sidebar-foreground: oklch(0.828 0.031 264);
+  --sidebar-primary: oklch(0.764 0.102 249);
+  --sidebar-primary-foreground: oklch(0.171 0.037 269);
+  --sidebar-accent: oklch(0.23 0.049 269);
+  --sidebar-accent-foreground: oklch(0.934 0.007 273);
+  --sidebar-border: oklch(0.259 0.051 270);
+  --sidebar-ring: oklch(0.764 0.102 249);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@layer components {
+  /* One-shot celebration spring pulse — used on onboarding completion (DESIGN.md) */
+  .animate-celebrate {
+    animation: celebrate-pulse 550ms var(--ease-spring) 1 forwards;
+  }
+
+  /* Skeleton shimmer loader (DESIGN.md: skeletons, never spinners) */
+  .skeleton {
+    border-radius: var(--radius-md);
+    background: linear-gradient(
+      90deg,
+      var(--muted) 25%,
+      var(--accent) 50%,
+      var(--muted) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.6s var(--ease-smooth) infinite;
+  }
+
+  /* Shimmer underline accent: the adapted (non-text) survivor of TWM's
+     gradient page titles. Sparingly — dashboard and reports only. */
+  .title-shimmer-underline {
+    position: relative;
+  }
+  .title-shimmer-underline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -0.375rem;
+    height: 2px;
+    width: 3.5rem;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      var(--fun-pink-strong),
+      var(--fun-teal-strong),
+      var(--fun-pink-strong)
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 5s linear infinite;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes celebrate-pulse {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  40% {
+    transform: scale(1.015);
+    filter: brightness(1.06);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
