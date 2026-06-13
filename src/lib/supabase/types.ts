@@ -39,6 +39,422 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          cancelled_at: string | null
+          contact_id: string
+          created_at: string
+          ends_at: string
+          id: string
+          ip: string | null
+          manage_token: string
+          meeting_type_id: string
+          membership_id: string
+          opportunity_id: string | null
+          source: string
+          starts_at: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          contact_id: string
+          created_at?: string
+          ends_at: string
+          id?: string
+          ip?: string | null
+          manage_token?: string
+          meeting_type_id: string
+          membership_id: string
+          opportunity_id?: string | null
+          source?: string
+          starts_at: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          contact_id?: string
+          created_at?: string
+          ends_at?: string
+          id?: string
+          ip?: string | null
+          manage_token?: string
+          meeting_type_id?: string
+          membership_id?: string
+          opportunity_id?: string | null
+          source?: string
+          starts_at?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_meeting_type_id_fkey"
+            columns: ["meeting_type_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      availability_rules: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          membership_id: string
+          start_time: string
+          updated_at: string
+          venue_id: string
+          weekday: number
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          membership_id: string
+          start_time: string
+          updated_at?: string
+          venue_id: string
+          weekday: number
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          membership_id?: string
+          start_time?: string
+          updated_at?: string
+          venue_id?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_rules_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "availability_rules_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_types: {
+        Row: {
+          buffer_minutes: number
+          created_at: string
+          duration_minutes: number
+          enabled: boolean
+          id: string
+          kind: Database["public"]["Enums"]["meeting_type_kind"]
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          buffer_minutes?: number
+          created_at?: string
+          duration_minutes?: number
+          enabled?: boolean
+          id?: string
+          kind: Database["public"]["Enums"]["meeting_type_kind"]
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          buffer_minutes?: number
+          created_at?: string
+          duration_minutes?: number
+          enabled?: boolean
+          id?: string
+          kind?: Database["public"]["Enums"]["meeting_type_kind"]
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_types_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_messages: {
+        Row: {
+          contact_id: string
+          created_at: string
+          enrollment_id: string | null
+          id: string
+          idempotency_key: string | null
+          provider_id: string | null
+          status: Database["public"]["Enums"]["email_message_status"]
+          step_number: number | null
+          subject: string
+          venue_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          enrollment_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          provider_id?: string | null
+          status?: Database["public"]["Enums"]["email_message_status"]
+          step_number?: number | null
+          subject: string
+          venue_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          enrollment_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          provider_id?: string | null
+          status?: Database["public"]["Enums"]["email_message_status"]
+          step_number?: number | null
+          subject?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_messages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_messages_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "sequence_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_messages_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_suppressions: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          reason: string
+          venue_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          reason: string
+          venue_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          reason?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_suppressions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sequence_enrollments: {
+        Row: {
+          contact_id: string
+          created_at: string
+          current_step: number
+          id: string
+          opportunity_id: string
+          status: Database["public"]["Enums"]["enrollment_status"]
+          stopped_reason: string | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          current_step?: number
+          id?: string
+          opportunity_id: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          stopped_reason?: string | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          current_step?: number
+          id?: string
+          opportunity_id?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          stopped_reason?: string | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sequence_enrollments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequence_enrollments_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequence_enrollments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sequence_steps: {
+        Row: {
+          body: string
+          created_at: string
+          delay_hours: number
+          enabled: boolean
+          id: string
+          sequence_id: string
+          step_number: number
+          subject: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          delay_hours?: number
+          enabled?: boolean
+          id?: string
+          sequence_id: string
+          step_number: number
+          subject: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          delay_hours?: number
+          enabled?: boolean
+          id?: string
+          sequence_id?: string
+          step_number?: number
+          subject?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sequence_steps_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "sequences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequence_steps_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sequences: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sequences_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brochures: {
         Row: {
           created_at: string
@@ -486,11 +902,110 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_subscriptions: {
+        Row: {
+          id: string
+          venue_id: string
+          stripe_customer_id: string
+          stripe_subscription_id: string | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          current_period_end: string | null
+          price_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          venue_id: string
+          stripe_customer_id: string
+          stripe_subscription_id?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          current_period_end?: string | null
+          price_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          venue_id?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          current_period_end?: string | null
+          price_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_subscriptions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stripe_events: {
+        Row: {
+          event_id: string
+          type: string
+          created_at: string
+        }
+        Insert: {
+          event_id: string
+          type: string
+          created_at?: string
+        }
+        Update: {
+          event_id?: string
+          type?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      report_leads_by_stage: {
+        Row: {
+          venue_id: string
+          stage: Database["public"]["Enums"]["pipeline_stage"]
+          lead_count: number
+        }
+        Relationships: []
+      }
+      report_leads_by_source: {
+        Row: {
+          venue_id: string
+          source: string
+          lead_count: number
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      reschedule_appointment: {
+        Args: {
+          p_manage_token: string
+          p_starts_at: string
+          p_ends_at: string
+        }
+        /** Returns the new manage_token uuid as a plain string. */
+        Returns: string
+      }
+      get_or_create_sequence: {
+        Args: { p_venue_id: string }
+        Returns: {
+          created_at: string
+          enabled: boolean
+          id: string
+          updated_at: string
+          venue_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sequences"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_contact_with_opportunity: {
         Args: {
           p_budget_minor?: number
@@ -560,6 +1075,11 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
+      appointment_status: "booked" | "attended" | "no_show" | "cancelled"
+      email_message_status: "sent" | "skipped" | "failed"
+      subscription_status: "trialing" | "active" | "past_due" | "canceled" | "incomplete"
+      enrollment_status: "active" | "completed" | "stopped"
+      meeting_type_kind: "viewing" | "call"
       pipeline_stage:
         | "inbound_enquiry"
         | "responded"
@@ -699,6 +1219,11 @@ export const Constants = {
   },
   public: {
     Enums: {
+      appointment_status: ["booked", "attended", "no_show", "cancelled"],
+      email_message_status: ["sent", "skipped", "failed"],
+      enrollment_status: ["active", "completed", "stopped"],
+      meeting_type_kind: ["viewing", "call"],
+      subscription_status: ["trialing", "active", "past_due", "canceled", "incomplete"],
       pipeline_stage: [
         "inbound_enquiry",
         "responded",

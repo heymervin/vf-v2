@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/tenant";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
+import { AccessBanner } from "@/components/layout/access-banner";
 import { Toaster } from "@/components/ui/sonner";
 
 /**
@@ -39,6 +40,8 @@ export default async function AppLayout({
       {/* Right column: topbar + scrollable content */}
       <div className="flex flex-1 min-w-0 flex-col overflow-hidden">
         <AppTopbar venueName={ctx.venue.name} userEmail={ctx.user.email} />
+
+        <AccessBanner access={ctx.access} trialEndsAt={ctx.venue.trialEndsAt} />
 
         <main className="flex-1 overflow-y-auto px-6 py-8 md:px-8">
           {children}

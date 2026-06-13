@@ -691,6 +691,256 @@ async function runTests() {
   }
 
   // =========================================================================
+  // Step 4d: M4 ASSERTIONS — sequences / sequence_steps / sequence_enrollments
+  //                           / email_messages / email_suppressions
+  // =========================================================================
+  console.log('\n--- M4 seed (service role) ---');
+  let seqIdA = null, seqIdB = null;
+  let enrollIdA = null;
+  {
+    // Insert sequence rows for each venue.
+    const { data: sA } = await serviceClient.from('sequences').insert(
+      { venue_id: venueIdA, enabled: true }
+    ).select('id').single();
+    seqIdA = sA?.id;
+    const { data: sB } = await serviceClient.from('sequences').insert(
+      { venue_id: venueIdB, enabled: false }
+    ).select('id').single();
+    seqIdB = sB?.id;
+
+    // Insert a step for each.
+    await serviceClient.from('sequence_steps').insert([
+      { sequence_id: seqIdA, venue_id: venueIdA, step_number: 1, subject: 'Step 1', body: 'Body 1', delay_hours: 1, enabled: true },
+      { sequence_id: seqIdB, venue_id: venueIdB, step_number: 1, subject: 'Step 1', body: 'Body 1', delay_hours: 1, enabled: true },
+    ]);
+
+    // Insert an enrollment for venue A.
+    const { data: enA } = await serviceClient.from('sequence_enrollments').insert({
+      venue_id: venueIdA, contact_id: contactIdA, opportunity_id: oppIdA,
+      status: 'active', current_step: 0,
+    }).select('id').single();
+    enrollIdA = enA?.id;
+
+    // Insert an email_messages row for venue A.
+    await serviceClient.from('email_messages').insert({
+      venue_id: venueIdA, contact_id: contactIdA, enrollment_id: enrollIdA,
+      step_number: 1, subject: 'Test subject', status: 'skipped',
+      idempotency_key: `test:${rand}:step:1`,
+    });
+
+    console.log('  OK    seeded sequences + steps + enrollment + email_messages');
+  }
+
+  console.log('\n--- M4 positive controls (own data visible) ---');
+  {
+    const { data, error } = await anonClientA.from('sequences').select('id').eq('venue_id', venueIdA);
+    assert('User A can read own sequences', !error && data?.length === 1, JSON.stringify({ error, count: data?.length }));
+  }
+  {
+    const { data, error } = await anonClientA.from('sequence_steps').select('id').eq('venue_id', venueIdA);
+    assert('User A can read own sequence_steps', !error && data?.length === 1, JSON.stringify({ error, count: data?.length }));
+  }
+  {
+    const { data, error } = await anonClientA.from('sequence_enrollments').select('id').eq('venue_id', venueIdA);
+    assert('User A can read own sequence_enrollments', !error && data?.length === 1, JSON.stringify({ error, count: data?.length }));
+  }
+  {
+    const { data, error } = await anonClientA.from('email_messages').select('id').eq('venue_id', venueIdA);
+    assert('User A can read own email_messages', !error && data?.length === 1, JSON.stringify({ error, count: data?.length }));
+  }
+
+  console.log('\n--- M4 SELECT isolation (filtered by other venue id → 0 rows) ---');
+  for (const table of ['sequences', 'sequence_steps', 'sequence_enrollments', 'email_messages']) {
+    const { data, error } = await anonClientA.from(table).select('id').eq('venue_id', venueIdB);
+    assert(`A→B: ${table} filtered by venueB → 0 rows`, !error && data?.length === 0, JSON.stringify({ error, count: data?.length }));
+  }
+  for (const table of ['sequences', 'sequence_steps', 'sequence_enrollments', 'email_messages']) {
+    const { data, error } = await anonClientB.from(table).select('id').eq('venue_id', venueIdA);
+    assert(`B→A: ${table} filtered by venueA → 0 rows`, !error && data?.length === 0, JSON.stringify({ error, count: data?.length }));
+  }
+
+  console.log('\n--- M4 SELECT isolation (unfiltered — no leakage) ---');
+  for (const table of ['sequences', 'sequence_steps', 'sequence_enrollments', 'email_messages']) {
+    const { data, error } = await anonClientA.from(table).select('venue_id');
+    const leaked = data?.some(r => r.venue_id === venueIdB);
+    assert(`A unfiltered ${table} does not contain venueB`, !error && !leaked, JSON.stringify({ error }));
+  }
+  for (const table of ['sequences', 'sequence_steps', 'sequence_enrollments', 'email_messages']) {
+    const { data, error } = await anonClientB.from(table).select('venue_id');
+    const leaked = data?.some(r => r.venue_id === venueIdA);
+    assert(`B unfiltered ${table} does not contain venueA`, !error && !leaked, JSON.stringify({ error }));
+  }
+
+  console.log('\n--- M4 INSERT isolation: sequences / steps into other venue → rejected ---');
+  {
+    const { data, error } = await anonClientA.from('sequences')
+      .insert({ venue_id: venueIdB, enabled: false });
+    assert('A→B: insert sequence into venueB → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+  {
+    const { data, error } = await anonClientA.from('sequence_steps')
+      .insert({ sequence_id: seqIdB, venue_id: venueIdB, step_number: 2, subject: 'Injected', body: 'Body', delay_hours: 0, enabled: true });
+    assert('A→B: insert sequence_step into venueB → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+
+  console.log('\n--- M4 sequence_enrollments + email_messages have NO client INSERT (admin-write only) ---');
+  {
+    const { data, error } = await anonClientA.from('sequence_enrollments')
+      .insert({ venue_id: venueIdA, contact_id: contactIdA, opportunity_id: oppIdA, status: 'active', current_step: 0 });
+    assert('A: direct insert into own sequence_enrollments → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+  {
+    const { data, error } = await anonClientA.from('email_messages')
+      .insert({ venue_id: venueIdA, contact_id: contactIdA, subject: 'Injected', status: 'sent' });
+    assert('A: direct insert into own email_messages → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+
+  console.log('\n--- M4 email_suppressions: no client access (service-role only) ---');
+  {
+    const { data, error } = await anonClientA.from('email_suppressions').select('id');
+    // RLS returns empty or error — either is a pass (no row leaked)
+    const blocked = error != null || (Array.isArray(data) && data.length === 0);
+    assert('A: select email_suppressions → 0 rows / denied', blocked, JSON.stringify({ error: error?.message, count: data?.length }));
+  }
+  {
+    const { data, error } = await anonClientA.from('email_suppressions')
+      .insert({ email: `suppressed+${rand}@example.com`, reason: 'bounce' });
+    assert('A: insert into email_suppressions → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+
+  // =========================================================================
+  // Step 4e: M5 ASSERTIONS — meeting_types / availability_rules / appointments
+  // =========================================================================
+  console.log('\n--- M5 seed (service role) ---');
+  let mtIdA = null, mtIdB = null;
+  let memIdA = null;
+  let apptIdA = null;
+  {
+    // meeting_types were auto-seeded by the trigger when venues were created — read them back
+    const { data: mtA } = await serviceClient.from('meeting_types').select('id').eq('venue_id', venueIdA).eq('kind', 'viewing').single();
+    mtIdA = mtA?.id;
+    const { data: mtB } = await serviceClient.from('meeting_types').select('id').eq('venue_id', venueIdB).eq('kind', 'viewing').single();
+    mtIdB = mtB?.id;
+
+    // Resolve membership IDs for each venue owner
+    const { data: mA } = await serviceClient.from('memberships').select('id').eq('venue_id', venueIdA).single();
+    memIdA = mA?.id;
+    const { data: mB } = await serviceClient.from('memberships').select('id').eq('venue_id', venueIdB).single();
+    const memIdB = mB?.id;
+
+    // Seed availability_rules for both venues (service role bypasses RLS)
+    await serviceClient.from('availability_rules').insert([
+      { venue_id: venueIdA, membership_id: memIdA, weekday: 1, start_time: '09:00', end_time: '17:00' },
+      { venue_id: venueIdB, membership_id: memIdB, weekday: 2, start_time: '10:00', end_time: '16:00' },
+    ]);
+
+    // Seed one appointment for venue A (service role, admin path)
+    const { data: apptA } = await serviceClient.from('appointments').insert({
+      venue_id: venueIdA,
+      meeting_type_id: mtIdA,
+      membership_id: memIdA,
+      contact_id: contactIdA,
+      opportunity_id: oppIdA,
+      starts_at: '2027-06-01T09:00:00Z',
+      ends_at: '2027-06-01T10:00:00Z',
+      status: 'booked',
+      source: 'staff',
+    }).select('id').single();
+    apptIdA = apptA?.id;
+
+    console.log(`  OK    meeting_types resolved: A=${mtIdA} B=${mtIdB}`);
+    console.log(`  OK    availability_rules + appointment seeded`);
+  }
+
+  console.log('\n--- M5 positive controls (own data visible) ---');
+  {
+    const { data, error } = await anonClientA.from('meeting_types').select('id').eq('venue_id', venueIdA);
+    assert('User A can read own meeting_types', !error && data?.length >= 1, JSON.stringify({ error, count: data?.length }));
+  }
+  {
+    const { data, error } = await anonClientA.from('availability_rules').select('id').eq('venue_id', venueIdA);
+    assert('User A can read own availability_rules', !error && data?.length >= 1, JSON.stringify({ error, count: data?.length }));
+  }
+  {
+    const { data, error } = await anonClientA.from('appointments').select('id').eq('venue_id', venueIdA);
+    assert('User A can read own appointments', !error && data?.length === 1, JSON.stringify({ error, count: data?.length }));
+  }
+
+  console.log('\n--- M5 SELECT isolation (filtered by other venue id → 0 rows) ---');
+  for (const table of ['meeting_types', 'availability_rules', 'appointments']) {
+    const { data, error } = await anonClientA.from(table).select('id').eq('venue_id', venueIdB);
+    assert(`A→B: ${table} filtered by venueB → 0 rows`, !error && data?.length === 0, JSON.stringify({ error, count: data?.length }));
+  }
+  for (const table of ['meeting_types', 'availability_rules', 'appointments']) {
+    const { data, error } = await anonClientB.from(table).select('id').eq('venue_id', venueIdA);
+    assert(`B→A: ${table} filtered by venueA → 0 rows`, !error && data?.length === 0, JSON.stringify({ error, count: data?.length }));
+  }
+
+  console.log('\n--- M5 SELECT isolation (unfiltered — no leakage) ---');
+  for (const table of ['meeting_types', 'availability_rules', 'appointments']) {
+    const { data, error } = await anonClientA.from(table).select('venue_id');
+    const leaked = data?.some(r => r.venue_id === venueIdB);
+    assert(`A unfiltered ${table} does not contain venueB`, !error && !leaked, JSON.stringify({ error }));
+  }
+  for (const table of ['meeting_types', 'availability_rules', 'appointments']) {
+    const { data, error } = await anonClientB.from(table).select('venue_id');
+    const leaked = data?.some(r => r.venue_id === venueIdA);
+    assert(`B unfiltered ${table} does not contain venueA`, !error && !leaked, JSON.stringify({ error }));
+  }
+
+  console.log('\n--- M5 INSERT isolation: availability_rules into other venue → rejected ---');
+  {
+    const { data: mB2 } = await serviceClient.from('memberships').select('id').eq('venue_id', venueIdB).single();
+    const { data, error } = await anonClientA.from('availability_rules')
+      .insert({ venue_id: venueIdB, membership_id: mB2?.id, weekday: 3, start_time: '09:00', end_time: '17:00' });
+    assert('A→B: insert availability_rule into venueB → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+
+  console.log('\n--- M5 appointments: no authenticated INSERT (admin-write only) ---');
+  {
+    const { data, error } = await anonClientA.from('appointments')
+      .insert({
+        venue_id: venueIdA,
+        meeting_type_id: mtIdA,
+        membership_id: memIdA,
+        contact_id: contactIdA,
+        starts_at: '2027-07-01T09:00:00Z',
+        ends_at: '2027-07-01T10:00:00Z',
+        status: 'booked',
+        source: 'public',
+      });
+    assert('A: direct insert into own appointments (client) → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+
+  console.log('\n--- M5 meeting_types: no authenticated INSERT (trigger-only) ---');
+  {
+    const { data, error } = await anonClientA.from('meeting_types')
+      .insert({ venue_id: venueIdA, kind: 'viewing', duration_minutes: 45, buffer_minutes: 0, enabled: true });
+    assert('A: direct insert into own meeting_types (client) → rejected', error != null || data === null, JSON.stringify({ error: error?.message, data }));
+  }
+
+  console.log('\n--- M5 meeting_types: update own venue (owner allowed) ---');
+  {
+    const { data, error } = await anonClientA.from('meeting_types')
+      .update({ duration_minutes: 90 })
+      .eq('id', mtIdA)
+      .select();
+    assert('A: update own meeting_type → allowed (1 row)', !error && data?.length === 1, JSON.stringify({ error: error?.message, count: data?.length }));
+  }
+
+  console.log('\n--- M5 meeting_types: update other venue → blocked ---');
+  {
+    const { data, error } = await anonClientA.from('meeting_types')
+      .update({ duration_minutes: 10 })
+      .eq('id', mtIdB)
+      .select();
+    assert('A→B: update venueB meeting_type → blocked (0 rows or error)', error != null || (data != null && data.length === 0), JSON.stringify({ error: error?.message, count: data?.length }));
+  }
+
+  // Anon check: add meeting_types + availability_rules + appointments to the anon table list
+  // (handled below in the existing anon loop — we just need to add them to the table array there)
+
+  // =========================================================================
   // Step 4: Storage assertions
   // =========================================================================
   console.log('\n--- Storage: own upload (should succeed) ---');
@@ -756,7 +1006,7 @@ async function runTests() {
   // Step 5: Anon (no session) select on all four tables → 0 rows / denied
   // =========================================================================
   console.log('\n--- Anon (unauthenticated) access → must return 0 rows ---');
-  for (const table of ['venues', 'memberships', 'spaces', 'venue_hours', 'contacts', 'opportunities', 'stage_events', 'form_submissions', 'brochures', 'venue_email_settings']) {
+  for (const table of ['venues', 'memberships', 'spaces', 'venue_hours', 'contacts', 'opportunities', 'stage_events', 'form_submissions', 'brochures', 'venue_email_settings', 'sequences', 'sequence_steps', 'sequence_enrollments', 'email_messages', 'email_suppressions', 'meeting_types', 'availability_rules', 'appointments', 'billing_subscriptions']) {
     const { data, error } = await anonClientNoSession.from(table).select('id');
     // RLS can either return an error OR an empty array — both are acceptable
     const blocked = error != null || (Array.isArray(data) && data.length === 0);

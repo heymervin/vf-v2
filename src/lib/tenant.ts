@@ -6,8 +6,19 @@ import { cookies } from "next/headers";
 // Row types derived from the generated schema
 type VenueRow = Database["public"]["Tables"]["venues"]["Row"];
 type MembershipRow = Database["public"]["Tables"]["memberships"]["Row"];
+type BillingRow = Database["public"]["Tables"]["billing_subscriptions"]["Row"];
 
 type MembershipRole = "owner" | "admin" | "member";
+
+/**
+ * Access state for read-only enforcement.
+ *
+ * - 'trialing'  trial_ends_at is in the future and there is no active subscription
+ * - 'active'    subscription status is 'active' (or Stripe 'trialing')
+ * - 'past_due'  subscription exists but is past_due or incomplete
+ * - 'expired'   trial elapsed AND no active/trialing subscription → read-only
+ */
+export type AccessState = "trialing" | "active" | "past_due" | "expired";
 
 export type TenantContext =
   | { ok: false; reason: "unauthenticated" | "no-venue" }
@@ -20,18 +31,54 @@ export type TenantContext =
         slug: string;
         timezone: string;
         onboardingCompletedAt: string | null;
+        trialEndsAt: string | null;
       };
       role: MembershipRole;
+      access: AccessState;
+      billing: {
+        stripeCustomerId: string | null;
+        status: Database["public"]["Enums"]["subscription_status"] | null;
+        currentPeriodEnd: string | null;
+      };
     };
+
+/**
+ * Compute the access state from venue + billing row in a single place.
+ * No extra query — the billing row is loaded alongside the venue.
+ */
+function computeAccessState(
+  trialEndsAt: string | null,
+  billing: BillingRow | null,
+): AccessState {
+  const now = Date.now();
+
+  if (billing) {
+    if (billing.status === "active" || billing.status === "trialing") {
+      return "active";
+    }
+    if (billing.status === "past_due" || billing.status === "incomplete") {
+      return "past_due";
+    }
+    // canceled / unknown → fall through to trial check
+  }
+
+  // No active subscription — check trial
+  if (trialEndsAt && new Date(trialEndsAt).getTime() > now) {
+    return "trialing";
+  }
+
+  return "expired";
+}
 
 /**
  * Resolves the active tenant context for a Server Component or Server Action.
  *
  * Resolution order:
  * 1. Authenticate via auth.getUser() (NOT getSession — revalidates with Supabase server)
- * 2. Load the user's memberships
+ * 2. Load the user's memberships + venue + billing subscription in one pass
  * 3. Pick the active venue: prefer the `vf-venue-id` cookie if it matches a membership,
  *    otherwise fall back to the first membership row
+ * 4. Compute access state (trialing / active / past_due / expired) without an extra query
  *
  * Cookie SETTING is intentionally out-of-scope here (Server Component safe).
  * To switch active venue, call setActiveVenue() from a Server Action.
@@ -80,6 +127,15 @@ export async function getTenantContext(): Promise<TenantContext> {
     return { ok: false, reason: "no-venue" };
   }
 
+  // Step 4: load billing subscription for access state (single row, non-critical)
+  const { data: billingRow } = await supabase
+    .from("billing_subscriptions")
+    .select("*")
+    .eq("venue_id", venue.id)
+    .maybeSingle();
+
+  const accessState = computeAccessState(venue.trial_ends_at, billingRow ?? null);
+
   return {
     ok: true,
     user: { id: user.id, email: user.email },
@@ -89,8 +145,14 @@ export async function getTenantContext(): Promise<TenantContext> {
       slug: venue.slug,
       timezone: venue.timezone,
       onboardingCompletedAt: venue.onboarding_completed_at,
+      trialEndsAt: venue.trial_ends_at,
     },
-    // The DB stores role as string; cast to the known union
     role: active.role as MembershipRole,
+    access: accessState,
+    billing: {
+      stripeCustomerId: billingRow?.stripe_customer_id ?? null,
+      status: billingRow?.status ?? null,
+      currentPeriodEnd: billingRow?.current_period_end ?? null,
+    },
   };
 }

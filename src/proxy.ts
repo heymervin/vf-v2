@@ -36,7 +36,11 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Thread cookies onto both the request (for downstream reads) and the response
+          // Thread cookies onto both the request (for downstream reads) and the response.
+          // We harden the options here: add secure + sameSite on every cookie the
+          // Supabase SDK sets. httpOnly is intentionally NOT set — the Supabase client-
+          // side SDK must be able to read the auth cookies from JavaScript.
+          const isProduction = process.env.NODE_ENV === "production";
           for (const { name, value } of cookiesToSet) {
             request.cookies.set(name, value);
           }
@@ -44,7 +48,11 @@ export async function proxy(request: NextRequest) {
             request: { headers: request.headers },
           });
           for (const { name, value, options } of cookiesToSet) {
-            response.cookies.set(name, value, options);
+            response.cookies.set(name, value, {
+              ...options,
+              secure: isProduction,
+              sameSite: "lax",
+            });
           }
         },
       },

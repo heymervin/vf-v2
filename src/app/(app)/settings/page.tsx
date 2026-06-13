@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Code2, ChevronRight } from "lucide-react";
+import { FileText, Code2, Mail, CalendarDays, CreditCard, ChevronRight } from "lucide-react";
 
 export const metadata = { title: "Settings" };
 
@@ -15,6 +15,24 @@ const SECTIONS = [
     icon: FileText,
     title: "Brochure",
     desc: "Upload the PDF that's auto-emailed to every new enquiry.",
+  },
+  {
+    href: "/settings/sequences",
+    icon: Mail,
+    title: "Nurture sequence",
+    desc: "Edit the 3-step follow-up email sequence sent to new enquiries.",
+  },
+  {
+    href: "/settings/availability",
+    icon: CalendarDays,
+    title: "Availability",
+    desc: "Set staff availability windows and tune meeting type durations.",
+  },
+  {
+    href: "/settings/billing",
+    icon: CreditCard,
+    title: "Billing",
+    desc: "Manage your VenueFlow subscription and payment details.",
   },
 ];
 
