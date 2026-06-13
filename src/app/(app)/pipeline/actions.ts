@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantContext } from "@/lib/tenant";
 import { ok, err, type ActionResult } from "@/lib/actions";
+import { assertCanMutate } from "@/lib/billing/access";
 import { STAGE_VALUES } from "@/lib/pipeline";
 
 const moveSchema = z.object({
@@ -27,6 +28,8 @@ export async function moveOpportunity(
 ): Promise<ActionResult<{ id: string }>> {
   const ctx = await getTenantContext();
   if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
 
   const parsed = moveSchema.safeParse(input);
   if (!parsed.success) return err("Invalid move.");
@@ -81,6 +84,8 @@ export async function stopEnrollment(
 ): Promise<ActionResult<{ stopped: boolean }>> {
   const ctx = await getTenantContext();
   if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
 
   const parsed = stopEnrollmentSchema.safeParse(input);
   if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "Invalid input.");

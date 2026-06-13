@@ -1006,7 +1006,7 @@ async function runTests() {
   // Step 5: Anon (no session) select on all four tables → 0 rows / denied
   // =========================================================================
   console.log('\n--- Anon (unauthenticated) access → must return 0 rows ---');
-  for (const table of ['venues', 'memberships', 'spaces', 'venue_hours', 'contacts', 'opportunities', 'stage_events', 'form_submissions', 'brochures', 'venue_email_settings', 'sequences', 'sequence_steps', 'sequence_enrollments', 'email_messages', 'email_suppressions', 'meeting_types', 'availability_rules', 'appointments']) {
+  for (const table of ['venues', 'memberships', 'spaces', 'venue_hours', 'contacts', 'opportunities', 'stage_events', 'form_submissions', 'brochures', 'venue_email_settings', 'sequences', 'sequence_steps', 'sequence_enrollments', 'email_messages', 'email_suppressions', 'meeting_types', 'availability_rules', 'appointments', 'billing_subscriptions']) {
     const { data, error } = await anonClientNoSession.from(table).select('id');
     // RLS can either return an error OR an empty array — both are acceptable
     const blocked = error != null || (Array.isArray(data) && data.length === 0);

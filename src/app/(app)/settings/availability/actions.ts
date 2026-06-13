@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantContext } from "@/lib/tenant";
 import { ok, err, type ActionResult } from "@/lib/actions";
+import { assertCanMutate } from "@/lib/billing/access";
 import type { Tables } from "@/lib/supabase/types";
 
 export type AvailabilityRuleRow = Tables<"availability_rules">;
@@ -88,6 +89,8 @@ export async function upsertAvailabilityRule(
 ): Promise<ActionResult<AvailabilityRuleRow>> {
   const ctx = await getTenantContext();
   if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
   if (ctx.role !== "owner" && ctx.role !== "admin") {
     return err("Only owners and admins can manage availability.");
   }
@@ -149,6 +152,8 @@ export async function deleteAvailabilityRule(
 ): Promise<ActionResult<void>> {
   const ctx = await getTenantContext();
   if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
   if (ctx.role !== "owner" && ctx.role !== "admin") {
     return err("Only owners and admins can manage availability.");
   }
@@ -185,6 +190,8 @@ export async function updateMeetingType(
 ): Promise<ActionResult<void>> {
   const ctx = await getTenantContext();
   if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
   if (ctx.role !== "owner" && ctx.role !== "admin") {
     return err("Only owners and admins can configure meeting types.");
   }
@@ -236,6 +243,8 @@ export async function updateAppointmentStatus(
 ): Promise<ActionResult<void>> {
   const ctx = await getTenantContext();
   if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
 
   const parsed = UpdateAppointmentStatusSchema.safeParse(input);
   if (!parsed.success) {

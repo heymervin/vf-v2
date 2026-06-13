@@ -902,9 +902,83 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_subscriptions: {
+        Row: {
+          id: string
+          venue_id: string
+          stripe_customer_id: string
+          stripe_subscription_id: string | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          current_period_end: string | null
+          price_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          venue_id: string
+          stripe_customer_id: string
+          stripe_subscription_id?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          current_period_end?: string | null
+          price_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          venue_id?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          current_period_end?: string | null
+          price_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_subscriptions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stripe_events: {
+        Row: {
+          event_id: string
+          type: string
+          created_at: string
+        }
+        Insert: {
+          event_id: string
+          type: string
+          created_at?: string
+        }
+        Update: {
+          event_id?: string
+          type?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      report_leads_by_stage: {
+        Row: {
+          venue_id: string
+          stage: Database["public"]["Enums"]["pipeline_stage"]
+          lead_count: number
+        }
+        Relationships: []
+      }
+      report_leads_by_source: {
+        Row: {
+          venue_id: string
+          source: string
+          lead_count: number
+        }
+        Relationships: []
+      }
     }
     Functions: {
       reschedule_appointment: {
@@ -1003,6 +1077,7 @@ export type Database = {
     Enums: {
       appointment_status: "booked" | "attended" | "no_show" | "cancelled"
       email_message_status: "sent" | "skipped" | "failed"
+      subscription_status: "trialing" | "active" | "past_due" | "canceled" | "incomplete"
       enrollment_status: "active" | "completed" | "stopped"
       meeting_type_kind: "viewing" | "call"
       pipeline_stage:
@@ -1148,6 +1223,7 @@ export const Constants = {
       email_message_status: ["sent", "skipped", "failed"],
       enrollment_status: ["active", "completed", "stopped"],
       meeting_type_kind: ["viewing", "call"],
+      subscription_status: ["trialing", "active", "past_due", "canceled", "incomplete"],
       pipeline_stage: [
         "inbound_enquiry",
         "responded",

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/lib/tenant";
 import { ok, err, type ActionResult } from "@/lib/actions";
+import { assertCanMutate } from "@/lib/billing/access";
 import { contactInputSchema, type ContactParsed } from "@/lib/zod-schemas/contact";
 
 /** Maps validated input → DB columns; clears absent optionals, converts £→pence. */
@@ -31,6 +32,8 @@ export async function createContact(
 ): Promise<ActionResult<{ contactId: string }>> {
   const ctx = await getTenantContext();
   if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
 
   const parsed = contactInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -78,6 +81,8 @@ export async function updateContact(
 ): Promise<ActionResult<{ contactId: string }>> {
   const ctx = await getTenantContext();
   if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
 
   const parsed = contactInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -116,6 +121,8 @@ export async function deleteContact(
 ): Promise<ActionResult<void>> {
   const ctx = await getTenantContext();
   if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
 
   const supabase = await createClient();
   const { error } = await supabase

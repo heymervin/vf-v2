@@ -20,6 +20,8 @@ export interface Step1Result {
   slug: string;
 }
 
+// Onboarding actions are intentionally NOT gated by assertCanMutate: the venue
+// must be created and set up before its trial/access state is meaningful.
 export async function createVenueWithProfile(
   formData: FormData,
 ): Promise<ActionResult<Step1Result>> {

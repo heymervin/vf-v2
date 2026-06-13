@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/lib/tenant";
 import { ok, err, type ActionResult } from "@/lib/actions";
+import { assertCanMutate } from "@/lib/billing/access";
 import type { Tables } from "@/lib/supabase/types";
 
 export type SequenceRow = Tables<"sequences">;
@@ -63,6 +64,8 @@ export async function updateSequence(
 ): Promise<ActionResult<void>> {
   const ctx = await getTenantContext();
   if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
   if (ctx.role !== "owner" && ctx.role !== "admin") {
     return err("Only owners and admins can change sequence settings.");
   }
@@ -102,6 +105,8 @@ export async function updateSequenceStep(
 ): Promise<ActionResult<void>> {
   const ctx = await getTenantContext();
   if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
   if (ctx.role !== "owner" && ctx.role !== "admin") {
     return err("Only owners and admins can edit sequence steps.");
   }
