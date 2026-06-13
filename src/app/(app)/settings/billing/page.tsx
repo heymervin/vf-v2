@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/tenant";
-import { startCheckout, openPortal } from "./actions";
+import { CheckoutButton, PortalButton } from "./billing-actions";
 
 export const metadata = { title: "Billing" };
 
@@ -94,25 +94,7 @@ export default async function BillingPage({
 
         {stripeConfigured && isOwner && (
           <div className="mt-6">
-            {hasActiveSub ? (
-              <form action={openPortal}>
-                <button
-                  type="submit"
-                  className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  Manage subscription
-                </button>
-              </form>
-            ) : (
-              <form action={startCheckout}>
-                <button
-                  type="submit"
-                  className="inline-flex h-10 items-center justify-center rounded-lg bg-[oklch(0.906_0.073_319)] px-5 text-sm font-semibold text-[oklch(0.217_0.053_269)] transition-colors hover:bg-[oklch(0.217_0.053_269)] hover:text-[oklch(0.985_0.004_273)]"
-                >
-                  Subscribe now
-                </button>
-              </form>
-            )}
+            {hasActiveSub ? <PortalButton /> : <CheckoutButton />}
           </div>
         )}
 

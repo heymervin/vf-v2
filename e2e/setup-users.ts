@@ -182,3 +182,39 @@ export async function deleteAvailabilityRulesForVenue(venueId: string): Promise<
   const admin = adminClient();
   await admin.from("availability_rules").delete().eq("venue_id", venueId);
 }
+
+/**
+ * Delete all contacts (+ cascaded opportunities, form_submissions) for a venue.
+ * Call before deleteVenuesForUser so FK constraints don't block.
+ */
+export async function deleteContactsForVenue(venueId: string): Promise<void> {
+  const admin = adminClient();
+  // form_submissions → opportunities → contacts (FK order)
+  await admin.from("form_submissions").delete().eq("venue_id", venueId);
+  await admin.from("opportunities").delete().eq("venue_id", venueId);
+  await admin.from("contacts").delete().eq("venue_id", venueId);
+}
+
+/**
+ * Read back the pipeline stage for the first opportunity owned by a contact
+ * matching `email` in `venueId`. Returns null if not found.
+ */
+export async function getOpportunityStageByEmail(
+  venueId: string,
+  email: string,
+): Promise<string | null> {
+  const admin = adminClient();
+  const { data: contacts } = await admin
+    .from("contacts")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("email", email)
+    .limit(1);
+  if (!contacts || contacts.length === 0) return null;
+  const { data: opp } = await admin
+    .from("opportunities")
+    .select("stage")
+    .eq("contact_id", contacts[0].id)
+    .maybeSingle();
+  return opp?.stage ?? null;
+}

@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { inngest } from "@/inngest/client";
 import { ok, err, type ActionResult } from "@/lib/actions";
 import { leadFormSchema } from "@/lib/zod-schemas/lead";
+import { getClientIp, rateLimitKey } from "@/lib/get-client-ip";
 import type { Database } from "@/lib/supabase/types";
 
 type ContactUpdate = Database["public"]["Tables"]["contacts"]["Update"];
@@ -42,13 +43,14 @@ export async function submitLeadForm(
   if (!venue) return err("This venue is not available.");
   const venueId = venue.id;
 
+  // Per-IP rate limit. IP comes from x-real-ip only (edge-set, not
+  // client-spoofable). rateLimitKey() fails closed to a shared bucket when no
+  // trusted IP is present in production, and skips the limit in dev/CI.
   const h = await headers();
-  const ip =
-    (h.get("x-forwarded-for")?.split(",")[0] ?? h.get("x-real-ip") ?? "").trim() ||
-    null;
+  const ip = getClientIp(h);
+  const rlKey = rateLimitKey(h);
 
-  // Per-IP rate limit (simple recent-count check; no captcha for MVP).
-  if (ip) {
+  if (rlKey) {
     const since = new Date(
       Date.now() - RATE_LIMIT_WINDOW_MIN * 60_000,
     ).toISOString();
@@ -56,7 +58,7 @@ export async function submitLeadForm(
       .from("form_submissions")
       .select("id", { count: "exact", head: true })
       .eq("venue_id", venueId)
-      .eq("ip", ip)
+      .eq("ip", rlKey)
       .gte("created_at", since);
     if ((count ?? 0) >= RATE_LIMIT_MAX) {
       return err("Too many submissions. Please try again shortly.");

@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { inngest } from "@/inngest/client";
 import { ok, err, type ActionResult } from "@/lib/actions";
 import { computeAvailableSlots } from "@/lib/booking/engine";
+import { getClientIp, rateLimitKey } from "@/lib/get-client-ip";
 import type { Database } from "@/lib/supabase/types";
 
 type ContactUpdate = Database["public"]["Tables"]["contacts"]["Update"];
@@ -206,19 +207,20 @@ export async function bookSlot(
   if (!venue) return err("This venue is not available.");
   const venueId = venue.id;
 
-  // Per-IP rate limit — mirrors the lead-form pattern exactly.
+  // Per-IP rate limit. IP comes from x-real-ip only (edge-set, not
+  // client-spoofable). rateLimitKey() fails closed to a shared bucket when no
+  // trusted IP is present in production, and skips the limit in dev/CI.
   const h = await headers();
-  const ip =
-    (h.get("x-forwarded-for")?.split(",")[0] ?? h.get("x-real-ip") ?? "").trim() ||
-    null;
+  const ip = getClientIp(h);
+  const rlKey = rateLimitKey(h);
 
-  if (ip) {
+  if (rlKey) {
     const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MIN * 60_000).toISOString();
     const { count } = await admin
       .from("appointments")
       .select("id", { count: "exact", head: true })
       .eq("venue_id", venueId)
-      .eq("ip", ip)
+      .eq("ip", rlKey)
       .gte("created_at", since);
     if ((count ?? 0) >= RATE_LIMIT_MAX) {
       return err("Too many booking attempts. Please try again shortly.");
@@ -402,7 +404,7 @@ export async function bookSlot(
       ends_at: matchedSlot.endsAtUtc,
       status: "booked",
       source: "public",
-      ip: ip ?? null,
+      ip,
     })
     .select("id, manage_token")
     .single();

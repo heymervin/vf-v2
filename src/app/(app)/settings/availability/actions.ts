@@ -105,7 +105,10 @@ export async function upsertAvailabilityRule(
     return err("End time must be after start time.");
   }
 
-  // Verify the membership belongs to this venue
+  // Verify the membership belongs to this venue and perform the write via the
+  // user-scoped client. Defence-in-depth: RLS owner/admin write policies are
+  // the authoritative gate; using createClient() makes them load-bearing rather
+  // than advisory.
   const supabase = await createClient();
   const { data: membership } = await supabase
     .from("memberships")
@@ -116,8 +119,7 @@ export async function upsertAvailabilityRule(
 
   if (!membership) return err("Staff member not found in this venue.");
 
-  const admin = createAdminClient();
-  const { data, error } = await admin
+  const { data, error } = await supabase
     .from("availability_rules")
     .upsert(
       {
@@ -161,8 +163,10 @@ export async function deleteAvailabilityRule(
   const parsed = DeleteAvailabilityRuleSchema.safeParse(input);
   if (!parsed.success) return err("Invalid rule ID.");
 
-  const admin = createAdminClient();
-  const { error } = await admin
+  // Use user-scoped client — RLS owner/admin write policy is the authoritative
+  // guard; defence-in-depth vs. service-role bypass.
+  const supabase = await createClient();
+  const { error } = await supabase
     .from("availability_rules")
     .delete()
     .eq("id", parsed.data.ruleId)
@@ -202,8 +206,10 @@ export async function updateMeetingType(
   }
   const { meetingTypeId, durationMinutes, bufferMinutes, enabled } = parsed.data;
 
-  const admin = createAdminClient();
-  const { error } = await admin
+  // Use user-scoped client — RLS owner/admin write policy is the authoritative
+  // guard; defence-in-depth vs. service-role bypass.
+  const supabase = await createClient();
+  const { error } = await supabase
     .from("meeting_types")
     .update({ duration_minutes: durationMinutes, buffer_minutes: bufferMinutes, enabled })
     .eq("id", meetingTypeId)
@@ -245,6 +251,9 @@ export async function updateAppointmentStatus(
   if (!ctx.ok) return err("Not authenticated.");
   const guard = assertCanMutate(ctx);
   if (guard) return guard;
+  if (ctx.role !== "owner" && ctx.role !== "admin") {
+    return err("Only owners and admins can update appointment status.");
+  }
 
   const parsed = UpdateAppointmentStatusSchema.safeParse(input);
   if (!parsed.success) {
