@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Code2, Mail, ChevronRight } from "lucide-react";
+import { FileText, Code2, Mail, CalendarDays, ChevronRight } from "lucide-react";
 
 export const metadata = { title: "Settings" };
 
@@ -21,6 +21,12 @@ const SECTIONS = [
     icon: Mail,
     title: "Nurture sequence",
     desc: "Edit the 3-step follow-up email sequence sent to new enquiries.",
+  },
+  {
+    href: "/settings/availability",
+    icon: CalendarDays,
+    title: "Availability",
+    desc: "Set staff availability windows and tune meeting type durations.",
   },
 ];
 

@@ -120,3 +120,65 @@ export async function deleteVenuesForUser(userId: string) {
   await admin.from("memberships").delete().in("venue_id", venueIds);
   await admin.from("venues").delete().in("id", venueIds);
 }
+
+// ---------------------------------------------------------------------------
+// M5 booking helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Seed an availability rule for a membership on a given weekday.
+ * weekday: 0=Sun … 6=Sat (JS Date.getDay convention).
+ */
+export async function seedAvailabilityRule(
+  venueId: string,
+  membershipId: string,
+  weekday: number,
+  startTime = "09:00",
+  endTime = "17:00",
+): Promise<string> {
+  const admin = adminClient();
+  const { data, error } = await admin
+    .from("availability_rules")
+    .insert({
+      venue_id: venueId,
+      membership_id: membershipId,
+      weekday,
+      start_time: startTime,
+      end_time: endTime,
+    })
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(`seed availability rule: ${error?.message}`);
+  return data.id as string;
+}
+
+/**
+ * Returns the membership id for a given user in a venue.
+ */
+export async function getMembershipId(venueId: string, userId: string): Promise<string> {
+  const admin = adminClient();
+  const { data, error } = await admin
+    .from("memberships")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("user_id", userId)
+    .single();
+  if (error || !data) throw new Error(`getMembershipId: ${error?.message}`);
+  return data.id as string;
+}
+
+/**
+ * Delete all appointments for a venue (used in E2E cleanup).
+ */
+export async function deleteAppointmentsForVenue(venueId: string): Promise<void> {
+  const admin = adminClient();
+  await admin.from("appointments").delete().eq("venue_id", venueId);
+}
+
+/**
+ * Delete all availability rules for a venue.
+ */
+export async function deleteAvailabilityRulesForVenue(venueId: string): Promise<void> {
+  const admin = adminClient();
+  await admin.from("availability_rules").delete().eq("venue_id", venueId);
+}
