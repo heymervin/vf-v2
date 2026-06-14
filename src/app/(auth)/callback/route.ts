@@ -10,10 +10,28 @@ import { createClient } from "@/lib/supabase/server";
  * any memberships:
  *   - No membership  → /onboarding (new user, needs to create their venue)
  *   - Has membership → /dashboard
+ *
+ * A `next` query param (allowlisted to /accept-invite/*) overrides the
+ * default destination so invite links survive email-confirmation flows.
  */
+
+// Allowlist: only /accept-invite/<uuid> paths are permitted as a post-auth
+// redirect target. This prevents open-redirect attacks via the `next` param.
+function safeNext(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (/^\/accept-invite\/[0-9a-f-]+$/i.test(decoded)) return decoded;
+  } catch {
+    // ignore malformed %xx sequences
+  }
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const next = safeNext(searchParams.get("next"));
 
   if (!code) {
     // No code in the URL — redirect to login with an error indicator
@@ -38,6 +56,12 @@ export async function GET(request: NextRequest) {
 
   if (!user) {
     return NextResponse.redirect(new URL("/login?error=no_user", origin));
+  }
+
+  // If a validated return path was requested (e.g. an invite link), honour it
+  // directly — skip the membership check entirely for this case.
+  if (next) {
+    return NextResponse.redirect(new URL(next, origin));
   }
 
   // Determine post-auth destination: onboarding if no membership exists yet

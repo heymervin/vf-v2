@@ -18,6 +18,8 @@ import { DEFAULT_HOURS } from "./hours-defaults";
 export interface Step1Result {
   venueId: string;
   slug: string;
+  /** Set when venue was saved but the logo upload failed (non-fatal). */
+  logoError?: string;
 }
 
 export async function createVenueWithProfile(
@@ -63,14 +65,8 @@ export async function createVenueWithProfile(
       .eq("id", existingVenueId);
 
     if (updateError) {
-      if (
-        updateError.message.toLowerCase().includes("unique") ||
-        updateError.message.toLowerCase().includes("slug")
-      ) {
-        return err("SLUG_TAKEN");
-      }
       console.error("[createVenueWithProfile] update error:", updateError);
-      return err("Could not save, try again.");
+      return err(classifySlugError(updateError));
     }
 
     venueId = existingVenueId;
@@ -101,14 +97,8 @@ export async function createVenueWithProfile(
         .eq("id", stale.venue_id);
 
       if (updateError) {
-        if (
-          updateError.message.toLowerCase().includes("unique") ||
-          updateError.message.toLowerCase().includes("slug")
-        ) {
-          return err("SLUG_TAKEN");
-        }
         console.error("[createVenueWithProfile] stale-update error:", updateError);
-        return err("Could not save, try again.");
+        return err(classifySlugError(updateError));
       }
 
       venueId = stale.venue_id;
@@ -120,14 +110,8 @@ export async function createVenueWithProfile(
       );
 
       if (rpcError) {
-        if (
-          rpcError.message.toLowerCase().includes("unique") ||
-          rpcError.message.toLowerCase().includes("slug")
-        ) {
-          return err("SLUG_TAKEN");
-        }
         console.error("[createVenueWithProfile] rpc error:", rpcError);
-        return err("Could not save, try again.");
+        return err(classifySlugError(rpcError));
       }
 
       if (!venue) {
@@ -150,12 +134,13 @@ export async function createVenueWithProfile(
   }
 
   // Optional logo upload — must happen AFTER venue exists (storage RLS needs membership)
+  let logoError: string | undefined;
   const logoFile = formData.get("logo");
   if (logoFile instanceof File && logoFile.size > 0) {
     const uploadResult = await uploadLogo(supabase, venueId, logoFile);
     if (!uploadResult.ok) {
-      // Non-fatal: venue is created/updated, just log the error
       console.error("[createVenueWithProfile] logo upload failed:", uploadResult.error);
+      logoError = uploadResult.error;
     } else {
       await supabase
         .from("venues")
@@ -172,7 +157,23 @@ export async function createVenueWithProfile(
 
   revalidatePath("/onboarding");
 
-  return ok({ venueId, slug });
+  return ok({ venueId, slug, logoError });
+}
+
+/**
+ * Classify a Supabase/Postgres error into a slug-specific error code.
+ * - 23505 = unique_violation → SLUG_TAKEN
+ * - 23514 = check_violation  → SLUG_FORMAT
+ * - anything else             → "Could not save, try again."
+ */
+function classifySlugError(error: { code?: string; message: string }): string {
+  if (error.code === "23505") return "SLUG_TAKEN";
+  if (error.code === "23514") return "SLUG_FORMAT";
+  // Fallback: heuristic for RPC-raised exceptions that may not carry a PG code
+  const msg = error.message.toLowerCase();
+  if (msg.includes("already taken")) return "SLUG_TAKEN";
+  if (msg.includes("invalid slug")) return "SLUG_FORMAT";
+  return "Could not save, try again.";
 }
 
 async function uploadLogo(

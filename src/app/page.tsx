@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 // Fixed stage-chip mapping per DESIGN.md: pastel bg + navy text, one hue per stage.
@@ -36,9 +37,11 @@ export default function Home() {
             wedding booked.
           </p>
           <div className="mt-8 flex items-center gap-3">
-            <Button size="lg">Get started</Button>
-            <Button size="lg" variant="outline">
-              See the pipeline
+            <Button size="lg" asChild>
+              <Link href="/signup">Get started</Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/login">Sign in</Link>
             </Button>
           </div>
         </div>

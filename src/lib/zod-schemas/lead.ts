@@ -25,12 +25,26 @@ export const leadFormSchema = z.object({
   phone: optionalText(40),
   partner_first_name: optionalText(100),
   partner_last_name: optionalText(100),
-  wedding_date: z.preprocess(emptyToUndefined, z.iso.date().optional()),
-  wedding_date_flexible: z.coerce.boolean().optional().default(false),
-  guest_count: z.preprocess(
+  wedding_date: z.preprocess(
     emptyToUndefined,
-    z.coerce.number().int().min(0).max(100000).optional(),
+    z.iso
+      .date()
+      .refine(
+        (v) => v >= new Date().toISOString().slice(0, 10),
+        { error: "Please choose a date today or in the future." },
+      )
+      .optional(),
   ),
+  wedding_date_flexible: z.coerce.boolean().optional().default(false),
+  // Optional field: never hard-fail on junk input. Coerce + floor to a whole
+  // number (e.g. "12.7" → 12); empty / un-parseable / out-of-range values
+  // simply drop to undefined rather than blocking the whole submission.
+  guest_count: z.preprocess((v) => {
+    const t = emptyToUndefined(v);
+    if (t === undefined) return undefined;
+    const n = typeof t === "string" || typeof t === "number" ? Number(t) : NaN;
+    return Number.isFinite(n) ? Math.floor(n) : t;
+  }, z.coerce.number().int().min(0).max(100000).optional().catch(undefined)),
   message: optionalText(2000),
   // Attribution (hidden fields)
   utm_source: optionalText(120),

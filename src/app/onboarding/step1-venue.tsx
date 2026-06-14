@@ -13,6 +13,10 @@ import { TimezoneCombobox } from "./timezone-combobox";
 import { VenueMonogram } from "@/components/layout/venue-monogram";
 import { AlertCircle, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2 MB
 
 interface Step1Props {
   initialName?: string;
@@ -74,7 +78,20 @@ export function Step1Venue({
     }
   }, [watchedName, slugManuallyEdited, setValue]);
 
+  function validateAndSetLogoFile(file: File): boolean {
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      toast.error("Logo must be a PNG, JPG, or WebP image.");
+      return false;
+    }
+    if (file.size > MAX_LOGO_SIZE) {
+      toast.error("Logo must be 2 MB or smaller.");
+      return false;
+    }
+    return true;
+  }
+
   function handleLogoFile(file: File) {
+    if (!validateAndSetLogoFile(file)) return;
     setLogoFile(file);
     const url = URL.createObjectURL(file);
     setLogoPreview(url);
@@ -107,10 +124,16 @@ export function Step1Venue({
     if (!result.ok) {
       if (result.error === "SLUG_TAKEN") {
         setServerError("That web address is taken, try another.");
+      } else if (result.error === "SLUG_FORMAT") {
+        setServerError("Web address can only contain lowercase letters, numbers, and hyphens (3–50 characters).");
       } else {
         setServerError(result.error);
       }
       return;
+    }
+    if (result.data.logoError) {
+      // Non-blocking: venue was created, but logo didn't save
+      toast.warning("Your venue was created, but the logo couldn't be saved. You can upload it again in Settings.");
     }
     onComplete(result.data.venueId);
   }

@@ -53,8 +53,10 @@ test("public form: incognito submit creates contact + opportunity with UTM, dedu
     await page.getByLabel("Approx. guests").fill("100");
     await page.getByRole("button", { name: "Send enquiry" }).click();
 
+    // Fixture venue has no active brochure, so the success screen shows the
+    // "enquiry received" copy rather than the "brochure on its way" variant.
     await expect(
-      page.getByText("your brochure is on its way"),
+      page.getByText("received your enquiry"),
     ).toBeVisible();
     await page.screenshot({
       path: path.join(__dirname, "../logs/data/screenshots/m3-public-form-success.png"),
@@ -92,7 +94,7 @@ test("public form: incognito submit creates contact + opportunity with UTM, dedu
     await page.getByLabel("Your name", { exact: true }).fill("Jordan");
     await page.getByLabel("Email", { exact: true }).fill(email);
     await page.getByRole("button", { name: "Send enquiry" }).click();
-    await expect(page.getByText("your brochure is on its way")).toBeVisible();
+    await expect(page.getByText("received your enquiry")).toBeVisible();
 
     const { data: contacts2 } = await db
       .from("contacts")

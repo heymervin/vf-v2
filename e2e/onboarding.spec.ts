@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { createSmokeUser, deleteSmokeUser, deleteVenuesForUser } from "./setup-users";
+import { createSmokeUser, deleteSmokeUser, deleteVenuesForUser, signIn } from "./setup-users";
 import * as path from "path";
 import * as fs from "fs";
 
@@ -124,12 +124,7 @@ test("resume: after completing step 1, reload /onboarding lands on step 2", asyn
     userId = user.userId;
 
     // Log in
-    await page.goto("/login");
-    await page.getByLabel("Email").fill(user.email);
-    await page.getByLabel("Password").fill(user.password);
-    await page.getByRole("button", { name: "Sign in" }).click();
-
-    await page.waitForURL("**/onboarding", { timeout: 15_000 });
+    await signIn(page, user);
 
     // Complete only step 1
     await page.getByLabel("Venue name").fill(`Resume Venue ${random}`);

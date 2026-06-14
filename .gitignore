@@ -28,6 +28,10 @@
 /logs/
 /.context/
 
+# intermediate build/audit artifacts (regenerable; large binaries)
+/docs/_uat/
+/docs/_confirmation/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

@@ -1,5 +1,5 @@
 import { test } from "@playwright/test";
-import { createSmokeUser, deleteSmokeUser, deleteVenuesForUser } from "./setup-users";
+import { createSmokeUser, deleteSmokeUser, deleteVenuesForUser, signIn } from "./setup-users";
 import * as path from "path";
 import * as fs from "fs";
 
@@ -42,11 +42,7 @@ test("mobile shell screenshots (390x844)", async ({ browser }) => {
     const page = await ctx.newPage();
 
     // Log in
-    await page.goto("/login");
-    await page.getByLabel("Email").fill(user.email);
-    await page.getByLabel("Password").fill(user.password);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL("**/onboarding", { timeout: 15_000 });
+    await signIn(page, user);
 
     // Complete onboarding to reach dashboard
     await page.getByLabel("Venue name").fill(`Mobile Shell ${suffix}`);

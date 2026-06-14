@@ -4,8 +4,7 @@ import {
   createSmokeUser,
   deleteSmokeUser,
   deleteVenuesForUser,
-  createCompletedVenue,
-} from "./setup-users";
+  createCompletedVenue, signIn } from "./setup-users";
 import * as path from "path";
 import * as fs from "fs";
 
@@ -48,11 +47,7 @@ test("settings: upload brochure → active + proxy serves it; embed form submits
     userId = user.userId;
     const venueId = await createCompletedVenue(userId, slug);
 
-    await page.goto("/login");
-    await page.getByLabel("Email").fill(user.email);
-    await page.getByLabel("Password").fill(user.password);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL("**/dashboard", { timeout: 15_000 });
+    await signIn(page, user);
 
     // Upload a brochure.
     await page.goto("/settings/brochure");

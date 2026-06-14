@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Code2, ChevronRight } from "lucide-react";
+import { FileText, Code2, ChevronRight, Building2, LayoutGrid, Users, Mail } from "lucide-react";
 
 export const metadata = { title: "Settings" };
 
@@ -15,6 +15,30 @@ const SECTIONS = [
     icon: FileText,
     title: "Brochure",
     desc: "Upload the PDF that's auto-emailed to every new enquiry.",
+  },
+  {
+    href: "/settings/venue",
+    icon: Building2,
+    title: "Venue profile & hours",
+    desc: "Your venue name, description, location, and opening hours.",
+  },
+  {
+    href: "/settings/spaces",
+    icon: LayoutGrid,
+    title: "Spaces",
+    desc: "Manage the individual spaces and rooms couples can book.",
+  },
+  {
+    href: "/settings/team",
+    icon: Users,
+    title: "Team",
+    desc: "Invite team members and manage their roles.",
+  },
+  {
+    href: "/settings/email",
+    icon: Mail,
+    title: "Email identity",
+    desc: "The sender name and reply-to address used in outgoing emails.",
   },
 ];
 

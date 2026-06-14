@@ -13,18 +13,25 @@ import type { BoardOpportunity } from "./types";
 export function KanbanColumn({
   stage,
   items,
+  totalCount,
   celebrateId,
+  dragDisabled,
   onSelect,
   onMoveToStage,
 }: {
   stage: PipelineStage;
   items: BoardOpportunity[];
+  /** Full count before any search/filter is applied. When undefined, no "x of y" is shown. */
+  totalCount?: number;
   celebrateId: string | null;
+  /** When true, drag-and-drop is disabled (e.g. while a search/filter is active). */
+  dragDisabled?: boolean;
   onSelect: (opp: BoardOpportunity) => void;
   onMoveToStage: (id: string, toStage: PipelineStage) => void;
 }) {
   const meta = stageMeta(stage);
-  const { setNodeRef, isOver } = useDroppable({ id: stage });
+  const { setNodeRef, isOver } = useDroppable({ id: stage, disabled: dragDisabled });
+  const isFiltered = totalCount !== undefined && items.length !== totalCount;
 
   return (
     <section className="flex w-[300px] shrink-0 flex-col" aria-label={meta.label}>
@@ -39,7 +46,7 @@ export function KanbanColumn({
           {meta.label}
         </span>
         <span className="text-xs font-medium text-muted-foreground tabular-nums">
-          {items.length}
+          {isFiltered ? `${items.length} of ${totalCount}` : items.length}
         </span>
       </div>
 
@@ -60,6 +67,7 @@ export function KanbanColumn({
               key={opp.id}
               opportunity={opp}
               celebrating={celebrateId === opp.id}
+              dragDisabled={dragDisabled}
               onSelect={onSelect}
               onMoveToStage={onMoveToStage}
             />
@@ -68,7 +76,7 @@ export function KanbanColumn({
 
         {items.length === 0 && (
           <p className="px-2 py-6 text-center text-xs text-muted-foreground/70">
-            Drop a card here
+            {isFiltered ? "No matches" : "Drop a card here"}
           </p>
         )}
       </div>

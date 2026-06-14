@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VenueFlow — Functionality Confirmation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* VenueFlow "Pulse" brand */
+    --navy: #101833;
+    --navy-2: #1c2748;
+    --navy-soft: #2a3760;
+    --pink: #F6D1FF;
+    --pink-strong: #c656e8;
+    --teal: #A8E6E5;
+    --periwinkle: #A6B2F0;
+    --green: #D5F5C1;
+    --warning: #f6e7c6;
+    --warning-strong: #8a6d1f;
+    --bg: #f4f5fa;
+    --card: #ffffff;
+    --card-soft: #fbfbfe;
+    --foreground: #101833;
+    --muted-foreground: #5b6480;
+    --border: #e1e3ee;
+    --border-strong: #cfd2e2;
+    --shadow: 0 1px 2px rgba(16,24,51,.06), 0 4px 16px rgba(16,24,51,.05);
+    --shadow-md: 0 8px 30px rgba(16,24,51,.12);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* status chips */
+    --built-bg: #D5F5C1;        --built-text: #2f5418;
+    --partial-bg: #f6e7c6;      --partial-text: #74591a;
+    --coming-bg: #e6e8f3;       --coming-text: #3b446b;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--foreground);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: 0;
+  }
+
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 96px; }
+
+  a { color: var(--pink-strong); }
+
+  h1, h2, h3 { letter-spacing: -0.022em; line-height: 1.12; margin: 0; }
+
+  .eyebrow {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.09em; color: var(--pink); margin: 0 0 8px;
+  }
+
+  /* ---------- Header ---------- */
+  header.masthead {
+    background: var(--navy);
+    color: #f5f6fb;
+    border-radius: 0 0 22px 22px;
+    padding: 40px 36px 36px;
+    margin-bottom: 28px;
+    box-shadow: var(--shadow-md);
+  }
+  .masthead .wordmark {
+    display: inline-flex; align-items: center; gap: 10px; margin-bottom: 18px;
+  }
+  .masthead .vmark {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: var(--pink); color: var(--navy);
+    display: grid; place-items: center; font-weight: 700; font-size: 19px;
+  }
+  .masthead .wordmark span { font-weight: 600; font-size: 17px; letter-spacing: -0.01em; }
+  .masthead h1 { font-size: 30px; font-weight: 700; color: #fff; }
+  .masthead p.intro {
+    color: #c3c9e0; font-size: 15.5px; max-width: 64ch; margin: 14px 0 0; line-height: 1.6;
+  }
+  .masthead ol.howto {
+    margin: 18px 0 0; padding-left: 20px; color: #cfd4e8; font-size: 14.5px;
+  }
+  .masthead ol.howto li { margin: 3px 0; }
+
+  /* ---------- Identity fields ---------- */
+  .identity {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    margin-top: 24px;
+  }
+  .field label {
+    display: block; font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; color: #aab1cd; margin-bottom: 6px;
+  }
+  .field input, .field textarea {
+    width: 100%; font-family: inherit; font-size: 16px; color: var(--foreground);
+    background: #fff; border: 1px solid transparent; border-radius: var(--radius-sm);
+    padding: 11px 13px; outline: none;
+  }
+  .field input:focus, .field textarea:focus {
+    box-shadow: 0 0 0 3px rgba(246,209,255,.6); border-color: var(--pink-strong);
+  }
+
+  /* ---------- Saved note ---------- */
+  .saved-note {
+    display: flex; align-items: center; gap: 8px; justify-content: center;
+    font-size: 13px; color: var(--muted-foreground); margin: 0 0 22px;
+  }
+  .saved-note .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--built-text); flex: none; }
+
+  /* ---------- Progress ---------- */
+  .progress-card {
+    position: sticky; top: 0; z-index: 30;
+    background: rgba(244,245,250,.92);
+    backdrop-filter: saturate(140%) blur(6px);
+    padding: 14px 0 12px; margin-bottom: 22px;
+  }
+  .progress-inner {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 14px 18px;
+  }
+  .progress-top {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .progress-top .label { font-weight: 600; font-size: 14.5px; }
+  .progress-top .count { font-size: 13.5px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .bar { height: 10px; border-radius: 999px; background: #e7e9f3; overflow: hidden; }
+  .bar > i {
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--pink) 0%, var(--periwinkle) 100%);
+    border-radius: 999px; transition: width .45s var(--ease);
+  }
+
+  /* ---------- Cards ---------- */
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden;
+  }
+  .card-head {
+    display: flex; align-items: flex-start; gap: 14px; width: 100%;
+    text-align: left; background: none; border: 0; cursor: pointer;
+    font-family: inherit; color: inherit; padding: 18px 20px;
+  }
+  .card-head:focus-visible { outline: 3px solid rgba(246,209,255,.7); outline-offset: -3px; }
+  .card-head .num {
+    flex: none; width: 30px; height: 30px; border-radius: 8px;
+    background: var(--navy); color: var(--pink);
+    display: grid; place-items: center; font-size: 13px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .card-head .htext { flex: 1 1 auto; min-width: 0; }
+  .card-head h2 { font-size: 18px; font-weight: 600; }
+  .card-head .where {
+    font-size: 12.5px; color: var(--muted-foreground); margin-top: 3px;
+    word-break: break-word;
+  }
+  .card-head .chevron {
+    flex: none; align-self: center; transition: transform .25s var(--ease);
+    color: var(--muted-foreground); font-size: 18px; line-height: 1;
+  }
+  .card[data-open="true"] .chevron { transform: rotate(180deg); }
+
+  .chip {
+    flex: none; align-self: center; font-size: 11.5px; font-weight: 600;
+    padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+    letter-spacing: 0.01em;
+  }
+  .chip.built { background: var(--built-bg); color: var(--built-text); }
+  .chip.partial { background: var(--partial-bg); color: var(--partial-text); }
+  .chip.coming { background: var(--coming-bg); color: var(--coming-text); }
+
+  .card-mini {
+    font-size: 12px; color: var(--muted-foreground); padding: 0 20px 14px 64px;
+    margin-top: -6px;
+  }
+  .card[data-open="true"] .card-mini { display: none; }
+
+  .card-body { display: none; padding: 4px 20px 22px; border-top: 1px solid var(--border); }
+  .card[data-open="true"] .card-body { display: block; }
+
+  .summary {
+    background: var(--card-soft); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 14px 16px; font-size: 14.5px; color: #36405e; margin: 16px 0; line-height: 1.6;
+  }
+  .who-line { font-size: 13px; color: var(--muted-foreground); margin: 0 0 18px; }
+  .who-line strong { color: #36405e; font-weight: 600; }
+
+  .section-label {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--muted-foreground); margin: 22px 0 10px;
+  }
+
+  /* ---------- Checklist rows ---------- */
+  .item {
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 13px 14px; margin-bottom: 10px; background: #fff;
+    transition: border-color .2s ease, background .2s ease;
+  }
+  .item.answered { border-color: var(--border-strong); background: var(--card-soft); }
+  .item .q { font-size: 14.5px; line-height: 1.5; margin: 0 0 11px; }
+
+  .triple { display: flex; flex-wrap: wrap; gap: 8px; }
+  .opt {
+    flex: 1 1 auto; min-width: 110px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: #fff; color: #46506e; font-family: inherit; font-size: 14px; font-weight: 500;
+    padding: 9px 12px; cursor: pointer; min-height: 44px;
+    transition: all .18s var(--ease);
+  }
+  .opt:hover { border-color: var(--navy-soft); }
+  .opt:focus-visible { outline: 3px solid rgba(246,209,255,.7); outline-offset: 1px; }
+  .opt[aria-pressed="true"].yes { background: var(--green); border-color: #9fd97e; color: #2f5418; }
+  .opt[aria-pressed="true"].no  { background: #fbd9d9; border-color: #e7a0a0; color: #8a2020; }
+  .opt[aria-pressed="true"].maybe { background: var(--warning); border-color: #ddc079; color: var(--warning-strong); }
+
+  .comment-wrap { margin-top: 10px; display: none; }
+  .comment-wrap.show { display: block; }
+  .comment-wrap textarea {
+    width: 100%; font-family: inherit; font-size: 15px; color: var(--foreground);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    padding: 9px 11px; resize: vertical; min-height: 54px; background: #fff; outline: none;
+  }
+  .comment-wrap textarea:focus { box-shadow: 0 0 0 3px rgba(246,209,255,.55); border-color: var(--pink-strong); }
+  .comment-toggle {
+    background: none; border: 0; color: var(--pink-strong); font-family: inherit;
+    font-size: 13px; font-weight: 500; cursor: pointer; padding: 6px 0 0; margin: 0;
+  }
+  .comment-toggle:hover { text-decoration: underline; }
+
+  /* ---------- Open questions ---------- */
+  .question {
+    border: 1px solid var(--border); border-left: 3px solid var(--periwinkle);
+    border-radius: var(--radius-sm); padding: 13px 14px; margin-bottom: 10px; background: var(--card-soft);
+  }
+  .question .ql { font-size: 14.5px; line-height: 1.55; margin: 0 0 9px; color: #2c365a; }
+  .question textarea {
+    width: 100%; font-family: inherit; font-size: 15px; color: var(--foreground);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    padding: 9px 11px; resize: vertical; min-height: 60px; background: #fff; outline: none;
+  }
+  .question textarea:focus { box-shadow: 0 0 0 3px rgba(166,178,240,.45); border-color: var(--periwinkle); }
+
+  /* ---------- Roadmap / coverage section ---------- */
+  .panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 26px 24px; margin: 30px 0 16px;
+  }
+  .panel > h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .panel > p.sub { color: var(--muted-foreground); font-size: 14.5px; margin: 0 0 18px; max-width: 70ch; }
+
+  .coverage-banner {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--green); border: 1px solid #b6e69a; border-radius: var(--radius-sm);
+    padding: 14px 16px; margin-bottom: 22px; color: #2f5418;
+  }
+  .coverage-banner .tick {
+    flex: none; width: 26px; height: 26px; border-radius: 50%;
+    background: #2f5418; color: var(--green); display: grid; place-items: center; font-size: 15px; font-weight: 700;
+  }
+  .coverage-banner b { font-weight: 600; }
+
+  .group-title { font-size: 16px; font-weight: 600; margin: 26px 0 4px; }
+  .group-sub { font-size: 13px; color: var(--muted-foreground); margin: 0 0 14px; }
+
+  .road-item {
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 14px; margin-bottom: 11px; background: #fff;
+  }
+  .road-item .ri-top { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+  .road-item .ri-title { font-size: 14.5px; font-weight: 600; flex: 1 1 auto; min-width: 200px; line-height: 1.45; }
+  .road-item .ri-note { font-size: 13px; color: var(--muted-foreground); margin: 8px 0 0; line-height: 1.55; }
+
+  .class-tag {
+    flex: none; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+  }
+  .class-tag.planned { background: #e6e8f3; color: #3b446b; }
+  .class-tag.genuinely-missing { background: var(--warning); color: var(--warning-strong); }
+  .class-tag.unknown { background: #ece6f7; color: #6b3fa0; }
+  .class-tag.out-of-scope-by-design { background: #eef0f4; color: #5b6480; }
+
+  .priority {
+    margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-strong);
+  }
+  .priority .pl { font-size: 12.5px; font-weight: 600; color: #36405e; margin: 0 0 8px; }
+
+  details.fold {
+    border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 11px; background: #fff;
+    padding: 0;
+  }
+  details.fold > summary {
+    cursor: pointer; padding: 13px 14px; font-size: 14px; font-weight: 600; color: #36405e;
+    list-style: none; display: flex; align-items: center; gap: 8px;
+  }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::before { content: "▸"; color: var(--muted-foreground); transition: transform .2s ease; }
+  details.fold[open] > summary::before { transform: rotate(90deg); }
+  details.fold .fold-body { padding: 0 14px 14px; }
+  details.fold ul { margin: 0; padding-left: 18px; }
+  details.fold li { font-size: 13.5px; color: #46506e; margin: 6px 0; line-height: 1.55; }
+
+  .can-do {
+    columns: 2; column-gap: 26px; margin: 0 0 8px; padding: 0;
+  }
+  .can-do li {
+    font-size: 13.5px; color: #46506e; margin: 0 0 9px; line-height: 1.5;
+    break-inside: avoid; list-style: none; padding-left: 20px; position: relative;
+  }
+  .can-do li::before { content: "✓"; position: absolute; left: 0; color: #4a8a26; font-weight: 700; }
+
+  /* ---------- Sign-off ---------- */
+  .signoff h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .signoff .so-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+  .signoff .field label { color: var(--muted-foreground); }
+  .signoff .field input, .signoff .field textarea {
+    border: 1px solid var(--border-strong); background: #fff;
+  }
+  .signoff textarea { min-height: 110px; resize: vertical; }
+  .so-full { grid-column: 1 / -1; }
+
+  .accurate-row { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+  .accurate-row .opt { flex: 0 1 200px; }
+
+  /* ---------- Export bar ---------- */
+  .export {
+    background: var(--navy); color: #eef0fa; border-radius: var(--radius);
+    padding: 26px 24px; margin-top: 28px; box-shadow: var(--shadow-md);
+  }
+  .export h2 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+  .export p { color: #b9c0da; font-size: 14px; margin: 0 0 18px; max-width: 64ch; }
+  .export-btns { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  .btn {
+    font-family: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer;
+    border-radius: var(--radius-sm); padding: 12px 18px; min-height: 44px;
+    display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent;
+    transition: all .18s var(--ease); text-decoration: none;
+  }
+  .btn-primary { background: var(--pink); color: var(--navy); }
+  .btn-primary:hover { background: var(--navy-2); color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+  .btn-ghost { background: transparent; color: #eef0fa; border-color: #3b466f; }
+  .btn-ghost:hover { background: #1c2748; border-color: #51608f; }
+  .btn:focus-visible { outline: 3px solid var(--pink); outline-offset: 2px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
+    background: var(--navy); color: #fff; padding: 12px 20px; border-radius: 999px;
+    font-size: 14px; font-weight: 500; box-shadow: var(--shadow-md);
+    opacity: 0; pointer-events: none; transition: opacity .3s var(--ease), transform .3s var(--ease);
+    z-index: 200;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  footer.mark {
+    text-align: center; color: var(--muted-foreground); font-size: 12.5px; margin-top: 36px;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 720px) {
+    .identity { grid-template-columns: 1fr; }
+    .signoff .so-grid { grid-template-columns: 1fr; }
+    .can-do { columns: 1; }
+    header.masthead { padding: 30px 22px 28px; border-radius: 0 0 18px 18px; }
+    .masthead h1 { font-size: 25px; }
+    .card-head { padding: 15px 15px; flex-wrap: wrap; }
+    .card-head .chip { order: 3; }
+    .card-mini { padding-left: 15px; }
+    .card-body { padding: 4px 15px 18px; }
+    .opt { min-width: 100%; }
+    .wrap { padding: 0 14px 80px; }
+  }
+
+  /* ---------- Reduced motion ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+  }
+
+  /* ---------- Print ---------- */
+  @media print {
+    body { background: #fff; font-size: 12px; }
+    .progress-card, .export, .toast, .saved-note, .comment-toggle, .card-head .chevron { display: none !important; }
+    header.masthead { background: #fff; color: #000; box-shadow: none; border-bottom: 2px solid #101833; border-radius: 0; padding: 0 0 16px; }
+    .masthead h1, .masthead .wordmark span { color: #101833; }
+    .masthead .vmark { background: #101833; color: #fff; }
+    .masthead p.intro, .masthead ol.howto { color: #333; }
+    .field label { color: #555; }
+    .field input, .field textarea { border: 1px solid #bbb !important; }
+    .card, .panel, .item, .question, .road-item, .signoff .field { box-shadow: none !important; break-inside: avoid; }
+    .card-body, .card[data-open] .card-body { display: block !important; }
+    .card-mini { display: none !important; }
+    .wrap { max-width: 100%; padding: 0; }
+    .opt { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .chip, .class-tag, .coverage-banner, .opt[aria-pressed="true"] { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .comment-wrap { display: block !important; }
+    details.fold { break-inside: avoid; }
+    details.fold[open] .fold-body, details.fold .fold-body { display: block; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap" style="padding-bottom:0">
+    <div class="wordmark">
+      <span class="vmark">V</span>
+      <span>VenueFlow</span>
+    </div>
+    <p class="eyebrow">Functionality Confirmation</p>
+    <h1>Let's confirm VenueFlow works the way you expect</h1>
+    <p class="intro">
+      Below is a plain-English walkthrough of every screen we've built so far. Please read each
+      described behaviour and tell us whether it matches what you want. Your name, your venue, and
+      every answer are saved automatically in this browser as you go — so you can stop and come back
+      anytime.
+    </p>
+    <ol class="howto">
+      <li>Fill in your name and venue name below.</li>
+      <li>Open each card, read the summary, and mark every line <strong>Correct ✓</strong>, <strong>Not right ✗</strong>, or <strong>Not sure ?</strong>.</li>
+      <li>Answer the questions and weigh in on what we should build next.</li>
+      <li>When you're done, use <strong>Download my responses</strong> and email the file back to us.</li>
+    </ol>
+
+    <div class="identity">
+      <div class="field">
+        <label for="meta-name">Your name</label>
+        <input id="meta-name" type="text" autocomplete="name" data-meta="name" placeholder="e.g. Sarah Bennett" />
+      </div>
+      <div class="field">
+        <label for="meta-venue">Venue name</label>
+        <input id="meta-venue" type="text" autocomplete="organization" data-meta="venue" placeholder="e.g. The Grand Hall" />
+      </div>
+      <div class="field">
+        <label for="meta-date">Today's date</label>
+        <input id="meta-date" type="date" data-meta="date" />
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <p class="saved-note"><span class="dot"></span> Your answers are saved in this browser — nothing is sent anywhere until you download or email them.</p>
+
+  <div class="progress-card">
+    <div class="progress-inner">
+      <div class="progress-top">
+        <span class="label">Your progress</span>
+        <span class="count" id="progress-count">0 of 0 answered</span>
+      </div>
+      <div class="bar"><i id="progress-bar"></i></div>
+    </div>
+  </div>
+
+  <main id="cards" aria-label="Page-by-page confirmation"></main>
+
+  <!-- What's included & what's coming -->
+  <section class="panel" id="coverage-panel" aria-label="What's included and what's coming">
+    <p class="eyebrow" style="color:var(--pink-strong)">Roadmap</p>
+    <h2>What's included &amp; what's coming</h2>
+    <p class="sub">Everything described above is built and working. Below is what's still ahead — tell us which items matter most to you so we build the right things next.</p>
+    <div class="coverage-banner" id="coverage-banner"></div>
+
+    <div id="couple-missing"></div>
+    <div id="admin-missing"></div>
+
+    <h3 class="group-title">Build roadmap</h3>
+    <p class="group-sub">The planned sequence of work, for reference.</p>
+    <details class="fold">
+      <summary>See the planned roadmap (<span id="roadmap-count">0</span> items)</summary>
+      <div class="fold-body"><ul id="roadmap-list"></ul></div>
+    </details>
+
+    <details class="fold">
+      <summary>Deliberately not building (by design) — why these are intentional</summary>
+      <div class="fold-body"><ul id="doctrine-list"></ul></div>
+    </details>
+
+    <details class="fold">
+      <summary>What couples &amp; staff can already do today</summary>
+      <div class="fold-body">
+        <h3 class="group-title" style="margin-top:8px">Couples can already…</h3>
+        <ul class="can-do" id="couple-cando"></ul>
+        <h3 class="group-title">Venue staff can already…</h3>
+        <ul class="can-do" id="admin-cando"></ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- Sign-off -->
+  <section class="panel signoff" aria-label="Sign-off">
+    <p class="eyebrow" style="color:var(--pink-strong)">Final step</p>
+    <h2>Sign-off</h2>
+    <p class="sub">A quick overall confirmation and any closing thoughts.</p>
+
+    <div class="section-label">Overall, does this accurately describe what you want VenueFlow to do?</div>
+    <div class="accurate-row" id="accurate-control" role="group" aria-label="Overall accuracy">
+      <button type="button" class="opt yes" data-accurate="yes" aria-pressed="false">Looks accurate ✓</button>
+      <button type="button" class="opt no" data-accurate="no" aria-pressed="false">Some things are off ✗</button>
+      <button type="button" class="opt maybe" data-accurate="maybe" aria-pressed="false">Mostly, with notes ?</button>
+    </div>
+
+    <div class="so-grid">
+      <div class="field so-full">
+        <label for="overall-comments">Overall comments (anything we missed, anything to change, priorities)</label>
+        <textarea id="overall-comments" data-signoff="comments" placeholder="Type any closing thoughts here…"></textarea>
+      </div>
+      <div class="field">
+        <label for="signoff-name">Your name</label>
+        <input id="signoff-name" type="text" autocomplete="name" data-signoff="name" placeholder="Your name" />
+      </div>
+      <div class="field">
+        <label for="signoff-date">Date</label>
+        <input id="signoff-date" type="date" data-signoff="date" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Export -->
+  <section class="export" aria-label="Send your responses">
+    <h2>Send us your responses</h2>
+    <p>No account or internet sign-in needed. Download the file, then email it back to us. (Or copy a summary, or save the whole page as a PDF.)</p>
+    <div class="export-btns">
+      <button type="button" class="btn btn-primary" id="btn-download">⬇ Download my responses</button>
+      <button type="button" class="btn btn-ghost" id="btn-copy">⧉ Copy summary to clipboard</button>
+      <a class="btn btn-ghost" id="btn-email" href="#">✉ Email my responses</a>
+      <button type="button" class="btn btn-ghost" id="btn-print">🖨 Print / Save as PDF</button>
+    </div>
+  </section>
+
+  <footer class="mark">VenueFlow — a CRM built for wedding venues, by The Wedding Marketers.</footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ============================================================
+   Embedded data (verbatim from docs.json and gaps.json)
+   ============================================================ */
+const DOCS = {"docs":[{"n":"01","title":"Sign Up & Log In","where":"`/signup` and `/login`","who":"New venue owners creating an account; existing venue staff signing back in","status":"Built","summary":"These are the two screens that control who can get into VenueFlow. A brand-new owner visits `/signup`, picks an email and password, and confirms their email before they can do anything. A returning user goes to `/login` and either types their password or asks for a one-click \"magic link\" sent to their inbox. Once the system knows who you are, it decides where to send you — first-timers go to set up their venue, everyone else goes straight to the dashboard.","checklist":["Signing up asks for email, password, and a confirm-password field — nothing else (no name, phone, company, card number).","After a successful sign-up, the page shows a \"Check your email\" message rather than logging me in immediately.","The \"Create account\" button is greyed out and unclickable while the form is being submitted.","Signing in with the correct email and password takes me straight to `/dashboard`.","Clicking \"Email me a magic link\" without typing an email first shows an inline error, not an email.","The magic-link option only works for existing accounts — it will not create a new account.","After clicking a magic link or confirmation link in my email, the system checks whether I have a venue set up; if not, I land on onboarding; if yes, I land on the dashboard.","If the link in the email is broken or already used, I am redirected back to the login page (not a blank error screen).","The sign-up and login pages have no top navigation or sidebar — just the VenueFlow wordmark and the form.","There is no \"Forgot password\" link on the login page.","Password rules are enforced before the form is sent — a password under 8 characters or a mismatched confirm field shows an error immediately."],"openQuestions":["Should there be a dedicated \"Forgot / reset password\" link on the login page, or is the magic-link button sufficient for users who can't remember their password?","The login page doesn't currently show a human-readable message when a broken or expired link redirects back to it (the error is only in the URL). Should it display something like \"That link has expired — please try again\"?","If someone tries to sign up with an email address that's already registered, the error message they see comes directly from Supabase (e.g. \"User already registered\"). Do you want a custom, friendlier message for that case?"]},{"n":"02","title":"New-Venue Setup Wizard","where":"`/onboarding`","who":"The venue owner (or an admin) setting up a brand-new venue for the first time","status":"Built","summary":"When someone signs up and hasn't set up a venue yet, this three-step wizard walks them through the essentials: naming their venue, adding their first hireable space, and setting their opening hours. Once they finish (or skip the optional steps), they land on the main dashboard ready to use VenueFlow. If a team member logs in before the owner has finished setup, they see a holding screen rather than an empty or broken dashboard.","checklist":["When I first sign up and visit the app, I land on the setup wizard — not the dashboard.","The wizard has exactly three steps: Venue profile, First space, Opening hours.","As I type my venue name, the web address field fills in automatically (e.g. \"The Grand Hall\" → \"the-grand-hall\"). I can still type my own web address if I want a different one.","If the web address I want is already taken, I get a clear error and can try a different one without losing my other entries.","I can upload a logo (PNG, JPG, or WebP, max 2 MB) on step 1. Uploading a logo is not required to proceed.","Steps 2 (space) and 3 (hours) each have a \"Skip for now\" button that lets me complete setup without filling them in. Skipping step 3 still saves a default Mon–Sat 9 am–5 pm schedule.","If I close the browser mid-setup and come back, I resume at the step I left off — I don't start over.","If a team member who isn't an owner logs in before setup is complete, they see a message saying the venue is still being set up, with only a sign-out button.","Once I click \"Finish setup\" on step 3, I land on the dashboard. On desktop there is a brief animation before the redirect; on mobile I go straight there.","After setup is complete, visiting `/onboarding` again redirects me to the dashboard — I cannot accidentally re-run the wizard.","The venue is created with a 14-day trial period automatically — I don't need to enter any payment details during setup."],"openQuestions":["Step 2 has no way to pre-fill an existing space if you hit \"Back\" from step 3 — should it reload whatever was already saved, or is a blank form fine for a re-entry scenario?","The default hours (Mon–Sat 09:00–17:00, Sun closed) are applied whenever someone skips step 3. Is that the right default for most of your venue clients, or should it be configurable later in Settings?","The wizard currently supports only one space in step 2. Is that intentional for v1, with the expectation that additional spaces are added from Settings?"]},{"n":"03","title":"App Shell, Navigation & Venue Switching","where":"Every page inside the app (all routes under `/dashboard`, `/contacts`, `/pipeline`, `/appointments`, `/reports`, `/settings`)","who":"Venue staff (anyone logged in with access to at least one venue)","status":"Partial","summary":"This is the frame that wraps every page of the app — the dark sidebar on the left, the slim bar across the top, and the main content area in between. It makes sure only logged-in staff who have finished setting up their venue can access the app. It also shows which venue you're working in and lets you navigate between sections.","checklist":["When I open any page in the app and I'm not logged in, I'm redirected to the login page — not an error screen.","When I'm logged in but haven't finished setting up my venue, I'm redirected to onboarding rather than being shown a broken shell.","The left sidebar shows five main links: Dashboard, Contacts, Pipeline, Appointments, Reports — plus Settings below a dividing line.","The current page's nav link is visually highlighted so I always know where I am.","On a tablet, the sidebar collapses to icons only (labels disappear but navigation still works).","On a phone, the sidebar is replaced by a hamburger button that opens a slide-up drawer; tapping any link closes the drawer automatically.","At the bottom of the sidebar I can see my venue name and email address, and clicking that area lets me sign out.","Clicking \"Sign out\" ends my session immediately and takes me to the login page, with no confirmation prompt.","The topbar (on desktop/tablet) shows my venue name on the left and my avatar initial on the right, but neither is clickable for any action.","There is currently no way to switch between venues from within the app — a venue-switcher menu does not exist in the UI yet, even though the underlying logic is built.","If I belong to multiple venues, the app currently always loads my oldest venue. The cookie-based \"remember last venue\" mechanism exists in the code, but it is unreachable because there is no venue-switcher UI to write the cookie — this will work automatically once a switcher ships."],"openQuestions":["When venue switching is added to the UI, where should the switcher live — in the topbar, at the top of the sidebar, or somewhere else?","Should sign out require a confirmation step (\"Are you sure?\"), or is the current one-click behaviour correct?","The topbar avatar on the right has no action. Should it open a profile/account menu, or stay decorative?","If a user loses access to a venue (their membership is removed), the stale cookie is not automatically cleared. Should the app clear it and show a message, or silently fall back to the next venue?"]},{"n":"04","title":"Dashboard","where":"`/dashboard` — the first page a staff member lands on after logging in","who":"Venue staff (owners, admins, members)","status":"Partial","summary":"The Dashboard is the home screen for your venue's account. Right now it exists as a \"getting started\" page — it greets you by name and points you toward the one action that kick-starts your whole pipeline: setting up your enquiry form. There are no metrics or live data here yet; those are planned for a future milestone.","checklist":["When I visit `/dashboard` while not logged in, I am immediately sent to the login page.","When I am logged in, the page shows a welcome message that includes my venue's name.","The venue name in the welcome message is pulled automatically from my account — I don't type it on this page.","There are no metrics, graphs, booking counts, or revenue numbers on this page today.","There is one panel on the page labelled \"Getting started\" that explains the enquiry form.","Clicking \"Set up your form\" takes me to the Settings page.","Clicking \"View contacts\" takes me to the Contacts page.","If my account is linked to more than one venue, the system shows the venue I last chose (remembered in my browser); if it can't find that, it shows the first venue in my list.","Nothing is saved or changed when I simply load the Dashboard — it is read-only."],"openQuestions":["When metrics do arrive (leads this month, upcoming tours, conversion rate, etc.) — what numbers matter most to you at a glance? Knowing this now will shape what gets built first.","Should the \"getting started\" panel disappear once the enquiry form is set up, or should the Dashboard always show a helpful next action?","If you manage more than one venue, do you want a venue-switcher somewhere on this page, or is the current behaviour (last-used remembered in the browser) enough?"]},{"n":"05","title":"Pipeline (Kanban Board)","where":"`/pipeline`","who":"Venue staff (anyone logged in to the venue account)","status":"Built","summary":"The Pipeline is a visual board that shows every active enquiry your venue has received, sorted into eight stages from \"just enquired\" through to \"wedding booked.\" Each enquiry appears as a card you can drag from one stage to the next as you progress it. It is the day-to-day working view for managing your bookings funnel.","checklist":["The board shows only enquiries where `archived_at` is null — permanently archived enquiries do not appear","There are exactly 8 columns in this fixed order: Inbound enquiry, Responded, Viewing interest, Appointment booked, Appointment attended, Date on hold, Wedding booked, Archived","Dragging a card or using the \"Move to stage\" menu both call the same save function (`moveOpportunity`), which only updates the stage and the card's position number — nothing else","Every time a card changes stage, the database automatically records the old stage, the new stage, the user who moved it, and the timestamp — staff cannot edit or delete these records","Moving a card into the Archived column does NOT mark it as archived (no `archived_at` date is set); the card stays visible on the board","When a card is dropped into \"Wedding booked,\" a brief animation plays on that card — unless the user has \"reduce motion\" turned on in their device settings, in which case it is skipped","If the server fails to save the card move, the card snaps back to its original position and an error message appears","Clicking a card opens a side panel showing email, phone, wedding date, guest count, budget, and source — with a button to open the full contact record","The board does not auto-refresh; a page reload is required to see changes made by other staff members","A card can be moved directly from any stage to any other stage — for example from \"Inbound enquiry\" straight to \"Wedding booked\" — with no restrictions"],"openQuestions":["Moving to the Archived column currently does not actually archive the enquiry (no `archived_at` is set). Is the Archived column intended to work differently to the other seven, and if so, how should archiving be triggered?","Should staff be able to delete a card (and its contact) from the pipeline board, or only from the full contact record?","When two staff members move cards at the same time, the last save wins silently. Is that acceptable, or do you want a warning when the board is out of date?"]},{"n":"06","title":"Contacts","where":"`/contacts` (list) and `/contacts/[id]` (detail)","who":"Venue staff","status":"Built","summary":"Contacts is the venue's enquiry list — every couple who has ever reached out lives here. Each contact has a matching entry on the sales pipeline, so what you see on this screen and what you see on the Kanban board are always the same data. Staff use this page to browse, search, add new enquiries by hand, update a couple's details, or permanently remove a contact.","checklist":["The contacts list shows every enquiry for the venue, sorted newest-first, with name, email/phone, pipeline stage, wedding date, and source visible on each row.","Clicking any row takes you to that contact's detail page.","Typing in the search box filters the list by first name, last name, or email (with a short delay as you type). Searching does not look at phone or partner name.","The Stage dropdown and Source dropdown filter the list; the Source dropdown only appears once at least one contact has a source.","A \"Clear\" button appears whenever any filter is active and removes all filters when clicked.","Clicking \"New contact\" opens a side panel form. The only required field is first name. All other fields (last name, email, phone, partner name, wedding date, guest count, budget, source) are optional.","Creating a new contact automatically creates a linked pipeline entry, starting the couple at the \"Inbound enquiry\" stage at the top of that column.","If you enter an email address that already exists for another contact at the same venue, saving is blocked with an \"already exists\" error.","The contact detail page shows a Details panel (email, phone, wedding date, guest count, budget, source) and an Activity panel listing every stage change with a date and time.","Clicking \"Edit\" on the detail page opens the same form pre-filled with the contact's current details. Saving only updates contact details — it does not change their pipeline stage.","Clicking \"Delete\" shows a confirmation dialog naming the contact. The contact, their pipeline entry, and all stage history are permanently deleted after confirmation. There is no undo.","The list shows a maximum of 500 contacts. There is no way to load more within the current page."],"openQuestions":["The list caps at 500 contacts with no pagination. Is that sufficient for now, or do you want a \"load more\" option added before launch?","Budget is displayed in pounds (GBP, £). Is that the right currency for all venues using VenueFlow, or will some venues need a different currency?","The \"Source\" field is a free-text box on the form (staff type it in). Should this eventually be a dropdown of standard values (e.g. Website, Hitched, Referral, Walk-in) to keep the data consistent for filtering and reporting?"]},{"n":"07","title":"Appointments","where":"`/appointments` — listed in the main sidebar under \"Appointments\"","who":"Venue staff (you and your team)","status":"NotBuilt","summary":"The Appointments section will be where you manage site visits and viewing appointments with couples — things like scheduling a couple coming in to look at the venue, confirming they showed up, and keeping track of who is at which stage of the conversation. It does not exist yet; clicking \"Appointments\" in the sidebar currently shows a single line that says \"Appointment scheduling coming in M5.\" Your business hours were collected during setup and are stored in the system, but they are not being used anywhere yet — they are reserved for this feature.","checklist":["Clicking \"Appointments\" in the sidebar takes you to `/appointments`.","The page shows only a heading (\"Appointments\") and the text \"Appointment scheduling coming in M5.\" — nothing else.","There is no calendar, no list of bookings, and no action buttons on this page right now.","You must be logged in to see this page; if you are not, you are sent to the login page automatically.","During initial setup (onboarding), you set your opening and closing times for each day of the week — these are saved and stored, but not displayed or used anywhere in the app yet.","If you skipped the hours step during setup, the system saved a default schedule on your behalf: Monday–Saturday 9 am–5 pm, Sunday closed.","There is currently no way to change your business hours after onboarding is complete.","The pipeline already has \"Appointment booked\" and \"Appointment attended\" stages, but moving a deal to those stages does not create or track an actual appointment anywhere yet.","Appointment scheduling is planned for a future milestone (M5) and is not available today."],"openQuestions":["When Appointments is built, should couples be able to book directly through a public link (self-service), or does the venue always create the appointment manually on their behalf?","Should appointment reminders (email or SMS to the couple) be part of M5, or a later addition?","Do you want the system to block appointment slots based on your `venue_hours` (i.e., refuse bookings outside your open hours), or is that just a guide?","Should \"Appointment booked\" and \"Appointment attended\" in the pipeline eventually update automatically when an appointment is created or marked complete, or will staff always move those stages by hand?"]},{"n":"08","title":"Reports","where":"`/reports` (main navigation)","who":"Venue staff and venue owner","status":"NotBuilt","summary":"The Reports page is a reserved area of VenueFlow where the venue will eventually be able to see analytics and business performance data — things like bookings over time, revenue trends, and enquiry conversion rates. Right now, it is a placeholder: the page exists in the navigation and is accessible, but no charts, numbers, or filters have been built yet. Everything here is planned for Milestone 6 (M6).","checklist":["There is a \"Reports\" item in the main navigation, and clicking it takes you to `/reports`.","The page shows a heading \"Reports\" and the message \"Reporting and analytics coming in M6.\" — nothing else.","No charts, numbers, tables, filters, or date pickers are shown on this page today.","No data is fetched or saved when you visit this page.","Any logged-in team member can open the Reports page (it is not restricted to owners only).","The placeholder message is static — it does not change based on any setting or date."],"openQuestions":["What reports do you want to see in M6? (e.g. bookings per month, revenue by event type, enquiry-to-booking conversion rate — confirm the priority list so M6 can be scoped.)","Should the Reports section be visible only to the venue owner/manager, or is it fine for all staff to see it?","Do you want a data export option (CSV/PDF) alongside the charts when this is built?"]},{"n":"09","title":"Settings — Enquiry Form & Brochure","where":"`/settings` (hub), `/settings/forms` (form embed), `/settings/brochure` (brochure)","who":"Venue staff — all roles can view; only owners and admins can upload or replace the brochure","status":"Built","summary":"Settings is where the venue configures the two things couples see before they ever talk to anyone: the enquiry form and the information brochure. The enquiry form has a public link you can share directly, and an embed snippet you can paste into your website. The brochure is a single PDF that VenueFlow automatically emails to every couple the moment they enquire.","checklist":["The Settings hub shows exactly two sections: \"Enquiry form\" and \"Brochure\". Nothing else appears there today.","The enquiry form page shows a shareable link I can copy and open, plus an embed snippet I can paste into my website — both are read-only (I cannot edit them).","The embed snippet is a standard `<iframe>` tag pointing to my form's `/embed` URL, sized 100% wide and 760px tall, with a max-width of 560px.","The brochure page shows the current active brochure's title, total download count, and the date it was last downloaded.","Uploading a new brochure immediately replaces the old one — only one brochure is ever active at a time.","Only owners and admins can upload or replace the brochure. A regular staff member sees the current brochure info but no upload form.","The file picker only accepts PDFs and rejects files larger than 10 MB, showing an error if either rule is broken.","The title field when uploading is optional. If I leave it blank, no title is stored in the database, and the brochure is shown with the default label \"Wedding brochure\".","I can preview the current active brochure by clicking the \"Preview\" button, which opens it in a new tab. Each Preview click is logged as a download (it uses the same tracked link that couples receive), so the download count reflects all opens — not only couples' opens.","Email identity settings (from-name, reply-to address) and any sequence or follow-up automation settings do not yet have a settings screen — I cannot configure them from the app today."],"openQuestions":["Should uploading a new brochure delete the old PDF file from storage, or is keeping the history of all uploaded brochures intentional?","When there is no active brochure, do you want new enquiries to still receive an email (without a brochure), or should the email be skipped entirely until a brochure is uploaded?","The embed snippet is always 760px tall with a max-width of 560px — is that the right default, or should it be configurable per venue?","Email identity (the sender name and reply-to address on automated emails) needs a settings UI — is this the next thing to build here, or is it lower priority?"]},{"n":"10","title":"Public enquiry form (couple-facing)","where":"`venueflow.app/f/[your-venue-slug]` (hosted) · `venueflow.app/f/[your-venue-slug]/embed` (for your own website iframe)","who":"Couples enquiring about a wedding. Venue staff never interact with it directly — they receive the leads it generates.","status":"Built","summary":"This is the form a couple fills in when they want to find out more about your venue. It lives at a public link you can share directly, and it also has a stripped-down version that can be dropped into an iframe on your own website. When a couple submits it, VenueFlow saves their details, creates a contact record in your CRM, places them in your pipeline at \"Inbound enquiry,\" and automatically emails them your active brochure (if one is uploaded) via a background job. If no brochure has been uploaded yet, no brochure email is sent.","checklist":["The form is publicly accessible at a URL containing your venue's unique slug — no login required to view or submit it.","Only the couple's first name and email address are required. All other fields (partner name, phone, guest count, wedding date, flexibility toggle, message) are optional.","A couple who submits the form more than 5 times from the same device/network within a 10-minute window will be told \"Too many submissions\" and blocked until the window passes.","If a couple submits with an email address already in your contacts list, their existing record is updated: last name, phone, partner names, wedding date, and guest count are overwritten with whatever the new submission provides (only when non-empty). First name and email are never changed.","If a couple submits for the first time, a new contact is created and a pipeline card is placed at the top of \"Inbound enquiry\" automatically, with no action needed from venue staff.","If the same contact submits a second time and already has an active pipeline card, no duplicate card is created — their existing card stays where it is.","After a successful submission, the couple sees a confirmation screen telling them their brochure is on its way to the email address they provided.","The embed version of the form (for your own website) has no VenueFlow branding, logo, or banner — it shows only the form fields and the submit button.","The embed version is excluded from Google search results (it will not appear in search engines even if the page is crawled).","A bot that fills in the hidden \"website\" field is silently discarded — it sees a success response but nothing is saved.","If the downstream brochure-sending step fails, the couple's enquiry is still fully saved and they still see the success screen.","Where you came from (Google, an Instagram ad, your own website, etc.) is captured automatically via UTM parameters if present — couples never have to fill this in themselves."],"openQuestions":["The success message says \"your brochure is on its way\" even when no brochure has been uploaded. The `lead/captured` background job exits early with a \"no-active-brochure\" reason and sends nothing in that case — yet the couple already saw the promise. Should the success message be conditional on whether a brochure is configured, or is a different fallback copy needed?","The rate limit is 5 submissions per IP per venue in 10 minutes. Is this the right threshold for your venues, or does it risk blocking legitimate couple households (e.g. two people on the same home WiFi both trying to enquire)?","There is currently no CAPTCHA. Is the honeypot + rate limit sufficient for your comfort, or do you want to add a CAPTCHA before launch?","The form field set is fixed — there is no way to add a custom question (e.g. \"How did you hear about us?\") through the venue settings. Is this a gap you need addressed before launch?"]},{"n":"11","title":"Automatic brochure email & download","where":"Background (email sent automatically) + public download link `/b/[token]`","who":"System (sends automatically), couples (receive and click the email)","status":"Built","summary":"When a couple fills in your enquiry form, the system automatically emails them your brochure — no action needed from you. The email goes out in the background, moments after the form is submitted. The couple clicks a button in the email and the PDF opens. Every click is counted so you can see how many people downloaded it.","checklist":["When a couple submits the enquiry form, a brochure email is sent to them automatically — you do not need to do anything.","The email only goes out if you have an active brochure uploaded. No brochure = no email (the lead is still saved).","The email appears to come from your venue name, not from \"VenueFlow\".","If the couple replies to the email, the reply goes to the address you set in your email settings — not back to VenueFlow.","The email subject line is: \"Your [Venue Name] brochure\".","The email body thanks the couple for their interest, mentions spaces, capacities, and pricing, and includes a single button labelled \"Download the brochure\".","Clicking the download button opens the PDF. The link in the email itself does not expire — clicking it again always works.","Every time someone clicks the download link, the system records a count and the time of the most recent download.","If the same person submits the form a second time (same email address), they are matched to their existing contact record — not created as a duplicate.","The brochure file is kept private. It is never directly accessible via a permanent public URL — a fresh short-lived link is generated each time someone clicks download.","If the form submission fails after the lead is saved, the couple has already been captured — no lead is lost even if the email fails.","There are no follow-up emails after the brochure. The nurture sequence is not built yet."],"openQuestions":["Should deactivating a brochure break old download links for couples who were already emailed? Currently it does — is that the intended behaviour, or should old links keep working even after a new brochure is uploaded?","The email always uses the same body text (\"we would love to help you celebrate your wedding with us...\"). Should venues be able to customise this wording, or is fixed copy acceptable for now?","Download count tracks total clicks but not unique downloaders. Is that enough, or do you want to know which specific contact downloaded and when?"]},{"n":"12","title":"Marketing landing page","where":"`/` (the root URL — the very first page anyone sees)","who":"New visitors, potential venue owners, anyone clicking a link to VenueFlow for the first time","status":"Partial","summary":"This is the front door of VenueFlow — a short page that introduces the product to someone who has never used it before. It shows the product name, a one-line pitch, and the eight pipeline stages so a visitor immediately understands what the CRM does. Right now the page is built and looks correct, but neither of the two call-to-action buttons go anywhere yet.","checklist":["The page shows a small uppercase eyebrow \"The Wedding Marketers\" with the heading \"VenueFlow\" directly below it at the top.","There is a short pitch paragraph describing VenueFlow as a CRM built for wedding venues.","There are exactly two buttons: \"Get started\" and \"See the pipeline\".","Neither button does anything when clicked — both are placeholder/unlinked at this stage.","Eight pipeline stage chips are displayed in colour, matching the eight stages used throughout the app (Inbound enquiry through to Archived).","The page requires no login — anyone with the URL can view it.","A dark navy strip with a \"V\" mark appears on the left side once the screen is at least ~640px wide; it is hidden on narrow phones.","The page loads with no spinner or loading delay — all content is fixed and does not come from the database."],"openQuestions":["Where should **Get started** link to — the signup page, a demo booking form, or somewhere else?","Where should **See the pipeline** link to — a demo view of the pipeline, or a marketing screenshot/video?","Should this page eventually be a proper marketing/sales page with more copy, pricing, or social proof — or is it a short holding page that will be replaced later?","The page title and meta description currently say \"VenueFlow\" site-wide. Do you want a different title for other pages (e.g. \"VenueFlow — Pipeline\") once the app is further along?"]},{"n":"13","title":"Background Jobs & System Internals","where":"Background / not visible in the UI","who":"System (runs automatically — venue staff never interact with this directly)","status":"Built","summary":"These are the behind-the-scenes mechanics that keep VenueFlow running reliably. There are three pieces: a request gate that checks whether you are logged in before letting you into any staff-only page, a job runner that handles tasks that happen in the background (like sending the brochure email after a lead submits), and a health-check job that confirms the job runner itself is alive. None of this requires any action from venue staff — it just works.","checklist":["Any page under `/dashboard`, `/contacts`, `/pipeline`, `/appointments`, `/reports`, `/settings`, or `/onboarding` redirects to `/login` if the person is not signed in.","A signed-in user who navigates to `/login` or `/signup` is automatically sent to `/dashboard`.","The public enquiry form page is not blocked by the login gate — anyone can reach it without an account.","When a couple submits the enquiry form, VenueFlow automatically emails them the venue brochure — no manual action needed from venue staff.","If the venue has not uploaded an active brochure, no brochure email is sent, but the enquiry is still recorded normally.","The brochure email uses the sender name the venue configured in Settings. If no sender name is configured, it falls back to the venue's name. If no reply-to address is configured, the email is sent with no reply-to header (replies go to the default sending address) — it does NOT fall back to the venue's name.","The brochure link in the email records an aggregate download count for the brochure. The system does NOT track which individual couple opened it — per-contact download tracking is not implemented.","The `health-ping` job is a diagnostic tool only — it does not change any data and has no visible effect for venue staff.","The Inngest job runner endpoint (`/api/inngest`) is always reachable without login — blocking it would break automated emails and other background tasks.","Session validity is checked with Supabase's auth server on every request, not just by reading the browser cookie — so expired sessions are caught immediately."],"openQuestions":["Should the brochure email be optional per venue — i.e., should there be a toggle in Settings to turn off automatic brochure sending even when a brochure is uploaded?","If the brochure email fails to send (e.g. email service is down), should the venue staff be notified, or is silent retry sufficient?"]}]};
+
+const GAPS = {"coverageComplete":true,"missingDocs":[],"couple":{"canDoToday":["Visit a venue's public enquiry page and see the venue's logo, name, and a warm 'Wedding enquiry' header.","Submit a wedding enquiry: first name + email required; partner name, phone, guest count, wedding date, 'date is flexible' toggle, and a message all optional.","Submit the same form embedded inside the venue's own website (no VenueFlow branding, excluded from search indexing).","Have attribution (campaign, source, referrer) captured silently on submit without filling anything in.","Enquire safely: the lead is always saved first, so a couple's enquiry is never lost even if a later step fails.","Re-enquire with the same email and be matched to the existing contact rather than duplicated.","See an immediate 'Thank you - your brochure is on its way' confirmation with their email shown back.","Receive an automatic brochure email that appears to come from the venue (venue name + reply-to), with a single 'Download the brochure' button, when the venue has an active brochure.","Download the venue's brochure via the email link, which keeps working while the brochure is active and mints a fresh short-lived secure download on each click."],"missing":[{"item":"Book a viewing / site visit self-service via a public booking link","classification":"planned","note":"Planned for M5. Today only staff record a viewing, by moving a pipeline card; there is no couple-facing booking route and no appointment record is created."},{"item":"Receive appointment/viewing reminders (email or SMS)","classification":"planned","note":"Planned for M5. No reminder mechanism exists today."},{"item":"Receive a viewing/appointment confirmation email","classification":"planned","note":"Planned for M5. No confirmation email is sent when a viewing is arranged; the brochure email is the only automated email a couple receives today."},{"item":"Post-booking / nurture follow-up emails to the couple","classification":"planned","note":"Planned for M4. No sequence engine, table, or templates exist yet; the brochure email is the only automated couple email today."},{"item":"Accurate success messaging when the venue has no brochure","classification":"genuinely-missing","note":"The couple always sees 'your brochure is on its way' even when the venue has no active brochure, in which case nothing is sent. Flagged as an open question in doc 10, not yet resolved."},{"item":"Unsubscribe / opt out of emails","classification":"genuinely-missing","note":"No unsubscribe link or opt-out tracking exists. Minor today (one transactional email) but becomes a UK PECR/GDPR requirement once M4 follow-up emails land."},{"item":"Stronger bot protection (e.g. CAPTCHA) on the public form","classification":"unknown","note":"Only a honeypot field plus a per-IP rate limit protect the form; no CAPTCHA. Docs raise this as an explicit pre-launch decision."},{"item":"Discover a venue (browse/search a directory)","classification":"out-of-scope-by-design","note":"VenueFlow is a per-venue CRM, not a marketplace. Couples reach a venue only via a direct link or embedded form."},{"item":"A couple account / portal to view enquiry status, brochure, or viewing","classification":"out-of-scope-by-design","note":"No couple login or portal; the app area is staff-only. The couple experience is intentionally a one-way enquiry plus the brochure email."},{"item":"Tour the venue / put a date on hold / confirm a booking as a couple","classification":"out-of-scope-by-design","note":"Tour happens offline; 'date on hold' and 'wedding booked' are staff-only pipeline stages. No couple-facing software step, contract, deposit, or payment flow by design."},{"item":"Custom enquiry-form fields, file uploads, or multiple date options","classification":"out-of-scope-by-design","note":"The field set is intentionally fixed to maximise conversion. Stated as a deliberate constraint in doc 10."},{"item":"A per-couple download receipt","classification":"out-of-scope-by-design","note":"Downloads are counted in aggregate for the venue, not reported back to the couple. A venue-analytics limitation, by design for MVP."}]},"admin":{"canDoToday":["Sign up, log in (password or magic link), confirm email, and sign out.","Onboard a new venue via the 3-step wizard: name/web-address/timezone/optional logo; a first space with capacity + description; per-weekday hours or skip to Mon-Sat 9-5 defaults.","Resume an interrupted onboarding and get a 14-day trial stamped on the venue automatically.","Work the pipeline: drag opportunity cards across the 8 fixed stages and peek at each card's details.","Manage contacts fully: create, edit, delete, and view a contact's detail page.","View the public enquiry-form link, copy a ready-made iframe embed snippet, and preview the live form.","Upload or replace the single active brochure PDF (owner/admin only, PDF <=10MB) and view its download count + last-downloaded date.","View the dashboard summary after login, and the placeholder Appointments and Reports pages."],"missing":[{"item":"Schedule & manage appointments (viewings/calls against staff availability)","classification":"planned","note":"Planned for M5. The /appointments page is a 'coming in M5' stub; venue_hours captured at onboarding sits unused awaiting this."},{"item":"View reports / analytics","classification":"planned","note":"Planned for M6. The /reports page is a 'coming in M6' stub that reads no data."},{"item":"Edit the nurture sequence content (subjects/bodies/delays/on-off)","classification":"planned","note":"Planned for M4. The 3-step structure is fixed by design; the editable content and the sequence engine are both unbuilt today."},{"item":"Switch between venues (venue switcher UI)","classification":"planned","note":"The setActiveVenue logic is fully built and validated, but no switcher control exists in the UI yet."},{"item":"Set email identity (from-name / reply-to)","classification":"genuinely-missing","note":"Listed as venue-configurable. The settings table exists and is read at send time, but there is no UI to edit it."},{"item":"Edit venue profile / hours / spaces after onboarding","classification":"genuinely-missing","note":"In-scope by design (PRODUCT.md), but there is no post-onboarding screen to edit name, logo, timezone, hours, or spaces. Hours change seasonally, so this is a basic operational need."},{"item":"Manage team members & invites (add/remove staff, assign roles)","classification":"genuinely-missing","note":"The owner/admin/member model exists and is enforced, but there is no invite or member-management screen; roles can only be set during onboarding."},{"item":"Edit the enquiry-form intro/heading copy","classification":"genuinely-missing","note":"Intro/heading copy is listed as venue-configurable but the forms settings page is read-only (link + embed only). Note: the field SET is intentionally fixed (by design)."},{"item":"Unarchive / restore a mis-archived lead","classification":"genuinely-missing","note":"The archived stage has no corresponding unarchive action or UI."},{"item":"Brochure version history, deletion, or storage cleanup","classification":"genuinely-missing","note":"Replaced brochures are deactivated but never deleted; no UI to see past uploads or storage usage."},{"item":"Confirmation/reminder email for staff-booked appointments","classification":"genuinely-missing","note":"Even before M5's self-service booking, a couple gets no email when staff record a viewing today. A simple manual-trigger confirmation is covered by neither a milestone nor a doctrine exclusion."},{"item":"Onboarding rough edges: live team-waiting screen + failed-logo-upload feedback","classification":"genuinely-missing","note":"A team member who arrives before the owner finishes sees a static screen with no live update; a failed logo upload gives no feedback or retry path."},{"item":"Live dashboard metrics","classification":"planned","note":"Planned post-M3. The dashboard shows a getting-started panel today, not live KPIs."},{"item":"Billing / subscription management","classification":"out-of-scope-by-design","note":"VenueFlow is operator-provisioned (TWM provisions and supports venues). A trial date is stamped but never enforced. Self-serve billing would be a new milestone if ever wanted."},{"item":"Rename or add pipeline stages","classification":"out-of-scope-by-design","note":"The 8 stages are the fixed opinionated spine. Renaming labels is a possible post-launch 'maybe'; adding a stage is a firm no (breaks reports, stop-rules, booking automation)."},{"item":"Build new sequences / contact fields / meeting types (workflow & field builders)","classification":"out-of-scope-by-design","note":"Venues tune the content of fixed elements, not build new ones. No sequence builder, contact field builder, or extra meeting types - the opinionated defaults are the anti-GHL moat."},{"item":"Per-venue custom sending domain / DKIM, and brand/visual customisation of the embedded form","classification":"out-of-scope-by-design","note":"All email shares one VenueFlow sending domain (display-name + reply-to configurable per venue). The embed inherits the host site; no colour/font/layout controls and no form field show/hide toggles."}]},"roadmap":["M4 - Nurture sequences: a 3-step automated follow-up after enquiry, with venue-editable subjects, bodies, delays, and on/off per step. No table, function, or UI exists yet.","M5 - Appointments & booking: public self-serve slot picker, appointments table, viewing-vs-call meeting types, availability from venue_hours, calendar integration, confirmation + reminder emails, and automatic pipeline-stage syncing.","M6 - Reports & analytics: conversion funnel, bookings over time, revenue trends, enquiry-to-booking rates, date-range filters, optional CSV/PDF export. The /reports route is a stub today.","Post-M3 - Live dashboard metrics: real KPI cards (leads this month, upcoming tours, conversion rate). The dashboard shows only a getting-started panel today.","Email identity settings UI: the from-name / reply-to table is in the DB and read at send time, but there is no screen to configure it.","Venue-switcher UI: setActiveVenue() is implemented and validated, but no on-screen control calls it.","Invite / team-member management UI and role-based screen gating: the roles model is enforced server-side, but there is no invite flow or role-aware UI restriction yet.","Business-hours editing UI after onboarding: hours are written at onboarding but cannot be changed afterwards.","Contact activity timeline UI: stage changes are recorded by the DB, but no timeline is rendered on the contact detail page.","Stripe billing & trial enforcement: Stripe is referenced and a trial date exists, but no checkout, subscription, or webhook handling is wired (only if self-serve billing is ever wanted).","Nurture opt-out / unsubscribe flow: needed once M4 follow-up emails ship; no suppression list or webhook handler exists yet."],"outOfScopeByDoctrine":["Custom pipeline stages: the 8-stage spine is fixed - adding, removing, or renaming stages is a hard no because reports, stop-rules, and booking automation depend on the fixed state machine.","Sequence builder / workflow editor: venues configure the content of the 3 fixed nurture steps, not build new steps, branching, or additional sequences.","Contact field builder: the contact schema is fixed; the custom field is the escape hatch, not a UI field builder.","Custom pipeline stage labels: deferred as a post-launch gray-zone call, not built.","Additional meeting types beyond viewing + call: the two meeting types are a fixed set.","Per-venue custom sending domain / DKIM: all email shares one VenueFlow sending domain, with display-name and reply-to configurable per venue.","Form field show/hide toggles and visual/brand customisation of the embedded form: the field set is fixed and the embed inherits the host site.","Public form field set customisation: fields are fixed; venues configure only the intro/heading copy.","Couple-facing discovery/marketplace and a couple account/portal: VenueFlow is a per-venue CRM with a one-way enquiry experience by design.","Couple-facing tour, date-hold, and booking-confirmation flows: these happen offline or as staff-only pipeline stages.","Glassmorphism, gradient text, and bounce/elastic animations: a deliberate DESIGN.md rule, not a missing feature."],"worthDeciding":["Business-hours (and profile/spaces) editing after onboarding - a basic operational need with no current screen.","Team-member invites & management screen - the roles model exists but cannot be managed in the app.","Enquiry-form intro/heading copy editing - listed as venue-configurable but the settings page is read-only.","Unsubscribe / opt-out - becomes a UK PECR/GDPR requirement once M4 follow-up emails ship.","CAPTCHA / stronger bot protection on the public enquiry form - flagged as an explicit pre-launch decision.","The 'your brochure is on its way' message when a venue has no brochure - the couple is currently told something untrue.","Unarchive a mis-archived lead - no restore action exists.","Brochure version history / deletion / storage cleanup - replaced files are deactivated but never removed.","Confirmation/reminder email for staff-booked appointments - a manual-trigger version, ahead of M5.","Marketing landing page is incomplete - the 'Get started' buttons have no destination; it is the public front door and is not client-ready.","Onboarding rough edges - the team-member waiting screen does not update live, and a failed logo upload gives no feedback or retry."]};
+
+/* ============================================================
+   State + persistence
+   ============================================================ */
+const STORAGE_KEY = "venueflow-confirmation-v1";
+let STATE = loadState();
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { meta:{}, signoff:{}, accurate:"", items:{}, questions:{}, priorities:{} };
+}
+let saveTimer = null;
+function saveState() {
+  try {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
+    }, 120);
+  } catch (e) {}
+}
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+const STATUS_MAP = {
+  "Built":    { cls:"built",   label:"Built" },
+  "Partial":  { cls:"partial", label:"Partial" },
+  "NotBuilt": { cls:"coming",  label:"Coming soon" }
+};
+const STATUS_LABEL = { "Built":"Built", "Partial":"Partial", "NotBuilt":"Coming soon" };
+
+const CLASS_LABEL = {
+  "planned": "Planned",
+  "genuinely-missing": "Gap",
+  "unknown": "To decide",
+  "out-of-scope-by-design": "By design"
+};
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+// Render `inline code` and **bold** in source text safely.
+function rich(s){
+  let out = esc(s);
+  out = out.replace(/`([^`]+)`/g, '<code style="background:#eef0f6;padding:1px 5px;border-radius:4px;font-size:0.92em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">$1</code>');
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return out;
+}
+
+/* ============================================================
+   Build per-page cards
+   ============================================================ */
+const cardsEl = document.getElementById("cards");
+
+DOCS.docs.forEach(function(doc, di){
+  const st = STATUS_MAP[doc.status] || STATUS_MAP["Built"];
+  const card = document.createElement("section");
+  card.className = "card";
+  card.setAttribute("data-open", di === 0 ? "true" : "false");
+
+  const bodyId = "body-" + doc.n;
+
+  let checklistHTML = doc.checklist.map(function(text, ci){
+    const key = "p" + doc.n + "_c" + ci;
+    return checklistRow(key, text);
+  }).join("");
+
+  let questionsHTML = doc.openQuestions.map(function(text, qi){
+    const key = "p" + doc.n + "_q" + qi;
+    return questionRow(key, text);
+  }).join("");
+
+  card.innerHTML =
+    '<button class="card-head" type="button" aria-expanded="'+(di===0?'true':'false')+'" aria-controls="'+bodyId+'">' +
+      '<span class="num">'+esc(doc.n)+'</span>' +
+      '<span class="htext">' +
+        '<h2>'+esc(doc.title)+'</h2>' +
+        '<span class="where">'+rich(doc.where)+'</span>' +
+      '</span>' +
+      '<span class="chip '+st.cls+'">'+esc(st.label)+'</span>' +
+      '<span class="chevron" aria-hidden="true">▾</span>' +
+    '</button>' +
+    '<div class="card-mini">'+esc(doc.checklist.length)+' things to check · '+esc(doc.openQuestions.length)+' question'+(doc.openQuestions.length===1?'':'s')+'</div>' +
+    '<div class="card-body" id="'+bodyId+'">' +
+      '<div class="summary">'+rich(doc.summary)+'</div>' +
+      '<p class="who-line"><strong>Who uses it:</strong> '+rich(doc.who)+'</p>' +
+      '<div class="section-label">Does each of these match what you want? ('+doc.checklist.length+')</div>' +
+      checklistHTML +
+      (questionsHTML ? '<div class="section-label">A few questions for you ('+doc.openQuestions.length+')</div>' + questionsHTML : '') +
+    '</div>';
+
+  cardsEl.appendChild(card);
+
+  // collapse / expand
+  const head = card.querySelector(".card-head");
+  head.addEventListener("click", function(){
+    const open = card.getAttribute("data-open") === "true";
+    card.setAttribute("data-open", open ? "false" : "true");
+    head.setAttribute("aria-expanded", open ? "false" : "true");
+  });
+});
+
+function checklistRow(key, text){
+  return '' +
+    '<div class="item" data-item="'+key+'">' +
+      '<p class="q">'+rich(text)+'</p>' +
+      '<div class="triple" role="group" aria-label="Your answer">' +
+        '<button type="button" class="opt yes"   data-val="correct"  aria-pressed="false">Correct ✓</button>' +
+        '<button type="button" class="opt no"    data-val="notright" aria-pressed="false">Not right ✗</button>' +
+        '<button type="button" class="opt maybe" data-val="notsure"  aria-pressed="false">Not sure ?</button>' +
+      '</div>' +
+      '<button type="button" class="comment-toggle" data-comment-toggle>+ Add a comment</button>' +
+      '<div class="comment-wrap">' +
+        '<textarea placeholder="Optional — anything to add or correct…" data-comment="'+key+'" aria-label="Comment"></textarea>' +
+      '</div>' +
+    '</div>';
+}
+
+function questionRow(key, text){
+  return '' +
+    '<div class="question">' +
+      '<p class="ql">'+rich(text)+'</p>' +
+      '<textarea data-question="'+key+'" placeholder="Your answer…" aria-label="Your answer"></textarea>' +
+    '</div>';
+}
+
+/* ============================================================
+   Build coverage / roadmap section
+   ============================================================ */
+(function buildCoverage(){
+  // banner
+  const banner = document.getElementById("coverage-banner");
+  banner.innerHTML = '<span class="tick" aria-hidden="true">✓</span>' +
+    '<span><b>Coverage is complete.</b> Every screen that exists in VenueFlow today is documented above — nothing built has been left out of this review.</span>';
+
+  // couple-side coming/roadmap (skip out-of-scope-by-design for the priority list, but show them grouped)
+  document.getElementById("couple-missing").innerHTML = missingGroup(
+    "For couples — what's coming",
+    "Things a couple can't do yet. Tell us if any of these matter to you.",
+    GAPS.couple.missing, "couple"
+  );
+  document.getElementById("admin-missing").innerHTML = missingGroup(
+    "For you & your team — what's coming",
+    "Admin-side features not built yet. Mark the ones you'd want soonest.",
+    GAPS.admin.missing, "admin"
+  );
+
+  // roadmap list
+  const rl = document.getElementById("roadmap-list");
+  rl.innerHTML = GAPS.roadmap.map(function(r){ return '<li>'+rich(r)+'</li>'; }).join("");
+  document.getElementById("roadmap-count").textContent = GAPS.roadmap.length;
+
+  // doctrine list
+  const dl = document.getElementById("doctrine-list");
+  dl.innerHTML = GAPS.outOfScopeByDoctrine.map(function(r){ return '<li>'+rich(r)+'</li>'; }).join("");
+
+  // can-do lists
+  document.getElementById("couple-cando").innerHTML =
+    GAPS.couple.canDoToday.map(function(r){ return '<li>'+rich(r)+'</li>'; }).join("");
+  document.getElementById("admin-cando").innerHTML =
+    GAPS.admin.canDoToday.map(function(r){ return '<li>'+rich(r)+'</li>'; }).join("");
+})();
+
+function missingGroup(title, sub, list, side){
+  let html = '<h3 class="group-title">'+esc(title)+'</h3>' +
+             '<p class="group-sub">'+esc(sub)+'</p>';
+  list.forEach(function(m, i){
+    const key = side + "_m" + i;
+    const cls = m.classification;
+    const tagLabel = CLASS_LABEL[cls] || cls;
+    const showPriority = cls !== "out-of-scope-by-design";
+    html += '<div class="road-item">' +
+      '<div class="ri-top">' +
+        '<span class="ri-title">'+rich(m.item)+'</span>' +
+        '<span class="class-tag '+esc(cls)+'">'+esc(tagLabel)+'</span>' +
+      '</div>' +
+      '<p class="ri-note">'+rich(m.note)+'</p>';
+    if (showPriority) {
+      html += '<div class="priority">' +
+        '<p class="pl">Is this a priority for you?</p>' +
+        '<div class="triple" role="group" aria-label="Priority">' +
+          '<button type="button" class="opt yes"   data-priority="'+key+'" data-pval="yes"   aria-pressed="false">Yes</button>' +
+          '<button type="button" class="opt no"    data-priority="'+key+'" data-pval="no"    aria-pressed="false">No</button>' +
+          '<button type="button" class="opt maybe" data-priority="'+key+'" data-pval="maybe" aria-pressed="false">Maybe</button>' +
+        '</div>' +
+        '<button type="button" class="comment-toggle" data-comment-toggle>+ Add a comment</button>' +
+        '<div class="comment-wrap">' +
+          '<textarea placeholder="Optional — why, or what you\'d want…" data-pcomment="'+key+'" aria-label="Comment"></textarea>' +
+        '</div>' +
+      '</div>';
+    }
+    html += '</div>';
+  });
+  return html;
+}
+
+/* ============================================================
+   Wire up interactions (event delegation)
+   ============================================================ */
+document.body.addEventListener("click", function(e){
+  const t = e.target.closest("button, a");
+  if (!t) return;
+
+  // checklist tri-state
+  if (t.matches(".triple .opt[data-val]")) {
+    const row = t.closest(".item");
+    const key = row.getAttribute("data-item");
+    const val = t.getAttribute("data-val");
+    const cur = STATE.items[key] && STATE.items[key].answer;
+    setTriState(row, t, ".opt[data-val]");
+    if (!STATE.items[key]) STATE.items[key] = {};
+    STATE.items[key].answer = (cur === val) ? "" : val;
+    row.classList.toggle("answered", !!STATE.items[key].answer);
+    saveState(); updateProgress();
+    return;
+  }
+
+  // priority tri-state
+  if (t.matches(".opt[data-priority]")) {
+    const grp = t.closest(".priority");
+    const key = t.getAttribute("data-priority");
+    const val = t.getAttribute("data-pval");
+    const cur = STATE.priorities[key] && STATE.priorities[key].answer;
+    setTriState(grp, t, ".opt[data-priority]");
+    if (!STATE.priorities[key]) STATE.priorities[key] = {};
+    STATE.priorities[key].answer = (cur === val) ? "" : val;
+    saveState(); updateProgress();
+    return;
+  }
+
+  // overall accurate tri-state
+  if (t.matches(".opt[data-accurate]")) {
+    const grp = document.getElementById("accurate-control");
+    const val = t.getAttribute("data-accurate");
+    const cur = STATE.accurate;
+    setTriState(grp, t, ".opt[data-accurate]");
+    STATE.accurate = (cur === val) ? "" : val;
+    saveState(); updateProgress();
+    return;
+  }
+
+  // comment toggle
+  if (t.matches("[data-comment-toggle]")) {
+    const wrap = t.nextElementSibling;
+    const showing = wrap.classList.toggle("show");
+    t.textContent = showing ? "– Hide comment" : "+ Add a comment";
+    if (showing) { const ta = wrap.querySelector("textarea"); if (ta) ta.focus(); }
+    return;
+  }
+
+  // export buttons
+  if (t.id === "btn-download") { e.preventDefault(); downloadJSON(); return; }
+  if (t.id === "btn-copy")     { e.preventDefault(); copySummary(); return; }
+  if (t.id === "btn-print")    { e.preventDefault(); window.print(); return; }
+  if (t.id === "btn-email")    { /* href set live below; allow default */ return; }
+});
+
+function setTriState(scope, btn, sel){
+  scope.querySelectorAll(sel).forEach(function(b){ b.setAttribute("aria-pressed","false"); });
+  const wasPressed = btn.getAttribute("aria-pressed") === "true";
+  btn.setAttribute("aria-pressed", wasPressed ? "false" : "true");
+}
+
+// text inputs (delegated)
+document.body.addEventListener("input", function(e){
+  const el = e.target;
+  if (el.matches("[data-meta]")) { STATE.meta[el.getAttribute("data-meta")] = el.value; mirrorMeta(); saveState(); return; }
+  if (el.matches("[data-signoff]")) { STATE.signoff[el.getAttribute("data-signoff")] = el.value; saveState(); return; }
+  if (el.matches("[data-comment]")) {
+    const key = el.getAttribute("data-comment");
+    if (!STATE.items[key]) STATE.items[key] = {};
+    STATE.items[key].comment = el.value; saveState(); return;
+  }
+  if (el.matches("[data-question]")) { STATE.questions[el.getAttribute("data-question")] = el.value; saveState(); updateProgress(); return; }
+  if (el.matches("[data-priority]")) { /* buttons, not inputs */ return; }
+  if (el.matches("[data-pcomment]")) {
+    const key = el.getAttribute("data-pcomment");
+    if (!STATE.priorities[key]) STATE.priorities[key] = {};
+    STATE.priorities[key].comment = el.value; saveState(); return;
+  }
+});
+
+// keep signoff name in sync with header name if signoff left blank
+function mirrorMeta(){
+  const so = document.querySelector('[data-signoff="name"]');
+  if (so && !so.value && STATE.meta.name) { /* don't overwrite; just leave for user */ }
+}
+
+/* ============================================================
+   Progress
+   ============================================================ */
+function totals(){
+  let totalChecklist = 0;
+  DOCS.docs.forEach(function(d){ totalChecklist += d.checklist.length; });
+  let answered = 0;
+  for (const k in STATE.items) { if (STATE.items[k] && STATE.items[k].answer) answered++; }
+  return { totalChecklist: totalChecklist, answeredChecklist: answered };
+}
+function updateProgress(){
+  const tt = totals();
+  const pct = tt.totalChecklist ? Math.round((tt.answeredChecklist / tt.totalChecklist) * 100) : 0;
+  document.getElementById("progress-bar").style.width = pct + "%";
+  document.getElementById("progress-count").textContent =
+    tt.answeredChecklist + " of " + tt.totalChecklist + " confirmation items answered (" + pct + "%)";
+}
+
+/* ============================================================
+   Restore saved state into the DOM
+   ============================================================ */
+function restore(){
+  // default date = today (only if not saved)
+  const today = new Date().toISOString().slice(0,10);
+  if (!STATE.meta.date) STATE.meta.date = today;
+  if (!STATE.signoff.date) STATE.signoff.date = today;
+
+  // meta
+  document.querySelectorAll("[data-meta]").forEach(function(el){
+    const v = STATE.meta[el.getAttribute("data-meta")];
+    if (v != null) el.value = v;
+  });
+  // signoff
+  document.querySelectorAll("[data-signoff]").forEach(function(el){
+    const v = STATE.signoff[el.getAttribute("data-signoff")];
+    if (v != null) el.value = v;
+  });
+  // accurate
+  if (STATE.accurate) {
+    const b = document.querySelector('.opt[data-accurate="'+STATE.accurate+'"]');
+    if (b) b.setAttribute("aria-pressed","true");
+  }
+  // checklist items
+  document.querySelectorAll(".item").forEach(function(row){
+    const key = row.getAttribute("data-item");
+    const rec = STATE.items[key];
+    if (!rec) return;
+    if (rec.answer) {
+      const b = row.querySelector('.opt[data-val="'+rec.answer+'"]');
+      if (b) b.setAttribute("aria-pressed","true");
+      row.classList.add("answered");
+    }
+    if (rec.comment) {
+      const ta = row.querySelector('[data-comment="'+key+'"]');
+      if (ta) {
+        ta.value = rec.comment;
+        const wrap = ta.closest(".comment-wrap"); wrap.classList.add("show");
+        const tog = wrap.previousElementSibling; if (tog) tog.textContent = "– Hide comment";
+      }
+    }
+  });
+  // questions
+  document.querySelectorAll("[data-question]").forEach(function(ta){
+    const v = STATE.questions[ta.getAttribute("data-question")];
+    if (v != null) ta.value = v;
+  });
+  // priorities
+  document.querySelectorAll(".road-item").forEach(function(row){
+    const btn = row.querySelector(".opt[data-priority]");
+    if (!btn) return;
+    const key = btn.getAttribute("data-priority");
+    const rec = STATE.priorities[key];
+    if (!rec) return;
+    if (rec.answer) {
+      const b = row.querySelector('.opt[data-priority="'+key+'"][data-pval="'+rec.answer+'"]');
+      if (b) b.setAttribute("aria-pressed","true");
+    }
+    if (rec.comment) {
+      const ta = row.querySelector('[data-pcomment="'+key+'"]');
+      if (ta) {
+        ta.value = rec.comment;
+        const wrap = ta.closest(".comment-wrap"); wrap.classList.add("show");
+        const tog = wrap.previousElementSibling; if (tog) tog.textContent = "– Hide comment";
+      }
+    }
+  });
+  updateProgress();
+}
+restore();
+
+/* ============================================================
+   Export — build a structured + human-readable payload
+   ============================================================ */
+function answerLabel(v){
+  return { correct:"Correct ✓", notright:"Not right ✗", notsure:"Not sure ?", "":"— (not answered)" }[v] || "—";
+}
+function priorityLabel(v){
+  return { yes:"Yes", no:"No", maybe:"Maybe", "":"— (not answered)" }[v] || "—";
+}
+function accurateLabel(v){
+  return { yes:"Looks accurate", no:"Some things are off", maybe:"Mostly, with notes", "":"— (not answered)" }[v] || "—";
+}
+
+function buildPayload(){
+  const tt = totals();
+  const pages = DOCS.docs.map(function(doc){
+    return {
+      n: doc.n,
+      title: doc.title,
+      status: STATUS_LABEL[doc.status] || doc.status,
+      checklist: doc.checklist.map(function(text, ci){
+        const key = "p"+doc.n+"_c"+ci;
+        const rec = STATE.items[key] || {};
+        return { item: text, answer: rec.answer || "", answerLabel: answerLabel(rec.answer||""), comment: rec.comment || "" };
+      }),
+      questions: doc.openQuestions.map(function(text, qi){
+        const key = "p"+doc.n+"_q"+qi;
+        return { question: text, answer: STATE.questions[key] || "" };
+      })
+    };
+  });
+
+  const couplePriorities = GAPS.couple.missing.map(function(m, i){
+    const key = "couple_m"+i; const rec = STATE.priorities[key] || {};
+    return { item: m.item, classification: m.classification, priority: rec.answer || "", priorityLabel: priorityLabel(rec.answer||""), comment: rec.comment || "" };
+  });
+  const adminPriorities = GAPS.admin.missing.map(function(m, i){
+    const key = "admin_m"+i; const rec = STATE.priorities[key] || {};
+    return { item: m.item, classification: m.classification, priority: rec.answer || "", priorityLabel: priorityLabel(rec.answer||""), comment: rec.comment || "" };
+  });
+
+  return {
+    document: "VenueFlow — Functionality Confirmation",
+    submittedBy: STATE.meta.name || "",
+    venue: STATE.meta.venue || "",
+    date: STATE.meta.date || "",
+    progress: { answered: tt.answeredChecklist, total: tt.totalChecklist },
+    pages: pages,
+    roadmapPriorities: { couple: couplePriorities, admin: adminPriorities },
+    signoff: {
+      overallAccurate: STATE.accurate || "",
+      overallAccurateLabel: accurateLabel(STATE.accurate||""),
+      comments: STATE.signoff.comments || "",
+      name: STATE.signoff.name || STATE.meta.name || "",
+      date: STATE.signoff.date || STATE.meta.date || ""
+    },
+    exportedAt: new Date().toISOString()
+  };
+}
+
+function safeFileSlug(){
+  const v = (STATE.meta.venue || "venue").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "venue";
+  const d = (STATE.meta.date || new Date().toISOString().slice(0,10));
+  return "venueflow-confirmation-" + v + "-" + d;
+}
+
+function downloadJSON(){
+  const data = buildPayload();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = safeFileSlug() + ".json";
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+  toast("Responses downloaded — now email the file back to us.");
+}
+
+function buildSummaryText(){
+  const p = buildPayload();
+  const L = [];
+  L.push("VENUEFLOW — FUNCTIONALITY CONFIRMATION");
+  L.push("=======================================");
+  L.push("Venue:  " + (p.venue || "—"));
+  L.push("From:   " + (p.submittedBy || "—"));
+  L.push("Date:   " + (p.date || "—"));
+  L.push("Progress: " + p.progress.answered + " of " + p.progress.total + " confirmation items answered");
+  L.push("");
+  p.pages.forEach(function(pg){
+    L.push("");
+    L.push("---------------------------------------");
+    L.push(pg.n + ". " + pg.title + "   [" + pg.status + "]");
+    L.push("---------------------------------------");
+    pg.checklist.forEach(function(c){
+      L.push("  [" + c.answerLabel + "] " + c.item);
+      if (c.comment) L.push("        note: " + c.comment);
+    });
+    const answeredQs = pg.questions.filter(function(q){ return q.answer; });
+    if (answeredQs.length) {
+      L.push("  Questions:");
+      pg.questions.forEach(function(q){
+        if (q.answer) { L.push("    Q: " + q.question); L.push("    A: " + q.answer); }
+      });
+    }
+  });
+  L.push("");
+  L.push("=======================================");
+  L.push("WHAT TO BUILD NEXT — PRIORITIES");
+  L.push("=======================================");
+  function dumpPri(title, arr){
+    const answered = arr.filter(function(x){ return x.priority || x.comment; });
+    if (!answered.length) return;
+    L.push("");
+    L.push(title + ":");
+    answered.forEach(function(x){
+      L.push("  [" + x.priorityLabel + "] " + x.item);
+      if (x.comment) L.push("        note: " + x.comment);
+    });
+  }
+  dumpPri("For couples", p.roadmapPriorities.couple);
+  dumpPri("For you & your team", p.roadmapPriorities.admin);
+  L.push("");
+  L.push("=======================================");
+  L.push("SIGN-OFF");
+  L.push("=======================================");
+  L.push("Overall: " + p.signoff.overallAccurateLabel);
+  if (p.signoff.comments) { L.push("Comments: " + p.signoff.comments); }
+  L.push("Signed:  " + (p.signoff.name || "—") + "   Date: " + (p.signoff.date || "—"));
+  return L.join("\n");
+}
+
+function copySummary(){
+  const text = buildSummaryText();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function(){
+      toast("Summary copied to clipboard.");
+    }, function(){ fallbackCopy(text); });
+  } else { fallbackCopy(text); }
+}
+function fallbackCopy(text){
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { document.execCommand("copy"); toast("Summary copied to clipboard."); }
+  catch(e){ toast("Couldn't copy automatically — please select and copy manually."); }
+  document.body.removeChild(ta);
+}
+
+function updateEmailLink(){
+  const venue = STATE.meta.venue || "our venue";
+  const name = STATE.meta.name || "";
+  const subject = "VenueFlow confirmation — " + venue;
+  const body =
+    "Hi team,\n\n" +
+    "Here are my VenueFlow functionality confirmation responses for " + venue + ".\n\n" +
+    "IMPORTANT: Please make sure you've attached the downloaded file " +
+    "(\"" + safeFileSlug() + ".json\") to this email before sending — click " +
+    "\"Download my responses\" on the page first if you haven't.\n\n" +
+    "Thanks,\n" + (name || "");
+  const href = "mailto:marketing@theweddingmarketers.com" +
+    "?subject=" + encodeURIComponent(subject) +
+    "&body=" + encodeURIComponent(body);
+  document.getElementById("btn-email").setAttribute("href", href);
+}
+// keep the mailto fresh
+document.body.addEventListener("input", function(e){
+  if (e.target.matches('[data-meta="venue"], [data-meta="name"]')) updateEmailLink();
+});
+updateEmailLink();
+
+/* ============================================================
+   Toast
+   ============================================================ */
+let toastTimer = null;
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove("show"); }, 3200);
+}
+</script>
+</body>
+</html>

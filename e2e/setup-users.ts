@@ -4,6 +4,40 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import type { Page } from "@playwright/test";
+
+/**
+ * Hydration-safe sign-in for E2E specs. The login form is a client component;
+ * if the submit button is clicked before React hydrates, the browser performs a
+ * native GET (credentials land in the URL) and stays on /login. We detect that
+ * and retry once against the now-hydrated page.
+ */
+export async function signIn(
+  page: Page,
+  user: { email: string; password: string },
+) {
+  async function attempt() {
+    await page.getByLabel("Email").fill(user.email);
+    await page.getByLabel("Password").fill(user.password);
+    await page.getByRole("button", { name: "Sign in" }).click();
+  }
+  await page.goto("/login");
+  await page.waitForLoadState("networkidle");
+  await attempt();
+  try {
+    await page.waitForURL((u) => !u.pathname.startsWith("/login"), {
+      timeout: 12_000,
+    });
+  } catch {
+    // Pre-hydration native GET — reload (now hydrated) and try once more.
+    await page.goto("/login");
+    await page.waitForLoadState("networkidle");
+    await attempt();
+    await page.waitForURL((u) => !u.pathname.startsWith("/login"), {
+      timeout: 30_000,
+    });
+  }
+}
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;

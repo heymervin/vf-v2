@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,9 +18,22 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-export default function SignupPage() {
+// Only /accept-invite/* is allowed as a post-auth redirect to prevent open-redirect.
+function safeNext(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (/^\/accept-invite\/[0-9a-f-]+$/i.test(decoded)) return decoded;
+  } catch {
+    // ignore malformed %xx
+  }
+  return null;
+}
+
+function SignupForm() {
   const router = useRouter();
-  const supabase = createClient();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
 
   const [serverError, setServerError] = useState<string | null>(null);
   const [confirmationPending, setConfirmationPending] = useState(false);
@@ -35,15 +48,20 @@ export default function SignupPage() {
 
   async function onSubmit(values: SignupInput) {
     setServerError(null);
+    const supabase = createClient();
 
     const origin =
       typeof window !== "undefined" ? window.location.origin : "";
+
+    const callbackUrl = next
+      ? `${origin}/callback?next=${encodeURIComponent(next)}`
+      : `${origin}/callback`;
 
     const { data, error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
       options: {
-        emailRedirectTo: `${origin}/callback`,
+        emailRedirectTo: callbackUrl,
       },
     });
 
@@ -54,7 +72,8 @@ export default function SignupPage() {
 
     // If Supabase email confirmation is disabled, a session is returned immediately
     if (data.session) {
-      router.push("/onboarding");
+      // Invited users go back to the invite link; new owners go to onboarding
+      router.push(next ?? "/onboarding");
       router.refresh();
       return;
     }
@@ -166,7 +185,7 @@ export default function SignupPage() {
         <p className="mt-5 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link
-            href="/login"
+            href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
             Sign in
@@ -174,5 +193,13 @@ export default function SignupPage() {
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
   );
 }

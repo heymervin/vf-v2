@@ -193,14 +193,16 @@ function SidebarContent({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="w-52">
-            <DropdownMenuItem
-              className="cursor-pointer text-destructive focus:text-destructive"
-              onSelect={async () => {
-                await signOut();
-              }}
-            >
-              <LogOut className="size-4" />
-              Sign out
+            <DropdownMenuItem asChild className="cursor-pointer text-destructive focus:text-destructive p-0">
+              <form action={signOut} className="w-full">
+                <button
+                  type="submit"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-sm text-destructive"
+                >
+                  <LogOut className="size-4" />
+                  Sign out
+                </button>
+              </form>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -50,7 +50,10 @@ export function LeadForm({
   embed?: boolean;
 }) {
   const [serverError, setServerError] = React.useState<string | null>(null);
-  const [done, setDone] = React.useState<{ email: string } | null>(null);
+  const [done, setDone] = React.useState<{
+    email: string;
+    brochureSent: boolean;
+  } | null>(null);
   const attribution = React.useRef<Record<string, string>>({});
 
   const {
@@ -74,6 +77,13 @@ export function LeadForm({
   }, []);
 
   const flexible = watch("wedding_date_flexible");
+  // Local-today (YYYY-MM-DD) so the native date picker can't offer past dates.
+  const today = React.useMemo(() => {
+    const n = new Date();
+    return new Date(n.getTime() - n.getTimezoneOffset() * 60_000)
+      .toISOString()
+      .slice(0, 10);
+  }, []);
 
   async function onSubmit(values: LeadFormValues) {
     setServerError(null);
@@ -85,7 +95,7 @@ export function LeadForm({
       setServerError(result.error);
       return;
     }
-    setDone({ email: values.email });
+    setDone({ email: values.email, brochureSent: result.data.brochureSent });
   }
 
   if (done) {
@@ -100,13 +110,24 @@ export function LeadForm({
           <Check className="size-7 text-foreground" />
         </div>
         <h2 className="text-2xl font-bold tracking-[-0.022em] text-foreground">
-          Thank you — your brochure is on its way
+          {done.brochureSent
+            ? "Thank you — your brochure is on its way"
+            : "Thank you — we’ve received your enquiry"}
         </h2>
         <p className="mx-auto mt-3 max-w-sm text-base leading-relaxed text-muted-foreground">
-          We&apos;ve sent your {venueName} brochure to{" "}
-          <span className="font-medium text-foreground">{done.email}</span>. It
-          should land in your inbox within a few minutes. We&apos;ll be in touch
-          soon to help plan your day.
+          {done.brochureSent ? (
+            <>
+              We&apos;ve sent your {venueName} brochure to{" "}
+              <span className="font-medium text-foreground">{done.email}</span>.
+              Check your inbox shortly — it should arrive within a few minutes.
+              We&apos;ll be in touch soon to help plan your day.
+            </>
+          ) : (
+            <>
+              We&apos;ve received your {venueName} enquiry and will be in touch
+              soon to help plan your day.
+            </>
+          )}
         </p>
       </div>
     );
@@ -169,21 +190,24 @@ export function LeadForm({
         <Field htmlFor="phone" label="Phone">
           <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" className="text-base" {...register("phone")} />
         </Field>
-        <Field htmlFor="guest_count" label="Approx. guests">
+        <Field htmlFor="guest_count" label="Approx. guests" error={errors.guest_count?.message}>
           <Input
             id="guest_count"
             type="number"
             min={0}
             inputMode="numeric"
             className="text-base"
-            {...register("guest_count")}
+            {...register("guest_count", {
+              pattern: { value: /^\d*$/, message: "Whole number only." },
+            })}
+            aria-invalid={!!errors.guest_count}
           />
         </Field>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field htmlFor="wedding_date" label="Wedding date">
-          <Input id="wedding_date" type="date" className="text-base" {...register("wedding_date")} />
+          <Input id="wedding_date" type="date" min={today} className="text-base" {...register("wedding_date")} />
         </Field>
         <div className="flex items-end pb-1">
           <label className="flex cursor-pointer items-center gap-2.5 text-base text-foreground">

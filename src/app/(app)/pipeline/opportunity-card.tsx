@@ -24,6 +24,8 @@ interface CardProps {
   opportunity: BoardOpportunity;
   overlay?: boolean;
   celebrating?: boolean;
+  /** When true, useSortable is disabled (e.g. while a search/filter is active). */
+  dragDisabled?: boolean;
   onSelect?: (opp: BoardOpportunity) => void;
   onMoveToStage?: (id: string, toStage: PipelineStage) => void;
 }
@@ -39,7 +41,7 @@ function CardBody({
   style,
   attributes,
   listeners,
-}: CardProps & {
+}: Omit<CardProps, "dragDisabled"> & {
   dragging?: boolean;
   setNodeRef?: (el: HTMLElement | null) => void;
   style?: React.CSSProperties;
@@ -139,7 +141,7 @@ function CardBody({
 
 function SortableCard(props: CardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: props.opportunity.id });
+    useSortable({ id: props.opportunity.id, disabled: props.dragDisabled });
 
   return (
     <CardBody

@@ -27,22 +27,21 @@ export default async function DashboardPage() {
           Dashboard
         </h1>
         <p className="mt-5 text-sm text-muted-foreground">
-          Welcome to {venueName}. Here is where your pipeline activity will live.
+          Welcome to {venueName}.
         </p>
       </div>
 
       {/* Single empty-state panel — teaches the next step */}
       <div className="rounded-xl border border-border bg-card p-8 shadow-sm max-w-xl">
         <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          Getting started
+          Quick links
         </p>
         <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
-          Your pipeline starts with an enquiry form
+          Your enquiry form drives the pipeline
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          Set up your form once and share it on your website. Every enquiry that
-          comes in will appear in your pipeline automatically, tagged with its
-          source so you can see what is working.
+          Share your form link or embed it on your website. Every submission
+          lands in your pipeline automatically, tagged with its source.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           {/* Pink CTA → settings (forms at M3) */}

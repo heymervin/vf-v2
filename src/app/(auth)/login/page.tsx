@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,9 +18,32 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-export default function LoginPage() {
+const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
+  missing_code: "That sign-in link has expired or was already used. Please request a new one.",
+  callback_failed: "Something went wrong completing your sign-in. Please try again.",
+  no_user: "We couldn't find an account linked to that sign-in. Please try a different method.",
+};
+
+// Only /accept-invite/* is allowed as a post-auth redirect to prevent open-redirect.
+function safeNext(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (/^\/accept-invite\/[0-9a-f-]+$/i.test(decoded)) return decoded;
+  } catch {
+    // ignore malformed %xx
+  }
+  return null;
+}
+
+function LoginForm() {
   const router = useRouter();
-  const supabase = createClient();
+  const searchParams = useSearchParams();
+  const callbackError = searchParams.get("error");
+  const callbackErrorMessage = callbackError
+    ? (CALLBACK_ERROR_MESSAGES[callbackError] ?? "Sign-in failed. Please try again.")
+    : null;
+  const next = safeNext(searchParams.get("next"));
 
   const [serverError, setServerError] = useState<string | null>(null);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
@@ -37,6 +60,7 @@ export default function LoginPage() {
 
   async function onSubmit(values: LoginInput) {
     setServerError(null);
+    const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
       email: values.email,
       password: values.password,
@@ -45,7 +69,7 @@ export default function LoginPage() {
       setServerError(error.message);
       return;
     }
-    router.push("/dashboard");
+    router.push(next ?? "/dashboard");
     router.refresh();
   }
 
@@ -57,10 +81,16 @@ export default function LoginPage() {
     }
     setMagicLinkPending(true);
     setServerError(null);
+    const supabase = createClient();
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const callbackUrl = next
+      ? `${origin}/callback?next=${encodeURIComponent(next)}`
+      : `${origin}/callback`;
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         shouldCreateUser: false,
+        emailRedirectTo: callbackUrl,
       },
     });
     setMagicLinkPending(false);
@@ -108,6 +138,13 @@ export default function LoginPage() {
 
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+          {/* Callback error (e.g. expired/used magic link) */}
+          {callbackErrorMessage && (
+            <p className="text-sm text-destructive" role="alert">
+              {callbackErrorMessage}
+            </p>
+          )}
+
           {/* Server-level error */}
           {serverError && (
             <p className="text-sm text-destructive" role="alert">
@@ -167,7 +204,7 @@ export default function LoginPage() {
         <p className="mt-5 text-center text-sm text-muted-foreground">
           No account?{" "}
           <Link
-            href="/signup"
+            href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
             Create one
@@ -175,5 +212,13 @@ export default function LoginPage() {
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

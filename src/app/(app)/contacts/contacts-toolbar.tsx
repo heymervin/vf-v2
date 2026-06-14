@@ -15,6 +15,13 @@ import {
 import { STAGES } from "@/lib/pipeline";
 import { ContactFormSheet } from "./contact-form-sheet";
 
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
+  { value: "name", label: "Name A–Z" },
+  { value: "wedding_date", label: "Wedding date" },
+] as const;
+
 const ALL = "all";
 
 export function ContactsToolbar({ sources }: { sources: string[] }) {
@@ -48,8 +55,12 @@ export function ContactsToolbar({ sources }: { sources: string[] }) {
 
   const stage = params.get("stage") ?? ALL;
   const source = params.get("source") ?? ALL;
+  const sort = params.get("sort") ?? ALL;
   const hasFilters =
-    !!params.get("q") || !!params.get("stage") || !!params.get("source");
+    !!params.get("q") ||
+    !!params.get("stage") ||
+    !!params.get("source") ||
+    !!params.get("sort");
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -96,6 +107,21 @@ export function ContactsToolbar({ sources }: { sources: string[] }) {
           </SelectContent>
         </Select>
       )}
+
+      {/* Sort */}
+      <Select value={sort} onValueChange={(v) => setParam("sort", v)}>
+        <SelectTrigger className="w-[150px]" aria-label="Sort contacts">
+          <SelectValue placeholder="Newest" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>Newest</SelectItem>
+          {SORT_OPTIONS.slice(1).map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {hasFilters && (
         <Button

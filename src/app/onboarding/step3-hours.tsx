@@ -29,11 +29,13 @@ const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 interface Step3Props {
   venueId: string;
   initialRows?: HourRow[];
+  /** Called whenever the user edits hours, so the wizard can persist state across back/forward. */
+  onHoursChange?: (rows: HourRow[]) => void;
   onComplete: () => void;
   onBack: () => void;
 }
 
-export function Step3Hours({ venueId, initialRows, onComplete, onBack }: Step3Props) {
+export function Step3Hours({ venueId, initialRows, onHoursChange, onComplete, onBack }: Step3Props) {
   const [rows, setRows] = React.useState<HourRow[]>(
     initialRows ?? DEFAULT_HOURS,
   );
@@ -44,9 +46,11 @@ export function Step3Hours({ venueId, initialRows, onComplete, onBack }: Step3Pr
   const isBusy = isSubmitting || isSkipping;
 
   function updateRow(weekday: number, patch: Partial<HourRow>) {
-    setRows((prev) =>
-      prev.map((r) => (r.weekday === weekday ? { ...r, ...patch } : r)),
-    );
+    setRows((prev) => {
+      const next = prev.map((r) => (r.weekday === weekday ? { ...r, ...patch } : r));
+      onHoursChange?.(next);
+      return next;
+    });
   }
 
   function getRow(weekday: number): HourRow {

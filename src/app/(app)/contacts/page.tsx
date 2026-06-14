@@ -28,10 +28,13 @@ interface ContactListRow {
   opportunities: { id: string; stage: PipelineStage; archived_at: string | null }[];
 }
 
+const SORT_KEYS = ["newest", "oldest", "name", "wedding_date"] as const;
+type SortKey = (typeof SORT_KEYS)[number];
+
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; stage?: string; source?: string }>;
+  searchParams: Promise<{ q?: string; stage?: string; source?: string; sort?: string }>;
 }) {
   const ctx = await getTenantContext();
   if (!ctx.ok) redirect("/login");
@@ -43,6 +46,10 @@ export default async function ContactsPage({
       ? (sp.stage as PipelineStage)
       : null;
   const source = sp.source ?? "";
+  const sort: SortKey =
+    sp.sort && SORT_KEYS.includes(sp.sort as SortKey)
+      ? (sp.sort as SortKey)
+      : "newest";
 
   const supabase = await createClient();
 
@@ -52,6 +59,19 @@ export default async function ContactsPage({
     ? "opportunities!inner(id, stage, archived_at)"
     : "opportunities(id, stage, archived_at)";
 
+  // Build the order clause from the ?sort= param.
+  const orderClause: { column: string; ascending: boolean; nullsFirst?: boolean }[] =
+    sort === "oldest"
+      ? [{ column: "created_at", ascending: true }]
+      : sort === "name"
+        ? [
+            { column: "last_name", ascending: true, nullsFirst: false },
+            { column: "first_name", ascending: true },
+          ]
+        : sort === "wedding_date"
+          ? [{ column: "wedding_date", ascending: true, nullsFirst: false }]
+          : [{ column: "created_at", ascending: false }]; // "newest" default
+
   let query = supabase
     .from("contacts")
     .select(
@@ -59,8 +79,14 @@ export default async function ContactsPage({
     )
     .eq("venue_id", ctx.venue.id)
     .is("opportunities.archived_at", null)
-    .order("created_at", { ascending: false })
     .limit(500);
+
+  for (const o of orderClause) {
+    query = query.order(o.column, {
+      ascending: o.ascending,
+      ...(o.nullsFirst !== undefined ? { nullsFirst: o.nullsFirst } : {}),
+    });
+  }
 
   if (q) {
     query = query.or(
@@ -84,7 +110,7 @@ export default async function ContactsPage({
     new Set((sourceRows ?? []).map((r) => r.source).filter((s): s is string => !!s)),
   ).sort();
 
-  const isFiltered = !!q || !!stage || !!source;
+  const isFiltered = !!q || !!stage || !!source || sort !== "newest";
 
   return (
     <div className="mx-auto max-w-[1400px]">
@@ -93,13 +119,20 @@ export default async function ContactsPage({
           Contacts
         </h1>
         <p className="mt-5 text-sm text-muted-foreground">
-          Every enquiry for {ctx.venue.name}, with its current pipeline stage.
+          Contacts for {ctx.venue.name}, with their current pipeline stage.
         </p>
       </div>
 
       <div className="mb-5">
         <ContactsToolbar sources={sources} />
       </div>
+
+      {contacts.length === 500 && (
+        <p className="mb-4 text-sm text-muted-foreground">
+          Showing the 500 most recent contacts. Use search or filters to find
+          specific records.
+        </p>
+      )}
 
       {contacts.length === 0 ? (
         <EmptyState filtered={isFiltered} />

@@ -18,8 +18,9 @@ const moveSchema = z.object({
  * the transition to stage_events automatically. RLS + the explicit venue_id
  * filter both scope the write to the caller's venue.
  *
- * Does NOT revalidate /pipeline — the board updates optimistically and stays
- * authoritative for the session; a hard reload re-fetches from the DB.
+ * Revalidates /pipeline so the next navigation/refresh re-fetches from the DB
+ * (picking up another staffer's moves). The board still updates optimistically
+ * for the acting user and reconciles from the fresh prop on re-render.
  */
 export async function moveOpportunity(
   input: unknown,
@@ -46,7 +47,9 @@ export async function moveOpportunity(
   }
   if (!data) return err("Opportunity not found.");
 
-  // Stage shown on contact surfaces — keep those fresh (board is optimistic).
+  // Keep the board fresh for other staffers (the acting user is optimistic) and
+  // the stage shown on contact surfaces in sync.
+  revalidatePath("/pipeline");
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${data.contact_id}`);
   return ok({ id: data.id });

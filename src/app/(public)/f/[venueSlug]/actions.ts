@@ -22,15 +22,15 @@ const RATE_LIMIT_WINDOW_MIN = 10;
 export async function submitLeadForm(
   slug: string,
   input: unknown,
-): Promise<ActionResult<void>> {
+): Promise<ActionResult<{ brochureSent: boolean }>> {
   const parsed = leadFormSchema.safeParse(input);
   if (!parsed.success) {
     return err(parsed.error.issues[0]?.message ?? "Please check the form.");
   }
   const d = parsed.data;
 
-  // Honeypot tripped → pretend success, drop silently.
-  if (d.website) return ok(undefined);
+  // Honeypot tripped → pretend success, drop silently. No brochure is sent.
+  if (d.website) return ok({ brochureSent: false });
 
   const admin = createAdminClient();
 
@@ -43,11 +43,20 @@ export async function submitLeadForm(
   const venueId = venue.id;
 
   const h = await headers();
+  // Prefer the hosting platform/CDN-provided real client IP (x-real-ip), which a
+  // client cannot forge. Only fall back to the LAST hop of x-forwarded-for — the
+  // leftmost entry is client-controlled and trivially spoofable. A future
+  // hardening step is a platform trusted-IP header + a Turnstile/captcha challenge.
+  const xff = h.get("x-forwarded-for");
   const ip =
-    (h.get("x-forwarded-for")?.split(",")[0] ?? h.get("x-real-ip") ?? "").trim() ||
-    null;
+    (h.get("x-real-ip") ??
+      (xff ? xff.split(",").at(-1) : null) ??
+      "").trim() || null;
 
   // Per-IP rate limit (simple recent-count check; no captcha for MVP).
+  // Only enforced when a client IP is resolvable. In local/dev or any environment
+  // without a proxy that sets x-real-ip, skip the limit rather than block
+  // legitimate submissions — real abuse protection is a future captcha step.
   if (ip) {
     const since = new Date(
       Date.now() - RATE_LIMIT_WINDOW_MIN * 60_000,
@@ -184,5 +193,16 @@ export async function submitLeadForm(
     console.error("lead/captured event send failed:", (e as Error).message);
   }
 
-  return ok(undefined);
+  // A brochure email only goes out if the venue has an active brochure. Report
+  // this so the form can show truthful confirmation copy (no "brochure on its
+  // way" when none will be sent).
+  const { data: brochure } = await admin
+    .from("brochures")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+
+  return ok({ brochureSent: !!brochure });
 }

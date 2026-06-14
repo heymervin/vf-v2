@@ -7,6 +7,7 @@ import { Step1Venue } from "./step1-venue";
 import { Step2Space } from "./step2-space";
 import { Step3Hours } from "./step3-hours";
 import type { HourRow } from "@/lib/zod-schemas/onboarding";
+import { Toaster } from "@/components/ui/sonner";
 
 type Step = 1 | 2 | 3;
 
@@ -43,6 +44,8 @@ export function OnboardingWizard({ initial }: WizardProps) {
   const [step, setStep] = React.useState<Step>(initial.step);
   const [venueId, setVenueId] = React.useState<string | undefined>(initial.venueId);
   const [celebrating, setCelebrating] = React.useState(false);
+  // Lifted hours state — persists across back/forward navigation between steps 2 and 3
+  const [hours, setHours] = React.useState<HourRow[] | undefined>(initial.existingHours);
 
   const copy = BRAND_COPY[step];
 
@@ -71,6 +74,7 @@ export function OnboardingWizard({ initial }: WizardProps) {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
+      <Toaster />
       {/* ------------------------------------------------------------------ */}
       {/* Left panel: brand / encouragement (~40%)                            */}
       {/* ------------------------------------------------------------------ */}
@@ -172,7 +176,8 @@ export function OnboardingWizard({ initial }: WizardProps) {
             {step === 3 && venueId && (
               <Step3Hours
                 venueId={venueId}
-                initialRows={initial.existingHours}
+                initialRows={hours}
+                onHoursChange={setHours}
                 onComplete={handleStep3Complete}
                 onBack={() => setStep(2)}
               />

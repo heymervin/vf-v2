@@ -16,8 +16,18 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { toast } from "sonner";
+import { Search, X } from "lucide-react";
 import { STAGES, type PipelineStage } from "@/lib/pipeline";
 import { sortIndexBetween } from "@/lib/sort-index";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { KanbanColumn } from "./kanban-column";
 import { OpportunityCard } from "./opportunity-card";
 import { OpportunityPeek } from "./opportunity-peek";
@@ -31,15 +41,50 @@ function prefersReducedMotion() {
   );
 }
 
+// Stable signature of the server board: stage → ordered card ids with their
+// stage + sortIndex. Used to detect when fresh server data (a new enquiry,
+// another staffer's move) differs from what we last seeded, so the board can
+// re-sync instead of staying stuck on the initial seed.
+function boardSignature(columns: BoardColumns): string {
+  return STAGES.map(
+    (s) =>
+      `${s.value}:` +
+      columns[s.value].map((o) => `${o.id}@${o.stage}#${o.sortIndex}`).join(","),
+  ).join("|");
+}
+
+/** Normalise a string for case-insensitive substring matching. */
+function norm(s: string | null | undefined): string {
+  return (s ?? "").toLowerCase();
+}
+
+function matchesSearch(opp: BoardOpportunity, query: string): boolean {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  return (
+    norm(opp.name).includes(q) ||
+    norm(opp.partnerName).includes(q) ||
+    norm(opp.email).includes(q)
+  );
+}
+
 export function PipelineBoard({
   initialColumns,
 }: {
   initialColumns: BoardColumns;
 }) {
-  // Server data seeds the board once; the board stays authoritative for the
-  // session (optimistic moves), so we deliberately don't sync prop changes.
+  // Search / filter state — purely presentational, does not affect DnD logic.
+  const [query, setQuery] = React.useState("");
+  const [sourceFilter, setSourceFilter] = React.useState<string>("__all__");
+
+  // Server data seeds the board, but we re-sync when the incoming prop changes
+  // (a new enquiry, another staffer's move) so the board doesn't go stale until
+  // a hard reload. Optimistic moves stay until the server data they wrote lands.
   const [columns, setColumnsState] = React.useState<BoardColumns>(initialColumns);
   const columnsRef = React.useRef(columns);
+  // Signature of the server data we last synced from; lets us detect genuinely
+  // new server data without clobbering on every unrelated re-render.
+  const syncedSignatureRef = React.useRef(boardSignature(initialColumns));
   const setColumns = React.useCallback(
     (updater: BoardColumns | ((prev: BoardColumns) => BoardColumns)) => {
       setColumnsState((prev) => {
@@ -58,6 +103,42 @@ export function PipelineBoard({
   const [peek, setPeek] = React.useState<BoardOpportunity | null>(null);
   const [celebrateId, setCelebrateId] = React.useState<string | null>(null);
   const snapshotRef = React.useRef<BoardColumns | null>(null);
+  // In-flight optimistic moves. While > 0, prop re-sync is held off so an
+  // earlier move's revalidate can't clobber a later still-pending move.
+  const pendingMovesRef = React.useRef(0);
+  // Bumped when a move settles so the re-sync effect re-runs once pending drains
+  // to 0 — otherwise a prop change that arrived mid-move stays stranded until the
+  // next unrelated prop change.
+  const [settleTick, setSettleTick] = React.useState(0);
+
+  // Collect unique non-null source values across all columns for the filter dropdown.
+  const allSources = React.useMemo<string[]>(() => {
+    const seen = new Set<string>();
+    for (const stage of STAGES) {
+      for (const opp of columns[stage.value]) {
+        if (opp.source) seen.add(opp.source);
+      }
+    }
+    return Array.from(seen).sort();
+  }, [columns]);
+
+  const isFiltering = query.trim() !== "" || sourceFilter !== "__all__";
+
+  // Filtered view — only used for rendering. All DnD logic uses `columns` / `columnsRef`.
+  const visibleColumns = React.useMemo<BoardColumns>(() => {
+    if (!isFiltering) return columns;
+    const trimmed = query.trim();
+    return Object.fromEntries(
+      STAGES.map((s) => [
+        s.value,
+        columns[s.value].filter(
+          (opp) =>
+            matchesSearch(opp, trimmed) &&
+            (sourceFilter === "__all__" || opp.source === sourceFilter),
+        ),
+      ]),
+    ) as BoardColumns;
+  }, [columns, query, sourceFilter, isFiltering]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -98,6 +179,18 @@ export function PipelineBoard({
     return null;
   }, [activeId, columns]);
 
+  // Re-sync from the server when the incoming board prop changes by id/stage/
+  // sortIndex. Skipped mid-drag so we never yank the board out from under an
+  // in-progress drag, and while an optimistic move is still in flight so its
+  // own revalidate can't clobber it — the next prop change reconciles instead.
+  React.useEffect(() => {
+    if (activeId || pendingMovesRef.current > 0) return;
+    const next = boardSignature(initialColumns);
+    if (next === syncedSignatureRef.current) return;
+    syncedSignatureRef.current = next;
+    setColumns(initialColumns);
+  }, [initialColumns, activeId, setColumns, settleTick]);
+
   function celebrate(stage: PipelineStage, id: string) {
     if (stage === "wedding_booked" && !prefersReducedMotion()) {
       setCelebrateId(id);
@@ -105,13 +198,26 @@ export function PipelineBoard({
     }
   }
 
-  async function persist(id: string, stage: PipelineStage, sortIndex: number) {
-    const res = await moveOpportunity({ opportunityId: id, stage, sortIndex });
-    if (!res.ok) {
-      if (snapshotRef.current) setColumns(snapshotRef.current);
-      toast.error(res.error);
-    } else {
-      celebrate(stage, id);
+  async function persist(
+    id: string,
+    stage: PipelineStage,
+    sortIndex: number,
+    rollback: BoardColumns,
+  ) {
+    pendingMovesRef.current += 1;
+    try {
+      const res = await moveOpportunity({ opportunityId: id, stage, sortIndex });
+      if (!res.ok) {
+        // Roll back to the snapshot captured for *this* move, so rapid
+        // successive moves don't restore an unrelated (newer) board state.
+        setColumns(rollback);
+        toast.error(res.error);
+      } else {
+        celebrate(stage, id);
+      }
+    } finally {
+      pendingMovesRef.current -= 1;
+      setSettleTick((t) => t + 1);
     }
   }
 
@@ -122,6 +228,7 @@ export function PipelineBoard({
 
   // Cross-column hover: relocate the dragged card into the column under cursor.
   function handleDragOver(event: DragOverEvent) {
+    if (isFiltering) return;
     const { active, over } = event;
     if (!over) return;
     const from = findStage(active.id);
@@ -153,10 +260,14 @@ export function PipelineBoard({
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
     setActiveId(null);
+    if (isFiltering) return;
+    const { active, over } = event;
+    // Pre-drag state, captured at drag start. Copy it into a closure-local so a
+    // later drag overwriting snapshotRef can't corrupt this move's rollback.
+    const snapshot = snapshotRef.current;
     if (!over) {
-      if (snapshotRef.current) setColumns(snapshotRef.current);
+      if (snapshot) setColumns(snapshot);
       return;
     }
 
@@ -181,20 +292,21 @@ export function PipelineBoard({
     const newSort = sortIndexBetween(before, after);
 
     // No-op guard: same column, same position, unchanged from snapshot.
-    const snap = snapshotRef.current;
-    const wasSameStage = snap?.[stage].some((o) => o.id === active.id);
+    const wasSameStage = snapshot?.[stage].some((o) => o.id === active.id);
     if (wasSameStage && oldIndex === overIndex) return;
 
     reordered[pos] = { ...reordered[pos], stage, sortIndex: newSort };
     setColumns((prev) => ({ ...prev, [stage]: reordered }));
-    void persist(String(active.id), stage, newSort);
+    if (snapshot) void persist(String(active.id), stage, newSort, snapshot);
   }
 
   // Keyboard / mobile path: move a card to the top of another column.
   function moveToStage(id: string, toStage: PipelineStage) {
     const opp = findOpp(id);
     if (!opp || opp.stage === toStage) return;
-    snapshotRef.current = columnsRef.current;
+    // Per-move snapshot: rapid successive moves each roll back to their own
+    // pre-move state, not a shared (possibly newer) one.
+    const snapshot = columnsRef.current;
     const newSort = sortIndexBetween(
       null,
       columnsRef.current[toStage][0]?.sortIndex ?? null,
@@ -204,11 +316,61 @@ export function PipelineBoard({
       [opp.stage]: prev[opp.stage].filter((o) => o.id !== id),
       [toStage]: [{ ...opp, stage: toStage, sortIndex: newSort }, ...prev[toStage]],
     }));
-    void persist(id, toStage, newSort);
+    void persist(id, toStage, newSort, snapshot);
   }
 
   return (
     <>
+      {/* Search + filter bar */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 px-1">
+        <div className="relative flex-1" style={{ minWidth: "180px", maxWidth: "320px" }}>
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search couples or email…"
+            className="pl-9 text-base h-9"
+            aria-label="Search pipeline"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              aria-label="Clear search"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+
+        {allSources.length > 0 && (
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="h-9 w-[160px] text-sm">
+              <SelectValue placeholder="All sources" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All sources</SelectItem>
+              {allSources.map((src) => (
+                <SelectItem key={src} value={src}>
+                  {src}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {isFiltering && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setQuery(""); setSourceFilter("__all__"); }}
+            className="h-9 text-muted-foreground"
+          >
+            Clear filters
+          </Button>
+        )}
+      </div>
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -221,8 +383,10 @@ export function PipelineBoard({
             <KanbanColumn
               key={stage.value}
               stage={stage.value}
-              items={columns[stage.value]}
+              items={visibleColumns[stage.value]}
+              totalCount={isFiltering ? columns[stage.value].length : undefined}
               celebrateId={celebrateId}
+              dragDisabled={isFiltering}
               onSelect={setPeek}
               onMoveToStage={moveToStage}
             />

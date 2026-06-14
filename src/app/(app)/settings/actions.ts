@@ -39,18 +39,22 @@ export async function uploadBrochure(
     return err("Could not upload, please try again.");
   }
 
-  // One active brochure per venue: deactivate the old one, then insert the new.
-  await supabase
-    .from("brochures")
-    .update({ is_active: false })
-    .eq("venue_id", ctx.venue.id)
-    .eq("is_active", true);
-
-  const { error: insErr } = await supabase
-    .from("brochures")
-    .insert({ venue_id: ctx.venue.id, file_path: path, title, is_active: true });
-  if (insErr) {
-    console.error("brochure insert failed:", insErr.message);
+  // One active brochure per venue: deactivate the old one and insert the new in
+  // a single transaction (RPC) so a failed swap never leaves zero active rows.
+  // Function name typed as `never` until `supabase db push` regenerates types.ts
+  // with the replace_active_brochure entry (same idiom as pipeline/actions.ts).
+  const { error: rpcErr } = await supabase.rpc(
+    "replace_active_brochure" as never,
+    {
+      p_venue_id: ctx.venue.id,
+      p_file_path: path,
+      p_title: title,
+    } as never,
+  );
+  if (rpcErr) {
+    console.error("brochure replace failed:", rpcErr.message);
+    // Remove the just-uploaded object so a failed swap leaves no orphan.
+    await supabase.storage.from("brochures").remove([path]);
     return err("Could not save the brochure, please try again.");
   }
 

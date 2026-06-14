@@ -83,6 +83,13 @@ export async function proxy(request: NextRequest) {
     return redirectWithCookies(new URL("/dashboard", request.url));
   }
 
+  // Gate: authenticated user hitting "/" (marketing/landing page) → redirect to /dashboard.
+  // Anonymous users are intentionally allowed through to see the public landing page.
+  // The app layout already handles the no-venue case (→ /onboarding).
+  if (pathname === "/" && isAuthenticated) {
+    return redirectWithCookies(new URL("/dashboard", request.url));
+  }
+
   // Venue resolution is intentionally NOT done here — handled in getTenantContext()
   return response;
 }
