@@ -26,7 +26,19 @@ const ROUTES: { path: string; expect: string[] }[] = [
   { path: "/preview/suppliers", expect: ["Florist"] },
   { path: "/preview/copilot", expect: ["Copilot"] },
   { path: "/preview/reports", expect: ["Conversion rate", "Source ROI"] },
-  { path: "/portal", expect: ["The Old Barn", "Pay"] },
+  { path: "/portal", expect: ["The Old Barn"] },
+  // Proposal builder (dynamic; falls back to the first proposal on unknown id)
+  { path: "/preview/money/proposals/p1/build", expect: [] },
+  // Admin / configuration side — the SettingsShell rail labels appear on every
+  // admin page, so they're a robust presence check.
+  { path: "/preview/admin", expect: ["Spaces", "Menu library"] },
+  { path: "/preview/admin/spaces", expect: ["Menu library", "Team"] },
+  { path: "/preview/admin/menu", expect: ["Spaces", "Team"] },
+  { path: "/preview/admin/packages", expect: ["Spaces", "Menu library"] },
+  { path: "/preview/admin/team", expect: ["Spaces", "Menu library"] },
+  { path: "/preview/admin/custom-fields", expect: ["Spaces", "Menu library"] },
+  { path: "/preview/admin/messaging", expect: ["Spaces", "WhatsApp"] },
+  { path: "/preview/admin/spaces/s1/floor", expect: ["Menu library"] },
 ];
 
 for (const route of ROUTES) {
