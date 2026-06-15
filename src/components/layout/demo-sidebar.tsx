@@ -17,6 +17,7 @@ import {
   Truck,
   Sparkles,
   BarChart3,
+  Settings,
   ExternalLink,
   Menu,
   X,
@@ -70,6 +71,10 @@ const NAV: NavGroup[] = [
       { label: "AI Copilot", href: "/preview/copilot", icon: Sparkles },
       { label: "Reports", href: "/preview/reports", icon: BarChart3 },
     ],
+  },
+  {
+    label: "Configure",
+    items: [{ label: "Admin & Settings", href: "/preview/admin", icon: Settings }],
   },
 ];
 
