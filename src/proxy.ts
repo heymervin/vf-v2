@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { supabaseUrl, supabaseAnonKey } from "@/lib/supabase/env";
 
 // Protected routes: unauthenticated users are redirected to /login
 const PROTECTED_PREFIXES = [
@@ -28,8 +29,8 @@ export async function proxy(request: NextRequest) {
   // This pattern (createServerClient in proxy) is the canonical @supabase/ssr approach
   // for session refresh on every request.
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl(),
+    supabaseAnonKey(),
     {
       cookies: {
         getAll() {
@@ -61,11 +62,18 @@ export async function proxy(request: NextRequest) {
 
   // getUser() — NOT getSession() — revalidates the token with Supabase Auth server.
   // This is required by the @supabase/ssr pattern to prevent stale session exploitation.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const isAuthenticated = !!user;
+  let isAuthenticated = false;
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    isAuthenticated = !!user;
+  } catch {
+    // No reachable Supabase backend (e.g. placeholder env on a prototype
+    // deploy) — treat as logged out so public routes (/, /preview, /portal)
+    // still render instead of 500-ing.
+    isAuthenticated = false;
+  }
 
   // Helper: build a redirect that carries any Set-Cookie headers token rotation wrote
   // onto `response`. Without this, token-refreshed cookies are dropped on redirects.
