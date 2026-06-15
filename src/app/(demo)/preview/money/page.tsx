@@ -8,6 +8,7 @@ import {
   Send,
   CreditCard,
   ChevronRight,
+  Plus,
   FileText,
 } from "lucide-react";
 
@@ -25,10 +26,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ProposalStatusBadge } from "@/components/status-badges";
 
 import { cn } from "@/lib/utils";
 import {
   WEDDINGS,
+  CONTACTS,
   getContact,
   gbp,
   formatLongDate,
@@ -36,7 +39,9 @@ import {
   proposalTotal,
   type MilestoneStatus,
   type PaymentMilestone,
+  PROPOSALS,
 } from "@/lib/mock";
+import { ProposalsSection } from "./_components/proposals-section";
 
 export const metadata = { title: "Proposals & Payments" };
 
@@ -44,7 +49,6 @@ export const metadata = { title: "Proposals & Payments" };
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** First payment with an active/upcoming status — the "next due" milestone. */
 function nextMilestone(payments: PaymentMilestone[]): PaymentMilestone | null {
   return (
     payments.find((p) =>
@@ -53,7 +57,6 @@ function nextMilestone(payments: PaymentMilestone[]): PaymentMilestone | null {
   );
 }
 
-/** Map contractStatus → Badge variant */
 function contractBadgeVariant(
   status: string,
 ): "success" | "warning" | "outline" {
@@ -62,40 +65,29 @@ function contractBadgeVariant(
   return "outline";
 }
 
-/** Map contractStatus → human label */
 function contractLabel(status: string): string {
   if (status === "signed") return "Signed";
   if (status === "sent") return "Sent";
   return "Draft";
 }
 
-/** Map MilestoneStatus → Badge variant */
 function milestoneBadgeVariant(
   status: MilestoneStatus,
 ): "success" | "warning" | "outline" | "destructive" {
   switch (status) {
-    case "paid":
-      return "success";
-    case "due":
-      return "warning";
-    case "upcoming":
-      return "outline";
-    case "overdue":
-      return "destructive";
+    case "paid": return "success";
+    case "due": return "warning";
+    case "upcoming": return "outline";
+    case "overdue": return "destructive";
   }
 }
 
-/** Human-readable milestone status label */
 function milestoneLabel(status: MilestoneStatus): string {
   switch (status) {
-    case "paid":
-      return "Paid";
-    case "due":
-      return "Due";
-    case "upcoming":
-      return "Upcoming";
-    case "overdue":
-      return "Overdue";
+    case "paid": return "Paid";
+    case "due": return "Due";
+    case "upcoming": return "Upcoming";
+    case "overdue": return "Overdue";
   }
 }
 
@@ -113,23 +105,26 @@ const totalOutstanding = totalBooked - totalCollected;
 
 export default function MoneyPage() {
   const primary = primaryWedding();
-  const c2 = getContact("c2");
-
   const proposalTotal_ = proposalTotal(primary.proposal);
   const paidTotal = primary.payments
     .filter((p) => p.status === "paid")
     .reduce((s, p) => s + p.amount, 0);
-  const paymentGrandTotal = primary.payments.reduce(
-    (s, p) => s + p.amount,
-    0,
-  );
+  const paymentGrandTotal = primary.payments.reduce((s, p) => s + p.amount, 0);
   const paidPct = Math.round((paidTotal / paymentGrandTotal) * 100);
 
   return (
     <div className="mx-auto max-w-[1400px]">
       <PageHeader
         title="Proposals & Payments"
-        subtitle="Track booked value, outstanding balances and every payment milestone — from proposal to final balance."
+        subtitle="Track proposals from draft to accepted, booked value, and every payment milestone."
+        actions={
+          <Button size="sm" asChild>
+            <Link href="/preview/money/proposals/prop3/build">
+              <Plus className="size-3.5" />
+              New proposal
+            </Link>
+          </Button>
+        }
       />
 
       {/* ------------------------------------------------------------------ */}
@@ -196,12 +191,17 @@ export default function MoneyPage() {
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Section 2 — Bookings / proposals table                             */}
+      {/* Section 2 — Proposals workspace (interactive client component)     */}
+      {/* ------------------------------------------------------------------ */}
+      <ProposalsSection proposals={PROPOSALS} contacts={CONTACTS} />
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Section 3 — Bookings / payment schedule table                      */}
       {/* ------------------------------------------------------------------ */}
       <Card className="mb-8">
         <CardHeader className="border-b border-border pb-4">
           <CardTitle className="text-base font-semibold text-foreground">
-            Bookings &amp; proposals
+            Bookings &amp; payment health
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -217,7 +217,6 @@ export default function MoneyPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* Booked weddings */}
               {WEDDINGS.map((w) => {
                 const next = nextMilestone(w.payments);
                 const pct = Math.round((w.paid / w.totalValue) * 100);
@@ -302,74 +301,13 @@ export default function MoneyPage() {
                   </TableRow>
                 );
               })}
-
-              {/* Open proposal — Khan & Reid (c2, date_on_hold) */}
-              {c2 && (
-                <TableRow className="group min-h-[44px] bg-warning/10">
-                  <TableCell>
-                    <Link
-                      href={`/preview/contacts/${c2.id}`}
-                      className="flex items-center gap-2.5 min-h-[44px]"
-                    >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-warning text-warning-foreground text-[11px] font-semibold">
-                        {c2.initials}
-                      </span>
-                      <div>
-                        <p className="font-medium text-foreground transition-colors group-hover:text-primary">
-                          {c2.coupleName}
-                        </p>
-                        <p className="text-xs text-muted-foreground tabular-nums">
-                          {c2.weddingDate ? formatLongDate(c2.weddingDate) : "Date TBC"}
-                        </p>
-                      </div>
-                    </Link>
-                  </TableCell>
-
-                  <TableCell>
-                    <Badge variant="warning">
-                      <FileText className="size-3" />
-                      Proposal sent
-                    </Badge>
-                  </TableCell>
-
-                  <TableCell className="text-right font-medium tabular-nums text-foreground">
-                    {c2.budget ? gbp(c2.budget) : "—"}
-                  </TableCell>
-
-                  <TableCell>
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          £0
-                        </span>
-                        <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                          0%
-                        </span>
-                      </div>
-                      <Progress value={0} className="h-1.5" />
-                    </div>
-                  </TableCell>
-
-                  <TableCell>
-                    <span className="text-sm text-warning-foreground font-medium">
-                      Proposal sent — awaiting decision
-                    </span>
-                  </TableCell>
-
-                  <TableCell>
-                    <Link href={`/preview/contacts/${c2.id}`}>
-                      <ChevronRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Section 3 — Featured payment schedule (primary wedding)            */}
+      {/* Section 4 — Featured payment schedule (primary wedding)            */}
       {/* ------------------------------------------------------------------ */}
       <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 className="text-lg font-semibold tracking-tight text-foreground">
@@ -488,7 +426,6 @@ export default function MoneyPage() {
 
                 return (
                   <li key={pm.id} className="relative flex gap-4 pb-6 last:pb-0">
-                    {/* Connector line */}
                     {!isLast && (
                       <span
                         className="absolute left-[13px] top-7 h-[calc(100%-4px)] w-px bg-border"
@@ -496,7 +433,6 @@ export default function MoneyPage() {
                       />
                     )}
 
-                    {/* Node */}
                     <span
                       className={cn(
                         "relative mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold",
@@ -516,7 +452,6 @@ export default function MoneyPage() {
                       )}
                     </span>
 
-                    {/* Content */}
                     <div className="flex flex-1 flex-wrap items-start justify-between gap-x-4 gap-y-1 pt-0.5">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground">
@@ -548,4 +483,3 @@ export default function MoneyPage() {
     </div>
   );
 }
-

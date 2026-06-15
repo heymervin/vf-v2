@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Users, CheckCircle2, Clock, XCircle, Utensils } from "lucide-react";
+import { ArrowLeft, Users, CheckCircle2, Clock, Table2, Utensils } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { GuestTable, type GuestRow } from "./GuestTable";
@@ -87,13 +87,14 @@ export default function GuestsPage() {
   const totalInvited = guests.length;
   const rsvpYes = guests.filter((g) => g.rsvp === "yes").length;
   const rsvpPending = guests.filter((g) => g.rsvp === "pending").length;
-  const rsvpNo = guests.filter((g) => g.rsvp === "no").length;
+  // P1: "Needs table" — confirmed guests with no table assigned
+  const needsTable = guests.filter((g) => g.rsvp === "yes" && g.table === null).length;
   const dietaryCount = guests.filter((g) => g.dietary.length > 0).length;
 
   // Dietary breakdown
   const dietaryBreakdown = buildDietaryBreakdown(guests);
 
-  // Serialise to the client table shape (avoids passing whole Guest objects)
+  // Serialise to the client table shape — include all new v2 fields
   const tableRows: GuestRow[] = guests.map((g) => ({
     id: g.id,
     name: g.name,
@@ -102,17 +103,20 @@ export default function GuestsPage() {
     rsvp: g.rsvp,
     dietary: g.dietary,
     plusOne: g.plusOne,
+    // v2 fields (all have defaults in the type; mock always populates them)
+    tags: g.tags ?? [],
+    sessionType: g.sessionType ?? "day",
+    rsvpChasedAt: g.rsvpChasedAt ?? null,
+    householdId: g.householdId ?? null,
+    householdName: g.householdName ?? null,
+    plusOneName: g.plusOneName ?? null,
   }));
 
   return (
     <div className="mx-auto max-w-[1400px]">
       <PageHeader
         title="Guest list"
-        subtitle={
-          // Subtitle with link — PageHeader accepts ReactNode for subtitle but types it as string;
-          // we pass a plain string and put the link in the actions slot instead.
-          `${wedding.coupleName} · ${totalInvited} invited · ${wedding.space}`
-        }
+        subtitle={`${wedding.coupleName} · ${totalInvited} invited · ${wedding.space}`}
         actions={
           <Link
             href={`/preview/weddings/${wedding.id}`}
@@ -146,10 +150,11 @@ export default function GuestsPage() {
           icon={Clock}
           colorClass="bg-warning text-warning-foreground"
         />
+        {/* P1: replace "Declined" with "Needs table" */}
         <StatCard
-          label="Declined"
-          value={rsvpNo}
-          icon={XCircle}
+          label="Needs table"
+          value={needsTable}
+          icon={Table2}
           colorClass="bg-muted text-muted-foreground"
         />
       </div>
@@ -199,7 +204,7 @@ export default function GuestsPage() {
       </Card>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Guest table (client — filterable)                                    */}
+      {/* Guest table (client — searchable, filterable, sortable, selectable) */}
       {/* ------------------------------------------------------------------ */}
       <GuestTable guests={tableRows} />
     </div>

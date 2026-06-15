@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { Calendar, Users } from "lucide-react";
+import { Calendar, Users, PoundSterling, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { teamMember, formatLongDate, type Contact } from "@/lib/mock";
+import { teamMember, formatLongDate, gbp, TODAY, type Contact } from "@/lib/mock";
 import { Badge } from "@/components/ui/badge";
 
-/** Score dot — color per DESIGN.md brief. Never color-only: aria-label provides text. */
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+/** Score dot — color per DESIGN.md. Paired with aria-label (never color-only). */
 function ScoreDot({ score }: { score: Contact["score"] }) {
   return (
     <span
@@ -14,13 +16,13 @@ function ScoreDot({ score }: { score: Contact["score"] }) {
         "inline-block size-2 shrink-0 rounded-full",
         score === "hot" && "bg-fun-pink-strong",
         score === "warm" && "bg-warning",
-        score === "cold" && "bg-muted-foreground",
+        score === "cold" && "bg-muted-foreground/60",
       )}
     />
   );
 }
 
-/** Source chip — small muted pill, same pattern as the real opportunity card. */
+/** Source chip — small muted pill. */
 function SourceChip({ source }: { source: string }) {
   return (
     <span className="inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
@@ -29,7 +31,7 @@ function SourceChip({ source }: { source: string }) {
   );
 }
 
-/** Owner avatar — initials in a tiny pill. Falls back to "?" if ownerId missing. */
+/** Owner avatar — initials in a tiny circle. */
 function OwnerChip({ ownerId }: { ownerId: string }) {
   const member = teamMember(ownerId);
   if (!member) return null;
@@ -44,6 +46,36 @@ function OwnerChip({ ownerId }: { ownerId: string }) {
   );
 }
 
+/**
+ * Last-contact recency label. Shows days since last message; highlights
+ * contacts that haven't been touched in 7+ days.
+ */
+function RecencyChip({ lastMessageAt }: { lastMessageAt: string }) {
+  const diff = new Date(TODAY).getTime() - new Date(lastMessageAt).getTime();
+  const days = Math.floor(diff / 86_400_000);
+  const label =
+    days === 0 ? "Today" : days === 1 ? "Yesterday" : `${days}d ago`;
+  const urgent = days >= 7;
+
+  return (
+    <span
+      title={`Last contact: ${label}`}
+      aria-label={`Last contact ${label}`}
+      className={cn(
+        "inline-flex items-center gap-0.5 text-[10px] tabular-nums",
+        urgent
+          ? "font-semibold text-warning-foreground"
+          : "text-muted-foreground/70",
+      )}
+    >
+      <MessageCircle className="size-2.5 shrink-0" aria-hidden />
+      {label}
+    </span>
+  );
+}
+
+// ─── PipelineCard ─────────────────────────────────────────────────────────────
+
 interface PipelineCardProps {
   contact: Contact;
 }
@@ -56,6 +88,8 @@ export function PipelineCard({ contact: c }: PipelineCardProps) {
         "group block rounded-lg border border-border bg-card p-3 shadow-sm",
         "transition-all hover:-translate-y-0.5 hover:shadow-md",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        // Ensure 44px minimum touch target height
+        "min-h-[44px]",
       )}
     >
       {/* Row 1 — couple name + score dot */}
@@ -74,22 +108,40 @@ export function PipelineCard({ contact: c }: PipelineCardProps) {
             {formatLongDate(c.weddingDate)}
           </span>
         ) : (
-          <span className="text-muted-foreground/60">No date set</span>
+          <span className="text-muted-foreground/50">No date set</span>
         )}
         {c.guestCount != null && (
           <span className="inline-flex items-center gap-1 tabular-nums">
             <Users className="size-3 shrink-0" aria-hidden />
-            {c.guestCount} guests
+            {c.guestCount}
           </span>
         )}
       </div>
 
-      {/* Row 3 — source chip + unread indicator + owner */}
+      {/* Row 3 — budget + last-contact recency (P1 additions) */}
+      {(c.budget != null || c.lastMessageAt) && (
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+          {c.budget != null && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] tabular-nums text-muted-foreground/70">
+              <PoundSterling className="size-2.5 shrink-0" aria-hidden />
+              {gbp(c.budget)}
+            </span>
+          )}
+          {c.lastMessageAt && (
+            <RecencyChip lastMessageAt={c.lastMessageAt} />
+          )}
+        </div>
+      )}
+
+      {/* Row 4 — source chip + unread badge + owner */}
       <div className="mt-2 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <SourceChip source={c.source} />
           {c.unread > 0 && (
-            <Badge variant="pink" className="px-1.5 py-0 text-[10px] tabular-nums">
+            <Badge
+              variant="pink"
+              className="px-1.5 py-0 text-[10px] tabular-nums"
+            >
               {c.unread}
             </Badge>
           )}
