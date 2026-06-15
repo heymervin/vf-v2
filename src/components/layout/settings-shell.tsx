@@ -159,7 +159,7 @@ export function SettingsShell({ groups, title, children }: SettingsShellProps) {
       {/* Content pane                                                         */}
       {/* ------------------------------------------------------------------ */}
       <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <div className="mx-auto w-full max-w-[1400px] px-6 py-8">
+        <div className="mx-auto w-full max-w-[1400px] py-6 lg:pl-6">
           {children}
         </div>
       </main>

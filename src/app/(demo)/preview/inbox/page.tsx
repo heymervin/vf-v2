@@ -21,7 +21,7 @@ export default function InboxPage() {
     }));
 
   return (
-    <div className="mx-auto max-w-[1400px]">
+    <div className="mx-auto flex h-full flex-col max-w-[1400px]">
       <PageHeader
         title="Unified Inbox"
         subtitle="Email, SMS and WhatsApp in one threaded view — every couple, every channel, no tab-switching."

@@ -134,13 +134,19 @@ function ConversationRow({
   return (
     <div
       className={cn(
-        "group relative flex w-full min-h-[72px] border-b border-border",
+        "group relative flex w-full min-h-[72px]",
         isSelected
           ? "bg-accent/70 border-l-2 border-l-fun-pink-strong"
           : "border-l-2 border-l-transparent",
       )}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
+      onFocusCapture={() => setShowActions(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setShowActions(false);
+        }
+      }}
     >
       {/* Main clickable area */}
       <button
@@ -201,10 +207,10 @@ function ConversationRow({
             </p>
           </div>
 
-          {/* Row 3: score chip + unread dot */}
+          {/* Row 3: score chip + unread dot (hidden when action tray is showing) */}
           <div className="mt-1.5 flex items-center justify-between gap-2">
             <ScoreChip score={item.score} />
-            {unreadCount > 0 && (
+            {unreadCount > 0 && !showActions && (
               <span className="flex size-5 items-center justify-center rounded-full bg-fun-pink-strong text-[10px] font-bold tabular-nums text-white">
                 {unreadCount}
               </span>
@@ -213,7 +219,7 @@ function ConversationRow({
         </div>
       </button>
 
-      {/* Hover action tray — floats over the right edge */}
+      {/* Hover/focus action tray — floats over the right edge */}
       {showActions && (
         <div
           className={cn(
@@ -429,7 +435,7 @@ function ThreadComposer({
           Via
         </span>
         <Select value={channel} onValueChange={(v) => setChannel(v as Channel)}>
-          <SelectTrigger size="sm" className="w-34">
+          <SelectTrigger size="sm" className="w-32">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -850,7 +856,7 @@ export function InboxClient({ conversations }: InboxClientProps) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-[calc(100dvh-140px)] min-h-[500px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       {/* Two-pane layout inside */}
       <div className="flex flex-1 min-h-0">
         {/* LEFT — conversation list */}

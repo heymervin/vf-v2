@@ -624,8 +624,9 @@ export function FloorplanClient({
   // ── Canvas: size per table ──────────────────────────────────────────────
   // The canvas will be rendered at various widths. Tables need to be large
   // enough to show seat geometry but not so large they overlap on the 4:3 canvas.
-  // 110px is the balance point for the 12-table layout in FLOORPLAN_TABLES.
-  const TABLE_SIZE = 110;
+  // 96px clears the 12-table layout in FLOORPLAN_TABLES at the 640×480 min
+  // canvas: vertically-adjacent rows sit ~20% apart (~96px ≥ table size).
+  const TABLE_SIZE = 96;
 
   return (
     <div className="flex flex-col gap-4">
@@ -713,11 +714,14 @@ export function FloorplanClient({
                       overlay={overlay}
                       sizePx={TABLE_SIZE}
                     />
-                    {/* Pulse ring when a guest is pending — shows which tables can be clicked */}
+                    {/* Pulse ring when a guest is pending — shows which tables can be clicked.
+                        Sized to the round table-plus-seats footprint (~0.72×size) and
+                        centered, so the ring hugs the table edge rather than the square box. */}
                     {isPending && !isSelected && (
                       <span
                         aria-hidden
-                        className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-primary/30 animate-pulse"
+                        className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-primary/30 animate-pulse"
+                        style={{ width: TABLE_SIZE * 0.72, height: TABLE_SIZE * 0.72 }}
                       />
                     )}
                   </div>

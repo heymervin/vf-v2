@@ -135,7 +135,7 @@ function QtyStepper({
           const n = parseInt(e.target.value, 10)
           if (!isNaN(n) && n >= min) onChange(n)
         }}
-        className="h-7 w-14 text-center text-sm tabular-nums px-1"
+        className="h-7 w-16 text-center text-sm tabular-nums px-1"
         aria-label="Quantity"
       />
       <button
@@ -553,7 +553,7 @@ function LineItemEditor({
                 />
 
                 {/* Line total */}
-                <span className="w-20 shrink-0 text-right text-sm font-semibold tabular-nums text-foreground">
+                <span className="w-24 min-w-24 shrink-0 text-right text-sm font-semibold tabular-nums text-foreground">
                   {gbp(lineAmt)}
                 </span>
 
@@ -699,7 +699,7 @@ export function ProposalBuilder({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="hidden sm:block text-sm text-muted-foreground tabular-nums">
+          <span className="text-sm font-semibold tabular-nums text-foreground">
             {gbp(total)}
           </span>
           <Button variant="outline" size="sm" onClick={handlePreview}>

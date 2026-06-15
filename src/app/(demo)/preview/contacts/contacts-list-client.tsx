@@ -11,6 +11,7 @@ import {
   Thermometer,
   Snowflake,
   Users,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ import {
   type LeadScore,
   SMART_LISTS,
   VENUE_TAGS,
+  teamMember,
   gbp,
   formatLongDate,
   formatMessageTime,
@@ -50,32 +52,51 @@ const SCORE_META: Record<LeadScore, { label: string; Icon: React.ElementType; cl
 };
 
 // ---------------------------------------------------------------------------
-// Filter chip sub-component
+// Filter select chip sub-component
 // ---------------------------------------------------------------------------
 
-function FilterChip({
+function FilterSelectChip({
   label,
-  active,
-  onClick,
+  value,
+  onChange,
+  options,
 }: {
   label: string;
-  active: boolean;
-  onClick: () => void;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
 }) {
+  const active = Boolean(value);
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-        "min-h-[28px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-        active
-          ? "bg-foreground text-background"
-          : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
-      )}
-    >
-      {label}
-    </button>
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={`Filter by ${label}`}
+        className={cn(
+          "appearance-none h-8 rounded-full border text-[11px] font-medium",
+          "pl-2.5 pr-6 cursor-pointer transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          active
+            ? "border-primary/40 bg-primary/10 text-foreground"
+            : "border-border bg-transparent text-muted-foreground hover:bg-muted",
+        )}
+      >
+        <option value="">{label}</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className={cn(
+          "pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 size-3.5",
+          active ? "text-primary" : "text-muted-foreground",
+        )}
+        aria-hidden
+      />
+    </div>
   );
 }
 
@@ -297,12 +318,12 @@ export function ContactsListClient({ contacts }: ContactsListClientProps) {
       </div>
       <div className="text-center">
         <p className="text-sm font-semibold text-foreground">
-          {query || stageFilter || sourceFilter || scoreFilter
+          {query || stageFilter || sourceFilter || scoreFilter || ownerFilter
             ? "No contacts match these filters"
             : "No contacts in this view"}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {query || stageFilter || sourceFilter || scoreFilter
+          {query || stageFilter || sourceFilter || scoreFilter || ownerFilter
             ? "Try adjusting your search or clearing the filters."
             : "Change the view or add contacts to get started."}
         </p>
@@ -332,46 +353,49 @@ export function ContactsListClient({ contacts }: ContactsListClientProps) {
         resultCount={filtered.length}
         totalCount={contacts.length}
         actions={
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleBulkExport}>
             <Download className="size-3.5" aria-hidden />
             Export
           </Button>
         }
       >
-        {/* Stage filter chips */}
-        <FilterChip
-          label="All stages"
-          active={!stageFilter}
-          onClick={() => setStageFilter("")}
+        {/* Stage filter */}
+        <FilterSelectChip
+          label="Stage"
+          value={stageFilter}
+          onChange={(v) => setStageFilter(v as PipelineStage | "")}
+          options={STAGES.filter((s) => s.value !== "archived").map((s) => ({ value: s.value, label: s.label }))}
         />
-        {STAGES.filter((s) => s.value !== "archived").map((s) => (
-          <FilterChip
-            key={s.value}
-            label={s.label}
-            active={stageFilter === s.value}
-            onClick={() => setStageFilter(stageFilter === s.value ? "" : s.value)}
-          />
-        ))}
 
         {/* Score filter */}
-        {(["hot", "warm", "cold"] as LeadScore[]).map((score) => (
-          <FilterChip
-            key={score}
-            label={score.charAt(0).toUpperCase() + score.slice(1)}
-            active={scoreFilter === score}
-            onClick={() => setScoreFilter(scoreFilter === score ? "" : score)}
-          />
-        ))}
+        <FilterSelectChip
+          label="Score"
+          value={scoreFilter}
+          onChange={(v) => setScoreFilter(v as LeadScore | "")}
+          options={[
+            { value: "hot", label: "Hot" },
+            { value: "warm", label: "Warm" },
+            { value: "cold", label: "Cold" },
+          ]}
+        />
 
         {/* Source filter */}
-        {sources.map((src) => (
-          <FilterChip
-            key={src}
-            label={src}
-            active={sourceFilter === src}
-            onClick={() => setSourceFilter(sourceFilter === src ? "" : src)}
+        <FilterSelectChip
+          label="Source"
+          value={sourceFilter}
+          onChange={setSourceFilter}
+          options={sources.map((src) => ({ value: src, label: src }))}
+        />
+
+        {/* Owner filter */}
+        {owners.length > 0 && (
+          <FilterSelectChip
+            label="Owner"
+            value={ownerFilter}
+            onChange={setOwnerFilter}
+            options={owners.map((id) => ({ value: id, label: teamMember(id)?.name ?? id }))}
           />
-        ))}
+        )}
       </DataToolbar>
 
       {/* Bulk action bar */}

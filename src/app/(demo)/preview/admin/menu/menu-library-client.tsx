@@ -917,9 +917,9 @@ export function MenuLibraryClient({ initialItems }: MenuLibraryClientProps) {
       </DataToolbar>
 
       {/* Main view */}
-      {view === "table" ? (
+      {items.length > 0 && (view === "table" ? (
         <TableView
-          rows={filteredItems}
+          rows={sortedItems}
           onEdit={handleEdit}
           onArchive={handleArchive}
         />
@@ -929,7 +929,7 @@ export function MenuLibraryClient({ initialItems }: MenuLibraryClientProps) {
           onEdit={handleEdit}
           onArchive={handleArchive}
         />
-      )}
+      ))}
 
       {/* Empty catalogue state — only shown when no items at all */}
       {items.length === 0 && (

@@ -54,7 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Back to app — rendered above the shell rail on desktop, above the mobile bar on mobile */}
-      <div className="flex h-10 shrink-0 items-center border-b border-border bg-muted/40 px-6">
+      <div className="-mx-5 -mt-7 md:-mx-8 flex h-10 shrink-0 items-center border-b border-border bg-muted/40 px-6">
         <Link
           href="/preview"
           className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"

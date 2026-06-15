@@ -24,7 +24,7 @@ export const metadata = { title: "Team & roles — VenueFlow Admin" }
 const EXTENDED_TEAM = [
   ...TEAM.map((m) => ({
     ...m,
-    email: m.email ?? `${m.initials.toLowerCase().replace("", ".")}@theoldbarn.co.uk`,
+    email: m.email ?? `${m.initials.toLowerCase()}@theoldbarn.co.uk`,
     status: (m.status ?? "active") as "active" | "invited" | "disabled",
     roleKey: m.roleKey ?? "member",
     lastActive: m.id === "u1"

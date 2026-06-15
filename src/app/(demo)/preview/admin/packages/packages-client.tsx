@@ -357,7 +357,7 @@ function PackageCard({
         </div>
 
         {/* From price */}
-        <div className="hidden sm:flex flex-col items-end shrink-0 mr-2">
+        <div className="flex flex-col items-end shrink-0 mr-2">
           <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
             from
           </span>

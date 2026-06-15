@@ -93,8 +93,9 @@ const DEFAULT_CAPACITY: Record<TableShape, number> = {
   top: 10,
 };
 
-// Canvas table size: large enough to see shape detail, not so big they overlap.
-const TABLE_SIZE = 100;
+// Canvas table size: large enough to see shape detail, not so big they overlap
+// (matches the seeded floorplan's ~20% row pitch at the 640×480 min canvas).
+const TABLE_SIZE = 96;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -107,18 +108,26 @@ function nextTableNumber(tables: ConfigTable[]): number {
 
 /**
  * Compute a rough grid position for a newly placed table so it doesn't
- * land on top of an existing one. Returns x/y as percentages (0–100).
+ * land on top of an existing one. Returns x/y as percentages (0–100),
+ * always within ~[8%, 92%] so added tables stay visible (the canvas is
+ * overflow-hidden). Packs 6 columns × 4 rows, then wraps back to the top.
  */
 function autoPosition(
   tables: ConfigTable[]
 ): { x: number; y: number } {
-  // Place in rows of 4 across the canvas, starting at (20%, 30%)
   const active = tables.filter((t) => !t._removed);
-  const col = active.length % 4;
-  const row = Math.floor(active.length / 4);
+  const COLS = 6;
+  const ROWS = 4;
+  const X0 = 12;
+  const X1 = 88;
+  const Y0 = 14;
+  const ROW_PITCH = 18;
+  const slot = active.length % (COLS * ROWS);
+  const col = slot % COLS;
+  const row = Math.floor(slot / COLS);
   return {
-    x: 20 + col * 20,
-    y: 30 + row * 22,
+    x: X0 + (col * (X1 - X0)) / (COLS - 1),
+    y: Y0 + row * ROW_PITCH,
   };
 }
 
@@ -309,8 +318,19 @@ function TableRow({
   });
   const formId = useId();
 
-  // Reset form when table changes (e.g. preset applied)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Reset the edit buffer when the underlying table changes (preset applied, or
+  // the row reused for different table data) so the sheet never shows stale
+  // values. Adjust-state-during-render pattern — no effect, no cascading render.
+  const tableKey = `${table.id}|${table.shape}|${table.capacity}|${table.label ?? ""}`;
+  const [prevTableKey, setPrevTableKey] = useState(tableKey);
+  if (prevTableKey !== tableKey) {
+    setPrevTableKey(tableKey);
+    setEditState({
+      shape: table.shape,
+      capacity: String(table.capacity),
+      label: table.label ?? "",
+    });
+  }
 
   return (
     <li

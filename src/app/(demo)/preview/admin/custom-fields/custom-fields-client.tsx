@@ -10,7 +10,6 @@ import {
   Type,
   CalendarDays,
   ListChecks,
-  GripVertical,
   Info,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -205,12 +204,6 @@ function FieldRow({ field, isArchived, onEdit, onArchive, onRestore }: FieldRowP
         isArchived ? "opacity-50" : "hover:-translate-y-px hover:shadow-sm",
       )}
     >
-      {/* Drag handle — decorative in prototype */}
-      <GripVertical
-        className="size-4 shrink-0 text-muted-foreground/40 cursor-grab"
-        aria-hidden
-      />
-
       {/* Type icon */}
       <span
         className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted"
@@ -284,61 +277,6 @@ function FieldRow({ field, isArchived, onEdit, onArchive, onRestore }: FieldRowP
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Edit sheet wrapper — controls form state for editing a specific field
-// ---------------------------------------------------------------------------
-
-interface EditSheetProps {
-  field: CustomField
-  onSave: (id: string, patch: Partial<CustomField>) => void
-}
-
-function EditSheet({ field, onSave }: EditSheetProps) {
-  const initForm = (): FieldFormState => ({
-    label: field.label,
-    type: field.type,
-    options: field.options?.join(", ") ?? "",
-    appliesTo: field.appliesTo,
-  })
-  const [form, setForm] = React.useState<FieldFormState>(initForm)
-
-  // Re-init when a different field is passed in (adjust-during-render pattern,
-  // not an effect — avoids cascading-render lint).
-  const [prevFieldId, setPrevFieldId] = React.useState(field.id)
-  if (field.id !== prevFieldId) {
-    setPrevFieldId(field.id)
-    setForm(initForm())
-  }
-
-  function handleSave() {
-    if (!form.label.trim()) {
-      toast.error("Field label is required")
-      return
-    }
-    onSave(field.id, {
-      label: form.label.trim(),
-      type: form.type,
-      options: form.type === "select" ? deriveOptions(form.options) : undefined,
-      appliesTo: form.appliesTo,
-    })
-  }
-
-  return (
-    <EntitySheet
-      trigger={<span />}
-      title={`Edit: ${field.label}`}
-      description="Changes take effect immediately across all records."
-      saveLabel="Save changes"
-      onSave={handleSave}
-    >
-      <FieldForm
-        form={form}
-        onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
-      />
-    </EntitySheet>
   )
 }
 

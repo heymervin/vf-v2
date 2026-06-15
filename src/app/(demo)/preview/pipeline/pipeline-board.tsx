@@ -651,8 +651,12 @@ export function PipelineBoard({ columnData, totalCount }: PipelineBoardProps) {
         <div
           ref={scrollRef}
           className={cn(
-            // Full-bleed horizontal scroll region
-            "-mx-4 flex-1 overflow-x-auto px-4 pb-6 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8",
+            // Full-bleed horizontal scroll region.
+            // Breakout matches main's padding exactly:
+            //   base -mx-5 / px-5 = 20px (main: px-5)
+            //   md   -mx-8 / px-8 = 32px (main: md:px-8)
+            // No sm step — main has no sm padding override (stays px-5 until md).
+            "-mx-5 flex-1 overflow-x-auto px-5 pb-6 md:-mx-8 md:px-8",
             // Grab cursor for drag-scroll; grabbing while dragging
             "cursor-grab",
             isDragging && "cursor-grabbing select-none",
@@ -714,25 +718,33 @@ export function PipelineBoard({ columnData, totalCount }: PipelineBoardProps) {
 
       {/* ── List view ─────────────────────────────────────────────────────────── */}
       {view === "list" && (
-        <div className="mx-auto w-full max-w-[1400px] px-0">
-          <SortableTable<Contact>
-            columns={columns}
-            rows={sortedForList}
-            getRowId={(c) => c.id}
-            selectable
-            selectedIds={selectedIds}
-            onSelectionChange={setSelectedIds}
-            onRowClick={(c) => router.push(`/preview/contacts/${c.id}`)}
-            stickyHeader
-            emptyState={
-              <EmptyListState hasFilters={Boolean(hasFilters)} />
-            }
-          />
-          {sortedForList.length > 0 && (
-            <p className="mt-2 text-right text-xs text-muted-foreground tabular-nums">
-              {visibleCount} of {totalCount} contacts
-            </p>
-          )}
+        /*
+         * Own scroll context: flex-1 + overflow-y-auto + min-h-0 makes this
+         * div fill remaining height and scroll independently of <main>.
+         * SortableTable's sticky thead (top-0) then sticks to THIS container's
+         * top — never overlapping the DataToolbar that's sticky to <main>'s top.
+         */
+        <div className="flex flex-1 min-h-0 flex-col overflow-y-auto">
+          <div className="mx-auto w-full max-w-[1400px] px-0">
+            <SortableTable<Contact>
+              columns={columns}
+              rows={sortedForList}
+              getRowId={(c) => c.id}
+              selectable
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+              onRowClick={(c) => router.push(`/preview/contacts/${c.id}`)}
+              stickyHeader
+              emptyState={
+                <EmptyListState hasFilters={Boolean(hasFilters)} />
+              }
+            />
+            {sortedForList.length > 0 && (
+              <p className="mt-2 text-right text-xs text-muted-foreground tabular-nums">
+                {visibleCount} of {totalCount} contacts
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>
