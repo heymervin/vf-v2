@@ -161,3 +161,11 @@ When a venue asks for a new toggle, the default answer is still no.
 | **M13** | ⑤ | AI Wedding Copilot · full-lifecycle reporting · event-day mobile mode |
 
 **Sequencing rationale:** comms first (M8) — it benefits *every* contact, not just booked ones, and closes the most painful gap today. Money before event-ops (M9 before M10–11) — highest lock-in per unit of build, and closest to what's already built. The couple portal is **split**: a "pay & sign" link rides on the M9 money work; the full planning portal (M12) lands only once the event objects (M10–11) exist for it to expose.
+
+## Admin / setup surface
+
+Every module above has a **content/identity config side** — the opinionated setup a venue does once. It lives as a grouped settings shell (`/preview/admin` in the prototype; `(app)/settings` in the real app) covering: venue profile & brand · **Spaces** (areas + capacities) · **floor/table templates** per space · **menu library** · **packages & price list** · **team & roles** · **custom fields** (the bounded escape-hatch) · messaging identity (SMS/WhatsApp) · email identity · nurture content · forms · availability · brochure · stage labels · billing. Still no structure/logic builders — the 8 stages, 3-step sequence, and 2 meeting types stay fixed.
+
+## UX spec
+
+Detailed per-module UX/UI improvements, the shared component system, mock-data extensions, and the full admin IA live in **`UX-SPEC.md`** (synthesized from a 14-module design-expert critique + competitor research).
