@@ -53,21 +53,22 @@ export default async function ReportsPage() {
   const ctx = await getTenantContext();
   if (!ctx.ok) redirect("/login");
 
+  const venueId = ctx.venue.id;
+
   // User-scoped client: the report_* views are security_invoker=on, so RLS on
-  // the underlying opportunities/contacts applies to the querying user. The
-  // explicit venue_id filter is belt-and-suspenders on top of that.
+  // the underlying opportunities/contacts applies to the querying user.
   const supabase = await createClient();
 
   const [stageRes, sourceRes] = await Promise.all([
     supabase
       .from("report_leads_by_stage")
       .select("stage, lead_count")
-      .eq("venue_id", ctx.venue.id)
+      .eq("venue_id", venueId)
       .order("lead_count", { ascending: false }),
     supabase
       .from("report_leads_by_source")
       .select("source, lead_count")
-      .eq("venue_id", ctx.venue.id)
+      .eq("venue_id", venueId)
       .order("lead_count", { ascending: false }),
   ]);
 
@@ -76,20 +77,18 @@ export default async function ReportsPage() {
     lead_count: Number(r.lead_count),
   }));
 
-  const sourceData: SourceRow[] = (sourceRes.data ?? []).map((r) => ({
-    source: r.source,
+  const sourceDataForChart: SourceRow[] = (sourceRes.data ?? []).map((r) => ({
+    source: r.source ?? "Unknown",
     lead_count: Number(r.lead_count),
   }));
 
-  // Sort stage data by pipeline order for the bar chart
-  const stageOrdered = [...stageData].sort(
+  const stageOrdered: StageRow[] = [...stageData].sort(
     (a, b) =>
       STAGE_ORDER.indexOf(a.stage as Stage) -
       STAGE_ORDER.indexOf(b.stage as Stage),
   );
 
   const conversionRows = buildConversionRows(stageOrdered);
-
   const totalLeads = stageData.reduce((sum, r) => sum + r.lead_count, 0);
 
   return (
@@ -99,62 +98,63 @@ export default async function ReportsPage() {
           Reports
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Pipeline and source analytics for {ctx.venue.name}.
+          Pipeline analytics for {ctx.venue.name}.
         </p>
       </div>
 
-      {totalLeads === 0 ? (
-        <div className="rounded-xl border border-border bg-card p-8 shadow-sm max-w-xl">
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            No data yet
-          </p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
-            Reports will appear once you have leads
-          </h2>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Add contacts manually or set up your enquiry form so couples can
-            reach you. Stage and source breakdowns will appear here.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {/* Row 1: two charts side by side */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Leads by stage */}
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Pipeline
-              </p>
-              <h2 className="mb-5 text-base font-semibold text-foreground">
-                Leads by stage
-              </h2>
-              <LeadsByStageChart data={stageOrdered} />
-            </div>
-
-            {/* Leads by source */}
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Acquisition
-              </p>
-              <h2 className="mb-5 text-base font-semibold text-foreground">
-                Leads by source
-              </h2>
-              <LeadsBySourceChart data={sourceData} />
-            </div>
-          </div>
-
-          {/* Row 2: conversion table */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="space-y-8">
+        {totalLeads === 0 ? (
+          <div className="rounded-xl border border-border bg-card p-8 shadow-sm max-w-xl">
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              Funnel
+              No pipeline data yet
             </p>
-            <h2 className="mb-5 text-base font-semibold text-foreground">
-              Stage conversion
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
+              Lead funnel will appear once you have leads
             </h2>
-            <ConversionTable rows={conversionRows} />
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              Add contacts manually or set up your enquiry form. Stage and
+              source breakdowns appear here.
+            </p>
           </div>
-        </div>
-      )}
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {/* Leads by stage */}
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  Pipeline
+                </p>
+                <h2 className="mb-5 text-base font-semibold text-foreground">
+                  Leads by stage
+                </h2>
+                <LeadsByStageChart data={stageOrdered} />
+              </div>
+
+              {/* Leads by source */}
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  Acquisition
+                </p>
+                <h2 className="mb-5 text-base font-semibold text-foreground">
+                  Leads by source
+                </h2>
+                <LeadsBySourceChart data={sourceDataForChart} />
+              </div>
+            </div>
+
+            {/* Stage conversion table */}
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Funnel
+              </p>
+              <h2 className="mb-5 text-base font-semibold text-foreground">
+                Stage conversion
+              </h2>
+              <ConversionTable rows={conversionRows} />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
