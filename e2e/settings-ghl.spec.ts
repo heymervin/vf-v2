@@ -48,7 +48,9 @@ test("settings/index: GoHighLevel tile is present and navigates to /settings/ghl
 
     // Navigate to settings index
     await page.goto("/settings");
-    const ghlTile = page.getByRole("link", { name: /GoHighLevel/ });
+    // Settings hub has both a GHL tile and a checklist "Connect GoHighLevel"
+    // link → scope to the first; both navigate to /settings/ghl.
+    const ghlTile = page.getByRole("link", { name: /GoHighLevel/ }).first();
     await expect(ghlTile).toBeVisible();
 
     // Click the tile and confirm navigation
