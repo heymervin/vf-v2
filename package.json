@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:types": "supabase gen types typescript --linked 2>/dev/null | grep -v '^Initialising' > src/lib/supabase/types.ts"
   },
   "dependencies": {
@@ -55,6 +57,7 @@
     "prettier": "^3.8.4",
     "supabase": "^2.105.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.9"
   }
 }
