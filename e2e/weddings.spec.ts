@@ -196,7 +196,7 @@ test("weddings: create wedding manually, appears in index, workspace hub shows d
     const rail = page.getByRole("list", { name: "Planning tools" });
     await expect(rail).toBeVisible();
 
-    for (const label of ["Guests", "Menu", "Run-sheet", "Floor plan", "Suppliers"]) {
+    for (const label of ["Guests", "Menu", "Run sheet", "Floor plan", "Suppliers"]) {
       await expect(
         rail.getByRole("listitem").filter({ hasText: label }),
       ).toBeVisible({ timeout: 5_000 });
