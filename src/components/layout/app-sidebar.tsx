@@ -12,6 +12,8 @@ import {
   LogOut,
   Menu,
   X,
+  Heart,
+  Banknote,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -38,6 +40,8 @@ import { signOut } from "@/app/(app)/actions";
 
 const primaryNav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Weddings", href: "/weddings", icon: Heart },
+  { label: "Money", href: "/money", icon: Banknote },
   { label: "Contacts", href: "/contacts", icon: Users },
   { label: "Pipeline", href: "/pipeline", icon: Kanban },
   { label: "Appointments", href: "/appointments", icon: CalendarDays },
