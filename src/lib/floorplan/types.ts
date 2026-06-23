@@ -1,9 +1,15 @@
 /**
- * Floor-plan geometry types — the real shape of `floor_plans.layout` (jsonb):
- *   { tables: FloorplanTable[], roomElements: RoomElement[] }   (see migration m11).
+ * Neutral type definitions for the VenueFlow floorplan module.
  *
- * Coordinates are percentages of the room canvas (0–100) so the plan renders at any size.
+ * These types describe the canvas coordinate system (0–100 percentage-based)
+ * shared between the floor-plan editor, the wedding floorplan tool, and their
+ * canvas/table components. They are intentionally free of any mock-data
+ * dependency.
  */
+
+// ---------------------------------------------------------------------------
+// Tables
+// ---------------------------------------------------------------------------
 
 export interface FloorplanTable {
   id: string;
@@ -15,6 +21,10 @@ export interface FloorplanTable {
   y: number;
   label: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Fixed room elements
+// ---------------------------------------------------------------------------
 
 export interface RoomElement {
   id: string;

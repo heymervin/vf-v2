@@ -10,27 +10,21 @@ import {
   PartyPopper,
   Zap,
   X,
+  CalendarClock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AskCopilot, type CopilotQuestion } from "@/components/ask-copilot";
-import type { Insight, InsightKind } from "@/lib/copilot/insights";
-import { CopilotAnswerSheet } from "./copilot-answer-sheet";
+import type { CopilotInsight } from "@/lib/copilot/insights";
 
 // ---------------------------------------------------------------------------
-// Suggested questions — categories map to the askCopilot server action router.
+// Re-export type so page.tsx can import from one place
 // ---------------------------------------------------------------------------
 
-const COPILOT_QUESTIONS: CopilotQuestion[] = [
-  { id: "q1", label: "What planning tasks are overdue?", category: "Planning" },
-  { id: "q2", label: "Are there any overdue or due payments?", category: "Finance" },
-  { id: "q3", label: "Which enquiries have gone quiet?", category: "Pipeline" },
-  { id: "q4", label: "Who still needs to RSVP?", category: "Guests" },
-];
+export type { CopilotInsight };
 
 // ---------------------------------------------------------------------------
-// Kind config — badge + action label per insight kind
+// Kind config — matches demo design (badges, icons, action labels)
 // ---------------------------------------------------------------------------
 
 const KIND_CONFIG = {
@@ -38,13 +32,19 @@ const KIND_CONFIG = {
     icon: AlertTriangle,
     badge: "warning" as const,
     label: "At risk",
-    actionLabel: "Review",
+    actionLabel: "Review wedding",
   },
   action: {
     icon: Zap,
     badge: "blue" as const,
     label: "Action",
     actionLabel: "Open",
+  },
+  win: {
+    icon: PartyPopper,
+    badge: "success" as const,
+    label: "Win",
+    actionLabel: "Open workspace",
   },
   nudge: {
     icon: Bell,
@@ -53,10 +53,10 @@ const KIND_CONFIG = {
     actionLabel: "View",
   },
 } satisfies Record<
-  InsightKind,
+  CopilotInsight["kind"],
   {
     icon: React.ComponentType<{ className?: string }>;
-    badge: "warning" | "blue" | "teal";
+    badge: "warning" | "blue" | "success" | "teal";
     label: string;
     actionLabel: string;
   }
@@ -66,15 +66,13 @@ const KIND_CONFIG = {
 // Single insight row
 // ---------------------------------------------------------------------------
 
-function InsightRow({
-  insight,
-  onSnooze,
-  onDismiss,
-}: {
-  insight: Insight;
+interface InsightRowProps {
+  insight: CopilotInsight;
   onSnooze: (id: string) => void;
   onDismiss: (id: string) => void;
-}) {
+}
+
+function InsightRow({ insight, onSnooze, onDismiss }: InsightRowProps) {
   const cfg = KIND_CONFIG[insight.kind];
 
   return (
@@ -84,6 +82,7 @@ function InsightRow({
         "transition-all hover:-translate-y-0.5 hover:shadow-md",
       )}
     >
+      {/* Row 1: kind badge + title + dismiss/snooze */}
       <div className="flex items-start gap-3">
         <Badge variant={cfg.badge} className="mt-px shrink-0 text-[11px]">
           {cfg.label}
@@ -93,6 +92,7 @@ function InsightRow({
           {insight.title}
         </p>
 
+        {/* Snooze + dismiss — visible on hover, keyboard-always */}
         <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
           <button
             type="button"
@@ -113,25 +113,32 @@ function InsightRow({
         </div>
       </div>
 
+      {/* Row 2: signal subline */}
       {insight.signal && (
         <p className="text-[12px] text-muted-foreground leading-snug pl-[1px]">
           {insight.signal}
         </p>
       )}
 
+      {/* Row 3: due date chip + primary action */}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
-        <span className="inline-flex min-h-[28px] items-center rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground tabular-nums">
-          {insight.count} {insight.count === 1 ? "item" : "items"}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {insight.dueAt && (
+            <span className="inline-flex min-h-[28px] items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-[11px] text-muted-foreground tabular-nums">
+              <CalendarClock className="size-3" aria-hidden />
+              {new Date(insight.dueAt).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+              })}
+            </span>
+          )}
+        </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          asChild
-          className="min-h-[32px] shrink-0"
-        >
-          <Link href={insight.href}>{cfg.actionLabel}</Link>
-        </Button>
+        {insight.actionHref ? (
+          <Button variant="outline" size="sm" asChild className="min-h-[32px] shrink-0">
+            <Link href={insight.actionHref}>{cfg.actionLabel}</Link>
+          </Button>
+        ) : null}
       </div>
     </div>
   );
@@ -141,19 +148,23 @@ function InsightRow({
 // Pulse summary bar
 // ---------------------------------------------------------------------------
 
-function PulseBar({ need, nudges }: { need: number; nudges: number }) {
-  if (need === 0 && nudges === 0) return null;
+interface PulseBarProps {
+  need: number;
+  wins: number;
+  scheduled: number;
+}
+
+function PulseBar({ need, wins, scheduled }: PulseBarProps) {
+  if (need === 0 && wins === 0 && scheduled === 0) return null;
 
   const parts: string[] = [];
   if (need > 0) parts.push(`${need} need${need === 1 ? "s" : ""} your attention`);
-  if (nudges > 0) parts.push(`${nudges} to keep an eye on`);
+  if (wins > 0) parts.push(`${wins} win${wins === 1 ? "" : "s"}`);
+  if (scheduled > 0) parts.push(`${scheduled} scheduled`);
 
   return (
     <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground">
-      <span
-        className="flex size-2 shrink-0 rounded-full bg-fun-pink-strong"
-        aria-hidden
-      />
+      <span className="flex size-2 shrink-0 rounded-full bg-fun-pink-strong" aria-hidden />
       <span>{parts.join(" · ")}</span>
     </div>
   );
@@ -165,91 +176,81 @@ function PulseBar({ need, nudges }: { need: number; nudges: number }) {
 
 function EmptyTriage() {
   return (
-    <div
-      data-testid="copilot-empty"
-      className="flex flex-col items-center justify-center rounded-xl border border-border bg-card px-6 py-12 text-center"
-    >
+    <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card px-6 py-12 text-center">
       <span className="mb-4 flex size-10 items-center justify-center rounded-full bg-fun-green text-fun-green-strong">
         <PartyPopper className="size-5" aria-hidden />
       </span>
       <p className="text-sm font-semibold text-foreground">All clear</p>
       <p className="mt-1.5 max-w-[300px] text-sm text-muted-foreground">
-        Nothing needs your attention right now. Check back later or use the
-        command bar to ask a question.
+        No open insights. Check back after your next enquiry comes in.
       </p>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Main client component — receives real, server-derived insights
+// Main client component
 // ---------------------------------------------------------------------------
 
-export function CopilotTriage({ insights }: { insights: Insight[] }) {
-  // Optimistic local state — snooze/dismiss only hides for this session.
-  const [visible, setVisible] = React.useState<Insight[]>(insights);
+interface CopilotTriageProps {
+  insights: CopilotInsight[];
+}
 
-  const [answerQuestion, setAnswerQuestion] =
-    React.useState<CopilotQuestion | null>(null);
-  const [answerOpen, setAnswerOpen] = React.useState(false);
+export function CopilotTriage({ insights: initialInsights }: CopilotTriageProps) {
+  // Optimistic client state — server passes pre-sorted insights.
+  // Dismiss and snooze are ephemeral (no DB write — per contract).
+  const [insights, setInsights] = React.useState<CopilotInsight[]>(initialInsights);
 
   function handleSnooze(id: string) {
-    setVisible((prev) => prev.filter((i) => i.id !== id));
+    setInsights((prev) => prev.filter((i) => i.id !== id));
     toast("Snoozed for 24 hours", {
-      description: "This insight will reappear tomorrow if still relevant.",
+      description: "This insight will reappear on next page load if still relevant.",
     });
   }
 
   function handleDismiss(id: string) {
-    setVisible((prev) => prev.filter((i) => i.id !== id));
+    setInsights((prev) => prev.filter((i) => i.id !== id));
     toast("Dismissed");
   }
 
-  function handleAsk(q: CopilotQuestion) {
-    setAnswerQuestion(q);
-    setAnswerOpen(true);
-  }
-
-  const needCount = visible.filter(
+  const needCount = insights.filter(
     (i) => i.kind === "at_risk" || i.kind === "action",
   ).length;
-  const nudgeCount = visible.filter((i) => i.kind === "nudge").length;
+  const winCount = insights.filter((i) => i.kind === "win").length;
+  const scheduledCount = insights.filter(
+    (i) => i.kind === "nudge" && i.dueAt,
+  ).length;
 
   return (
-    <>
-      <div className="flex flex-col gap-4">
-        <PulseBar need={needCount} nudges={nudgeCount} />
+    <div className="flex flex-col gap-4">
+      {/* Pulse summary — one calm line */}
+      <PulseBar need={needCount} wins={winCount} scheduled={scheduledCount} />
 
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            {visible.length > 0
-              ? `${visible.length} insight${visible.length === 1 ? "" : "s"} — ranked by priority`
-              : "Insights"}
-          </p>
-          <AskCopilot questions={COPILOT_QUESTIONS} onAsk={handleAsk} />
-        </div>
-
-        {visible.length === 0 ? (
-          <EmptyTriage />
-        ) : (
-          <div className="flex flex-col gap-2" data-testid="copilot-insights">
-            {visible.map((insight) => (
-              <InsightRow
-                key={insight.id}
-                insight={insight}
-                onSnooze={handleSnooze}
-                onDismiss={handleDismiss}
-              />
-            ))}
-          </div>
-        )}
+      {/* Toolbar row: count label */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {insights.length > 0
+            ? `${insights.length} insight${insights.length === 1 ? "" : "s"} — ranked by priority`
+            : "Insights"}
+        </p>
+        {/* TODO: M13 — AI question answering (AskCopilot button goes here) */}
       </div>
 
-      <CopilotAnswerSheet
-        question={answerQuestion}
-        open={answerOpen}
-        onOpenChange={setAnswerOpen}
-      />
-    </>
+      {/* Ranked triage list */}
+      {insights.length === 0 ? (
+        <EmptyTriage />
+      ) : (
+        <div className="flex flex-col gap-2">
+          {insights.map((insight) => (
+            <InsightRow
+              key={insight.id}
+              insight={insight}
+              onSnooze={handleSnooze}
+              onDismiss={handleDismiss}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

@@ -9,82 +9,59 @@ import {
   Hr,
   Preview,
 } from "@react-email/components";
+import type { PipelineAggregate } from "@/lib/ghl/reports";
 
 // Brand colours — same palette as other VenueFlow email templates.
 const NAVY = "#101833";
-const PINK = "#F6D1FF";
 const BG = "#F4F4F7";
 const CARD = "#FFFFFF";
 const MUTED = "#5B6175";
 
-export interface PipelineStageCount {
-  pipelineStageId: string;
-  count: number;
-  totalValue: number;
-}
-
-export interface UpcomingTask {
-  id: string;
-  title: string;
-  due_date: string | null;
-}
-
-export interface UpcomingPayment {
-  id: string;
-  label: string;
-  due_date: string;
-  amount_minor: number;
-}
-
 export interface DailyBriefEmailProps {
   venueName: string;
-  /** ISO date string for the brief date (e.g. "2026-06-19") */
-  date: string;
-  /** Pipeline stage counts from GHL — absent when venue has no GHL connection. */
-  pipelineCounts?: PipelineStageCount[] | null;
-  /** New contacts/enquiries created in the last 7 days. */
-  newEnquiriesCount: number;
-  /** Wedding tasks due within the next 7 days. */
-  upcomingTasks: UpcomingTask[];
-  /** Couple portal logins in the last 7 days. */
-  recentPortalLogins: number;
-  /** Payment milestones due within the next 7 days. */
-  upcomingPayments: UpcomingPayment[];
-}
-
-function formatAmountMinor(minor: number): string {
-  return `£${(minor / 100).toLocaleString("en-GB", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  pipeline: PipelineAggregate | null;
+  portalActivity: { last_login_at: string | null; wedding_id: string }[];
+  upcomingEvents: {
+    title: string;
+    starts_at_time: string;
+    wedding_date: string | null;
+    wedding_id: string;
+  }[];
+  overduePayments: {
+    label: string;
+    amount_minor: number;
+    due_date: string;
+    wedding_id: string;
+  }[];
 }
 
 /**
- * Internal daily brief sent to venue staff at 7am each day.
- * Covers pipeline summary (if GHL is connected), recent enquiries,
- * upcoming tasks, portal activity, and payment milestones due soon.
+ * Daily morning brief emailed to venue owners at ~7am.
+ * Sections: header, pipeline, portal activity, upcoming events, overdue payments, footer.
+ *
+ * Rendered server-side inside Inngest — the PipelineAggregate import is safe here
+ * because this module is never bundled for the browser.
  */
 export function DailyBriefEmail({
   venueName,
-  date,
-  pipelineCounts,
-  newEnquiriesCount,
-  upcomingTasks,
-  recentPortalLogins,
-  upcomingPayments,
+  pipeline,
+  portalActivity,
+  upcomingEvents,
+  overduePayments,
 }: DailyBriefEmailProps) {
-  const hasPipeline = pipelineCounts && pipelineCounts.length > 0;
-  const totalPipelineValue = hasPipeline
-    ? pipelineCounts!.reduce((sum, s) => sum + s.totalValue, 0)
-    : 0;
-  const totalPipelineCount = hasPipeline
-    ? pipelineCounts!.reduce((sum, s) => sum + s.count, 0)
-    : 0;
+  const date = new Date().toLocaleDateString("en-GB", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <Html>
       <Head />
-      <Preview>Your daily brief — {venueName} · {date}</Preview>
+      <Preview>
+        Your {venueName} brief for {date}
+      </Preview>
       <Body
         style={{
           backgroundColor: BG,
@@ -103,7 +80,7 @@ export function DailyBriefEmail({
             padding: "40px",
           }}
         >
-          {/* Header */}
+          {/* ── Header ──────────────────────────────────────────────── */}
           <Section>
             <Text
               style={{
@@ -115,181 +92,326 @@ export function DailyBriefEmail({
                 margin: "0 0 8px",
               }}
             >
-              {venueName} · Daily Brief
+              {venueName}
             </Text>
             <Heading
               style={{
                 color: NAVY,
                 fontSize: "24px",
-                lineHeight: 1.2,
+                lineHeight: 1.25,
                 fontWeight: 700,
                 margin: "0 0 4px",
               }}
             >
-              Good morning
+              Good morning — here&apos;s your brief
             </Heading>
-            <Text style={{ color: MUTED, fontSize: "14px", margin: "0 0 24px" }}>
+            <Text
+              style={{
+                color: MUTED,
+                fontSize: "14px",
+                margin: "0 0 24px",
+              }}
+            >
               {date}
             </Text>
           </Section>
 
-          <Hr style={{ borderColor: "#E6E6EC", margin: "0 0 24px" }} />
+          <Hr style={{ borderColor: "#E6E6EC", margin: "0 0 28px" }} />
 
-          {/* Pipeline at a glance (GHL only) */}
-          {hasPipeline && (
-            <Section style={{ marginBottom: "24px" }}>
+          {/* ── Section 1: Pipeline at a glance ─────────────────────── */}
+          <Section style={{ marginBottom: "28px" }}>
+            <Text
+              style={{
+                color: NAVY,
+                fontSize: "14px",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                margin: "0 0 12px",
+              }}
+            >
+              Pipeline at a glance
+            </Text>
+
+            {pipeline === null ? (
+              <Text
+                style={{
+                  color: MUTED,
+                  fontSize: "14px",
+                  lineHeight: 1.6,
+                  margin: 0,
+                  padding: "12px 16px",
+                  backgroundColor: BG,
+                  borderRadius: "8px",
+                }}
+              >
+                Connect GHL to see your live pipeline in this brief.
+              </Text>
+            ) : (
+              <>
+                {/* Pipeline table */}
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "14px",
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      <th
+                        style={{
+                          textAlign: "left",
+                          color: MUTED,
+                          fontWeight: 600,
+                          padding: "4px 8px 8px 0",
+                          borderBottom: "1px solid #E6E6EC",
+                        }}
+                      >
+                        Stage
+                      </th>
+                      <th
+                        style={{
+                          textAlign: "right",
+                          color: MUTED,
+                          fontWeight: 600,
+                          padding: "4px 0 8px 8px",
+                          borderBottom: "1px solid #E6E6EC",
+                        }}
+                      >
+                        Count
+                      </th>
+                      <th
+                        style={{
+                          textAlign: "right",
+                          color: MUTED,
+                          fontWeight: 600,
+                          padding: "4px 0 8px 8px",
+                          borderBottom: "1px solid #E6E6EC",
+                        }}
+                      >
+                        Value
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pipeline.stages.map((stage) => (
+                      <tr key={stage.pipelineStageId}>
+                        <td
+                          style={{
+                            color: NAVY,
+                            padding: "6px 8px 6px 0",
+                            borderBottom: "1px solid #F0F0F4",
+                          }}
+                        >
+                          {stage.stageName}
+                        </td>
+                        <td
+                          style={{
+                            color: NAVY,
+                            textAlign: "right",
+                            padding: "6px 0 6px 8px",
+                            borderBottom: "1px solid #F0F0F4",
+                          }}
+                        >
+                          {stage.count}
+                        </td>
+                        <td
+                          style={{
+                            color: NAVY,
+                            textAlign: "right",
+                            padding: "6px 0 6px 8px",
+                            borderBottom: "1px solid #F0F0F4",
+                          }}
+                        >
+                          £{(stage.valueMinor / 100).toLocaleString("en-GB", { minimumFractionDigits: 0 })}
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Totals row */}
+                    <tr>
+                      <td
+                        style={{
+                          color: NAVY,
+                          fontWeight: 700,
+                          padding: "10px 8px 4px 0",
+                        }}
+                      >
+                        Total
+                      </td>
+                      <td
+                        style={{
+                          color: NAVY,
+                          fontWeight: 700,
+                          textAlign: "right",
+                          padding: "10px 0 4px 8px",
+                        }}
+                      >
+                        {pipeline.totalCount}
+                      </td>
+                      <td
+                        style={{
+                          color: NAVY,
+                          fontWeight: 700,
+                          textAlign: "right",
+                          padding: "10px 0 4px 8px",
+                        }}
+                      >
+                        £{(pipeline.totalValueMinor / 100).toLocaleString("en-GB", { minimumFractionDigits: 0 })}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </>
+            )}
+          </Section>
+
+          <Hr style={{ borderColor: "#E6E6EC", margin: "0 0 28px" }} />
+
+          {/* ── Section 2: Portal activity ───────────────────────────── */}
+          <Section style={{ marginBottom: "28px" }}>
+            <Text
+              style={{
+                color: NAVY,
+                fontSize: "14px",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                margin: "0 0 12px",
+              }}
+            >
+              Portal activity (last 24 hours)
+            </Text>
+            {portalActivity.length === 0 ? (
+              <Text
+                style={{ color: MUTED, fontSize: "14px", lineHeight: 1.6, margin: 0 }}
+              >
+                No portal activity in the last 24 hours.
+              </Text>
+            ) : (
               <Text
                 style={{
                   color: NAVY,
-                  fontSize: "13px",
-                  fontWeight: 700,
-                  letterSpacing: "0.05em",
-                  textTransform: "uppercase",
-                  margin: "0 0 12px",
+                  fontSize: "14px",
+                  lineHeight: 1.6,
+                  margin: 0,
                 }}
               >
-                Pipeline at a glance
+                <strong>{portalActivity.length}</strong>{" "}
+                {portalActivity.length === 1 ? "couple" : "couples"} active in the last
+                24 hours.
               </Text>
-              <Text style={{ color: NAVY, fontSize: "15px", margin: "0 0 4px" }}>
-                <strong>{totalPipelineCount}</strong> open opportunities
-                {totalPipelineValue > 0 && (
-                  <> — <strong>{formatAmountMinor(totalPipelineValue)}</strong> in pipeline</>
-                )}
-              </Text>
-              {pipelineCounts!.map((stage) => (
-                <Text
-                  key={stage.pipelineStageId}
-                  style={{ color: MUTED, fontSize: "13px", margin: "2px 0" }}
-                >
-                  Stage {stage.pipelineStageId}: {stage.count} opp
-                  {stage.count !== 1 ? "s" : ""}
-                  {stage.totalValue > 0 && ` · ${formatAmountMinor(stage.totalValue)}`}
-                </Text>
-              ))}
-            </Section>
-          )}
-
-          {/* New enquiries */}
-          <Section style={{ marginBottom: "24px" }}>
-            <Text
-              style={{
-                color: NAVY,
-                fontSize: "13px",
-                fontWeight: 700,
-                letterSpacing: "0.05em",
-                textTransform: "uppercase",
-                margin: "0 0 12px",
-              }}
-            >
-              New enquiries (last 7 days)
-            </Text>
-            <Text style={{ color: NAVY, fontSize: "15px", margin: 0 }}>
-              <strong>{newEnquiriesCount}</strong> new contact
-              {newEnquiriesCount !== 1 ? "s" : ""} in the last 7 days
-            </Text>
+            )}
           </Section>
 
-          <Hr style={{ borderColor: "#E6E6EC", margin: "0 0 24px" }} />
+          <Hr style={{ borderColor: "#E6E6EC", margin: "0 0 28px" }} />
 
-          {/* Upcoming tasks */}
-          <Section style={{ marginBottom: "24px" }}>
+          {/* ── Section 3: Upcoming events (next 48h) ───────────────── */}
+          <Section style={{ marginBottom: "28px" }}>
             <Text
               style={{
                 color: NAVY,
-                fontSize: "13px",
+                fontSize: "14px",
                 fontWeight: 700,
-                letterSpacing: "0.05em",
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
                 margin: "0 0 12px",
               }}
             >
-              Tasks due this week
+              Upcoming events (next 7 days)
             </Text>
-            {upcomingTasks.length === 0 ? (
-              <Text style={{ color: MUTED, fontSize: "14px", margin: 0 }}>
-                No tasks due in the next 7 days.
+            {upcomingEvents.length === 0 ? (
+              <Text
+                style={{ color: MUTED, fontSize: "14px", lineHeight: 1.6, margin: 0 }}
+              >
+                No run-sheet events in the next 7 days.
               </Text>
             ) : (
-              upcomingTasks.map((task) => (
+              upcomingEvents.map((ev, i) => (
                 <Text
-                  key={task.id}
-                  style={{ color: NAVY, fontSize: "14px", margin: "0 0 4px" }}
+                  key={i}
+                  style={{
+                    color: NAVY,
+                    fontSize: "14px",
+                    lineHeight: 1.6,
+                    margin: "0 0 6px",
+                  }}
                 >
-                  {task.due_date ? `${task.due_date} — ` : ""}
-                  {task.title}
+                  <strong>{ev.title}</strong> —{" "}
+                  {ev.wedding_date
+                    ? new Date(ev.wedding_date).toLocaleDateString("en-GB", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                      })
+                    : "Date TBC"}{" "}
+                  at {ev.starts_at_time}
                 </Text>
               ))
             )}
           </Section>
 
-          <Hr style={{ borderColor: "#E6E6EC", margin: "0 0 24px" }} />
+          <Hr style={{ borderColor: "#E6E6EC", margin: "0 0 28px" }} />
 
-          {/* Portal activity */}
-          <Section style={{ marginBottom: "24px" }}>
+          {/* ── Section 4: Overdue payments ──────────────────────────── */}
+          <Section style={{ marginBottom: "28px" }}>
             <Text
               style={{
                 color: NAVY,
-                fontSize: "13px",
+                fontSize: "14px",
                 fontWeight: 700,
-                letterSpacing: "0.05em",
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
                 margin: "0 0 12px",
               }}
             >
-              Portal activity (last 7 days)
+              Overdue payments
             </Text>
-            <Text style={{ color: NAVY, fontSize: "15px", margin: 0 }}>
-              <strong>{recentPortalLogins}</strong> couple portal login
-              {recentPortalLogins !== 1 ? "s" : ""}
-            </Text>
-          </Section>
-
-          {/* Upcoming payments */}
-          {upcomingPayments.length > 0 && (
-            <>
-              <Hr style={{ borderColor: "#E6E6EC", margin: "0 0 24px" }} />
-              <Section style={{ marginBottom: "24px" }}>
+            {overduePayments.length === 0 ? (
+              <Text
+                style={{ color: MUTED, fontSize: "14px", lineHeight: 1.6, margin: 0 }}
+              >
+                No overdue payments. All clear.
+              </Text>
+            ) : (
+              overduePayments.map((payment, i) => (
                 <Text
+                  key={i}
                   style={{
                     color: NAVY,
-                    fontSize: "13px",
-                    fontWeight: 700,
-                    letterSpacing: "0.05em",
-                    textTransform: "uppercase",
-                    margin: "0 0 12px",
+                    fontSize: "14px",
+                    lineHeight: 1.6,
+                    margin: "0 0 6px",
                   }}
                 >
-                  Payments due this week
+                  {payment.label} —{" "}
+                  <strong>
+                    £
+                    {(payment.amount_minor / 100).toLocaleString("en-GB", {
+                      minimumFractionDigits: 0,
+                    })}
+                  </strong>{" "}
+                  due {payment.due_date}
                 </Text>
-                {upcomingPayments.map((pm) => (
-                  <Text
-                    key={pm.id}
-                    style={{ color: NAVY, fontSize: "14px", margin: "0 0 4px" }}
-                  >
-                    {pm.due_date} — {pm.label}:{" "}
-                    <strong>{formatAmountMinor(pm.amount_minor)}</strong>
-                  </Text>
-                ))}
-              </Section>
-            </>
-          )}
+              ))
+            )}
+          </Section>
 
-          <Hr style={{ borderColor: "#E6E6EC", margin: "32px 0 16px" }} />
+          <Hr style={{ borderColor: "#E6E6EC", margin: "0 0 16px" }} />
 
-          {/* Footer */}
-          <Text
-            style={{
-              color: MUTED,
-              fontSize: "12px",
-              margin: 0,
-              backgroundColor: PINK,
-              borderRadius: "6px",
-              padding: "8px 12px",
-              display: "inline-block",
-            }}
-          >
-            Sent by VenueFlow · Daily brief for {venueName}
-          </Text>
+          {/* ── Footer ──────────────────────────────────────────────── */}
+          <Section>
+            <Text
+              style={{
+                color: MUTED,
+                fontSize: "12px",
+                lineHeight: 1.6,
+                margin: 0,
+              }}
+            >
+              Sent by VenueFlow &middot; manage preferences in your venue settings
+            </Text>
+          </Section>
         </Container>
       </Body>
     </Html>

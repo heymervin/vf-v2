@@ -8,13 +8,13 @@ import {
   Kanban,
   CalendarDays,
   BarChart3,
+  Sparkles,
   Settings,
   LogOut,
   Menu,
   X,
   Heart,
   Banknote,
-  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";

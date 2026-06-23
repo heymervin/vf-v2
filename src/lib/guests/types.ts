@@ -1,9 +1,20 @@
 /**
- * Guest / RSVP types used by the seating + floor-plan rendering layer.
- * (Extracted from the old prototype mock so real code carries its own shape.)
+ * Neutral type definitions for the VenueFlow guest module.
+ *
+ * Rsvp and Guest describe the guest-list shape shared between the wedding
+ * workspace, the floorplan seating tool, and the portal. They are
+ * intentionally free of any mock-data dependency.
  */
 
+// ---------------------------------------------------------------------------
+// RSVP status
+// ---------------------------------------------------------------------------
+
 export type Rsvp = "yes" | "no" | "pending";
+
+// ---------------------------------------------------------------------------
+// Guest
+// ---------------------------------------------------------------------------
 
 export interface Guest {
   id: string;
