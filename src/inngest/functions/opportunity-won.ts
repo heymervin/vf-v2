@@ -2,22 +2,23 @@ import { inngest } from "@/inngest/client";
 import { ghlClient } from "@/lib/ghl/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createWeddingFromOpportunity } from "@/lib/weddings/create";
-import { sendEmail } from "@/lib/email/send";
-import { PortalInviteEmail } from "@/lib/email/templates/portal-invite-email";
 
 /**
  * opportunity-won — fires when a GHL opportunity is marked WON (or moves to a
  * "Booked" stage). Emitted by src/app/api/webhooks/ghl/route.ts.
  *
  * Flow:
- *   1. Fetch the GHL contact to get email + name.
- *   2. Create a wedding row via createWeddingFromOpportunity (idempotent).
- *   3. Send a portal invite email to the couple via Resend.
- *   4. Tag the GHL contact "vf2-portal-invited" so the venue's pipeline reflects
+ *   1. Confirm the opportunity is REALLY won via the GHL API (double-gate, §4.4).
+ *      A stray/forged webhook must never create a phantom wedding.
+ *   2. Fetch the GHL contact to get email + name.
+ *   3. Create a wedding row + couple_accounts via createWeddingFromOpportunity
+ *      (idempotent on ghl_opportunity_id).
+ *   4. Send each couple a Supabase magic-link invite (Slice 8) — best-effort.
+ *   5. Tag the GHL contact "vf2-portal-invited" so the venue's pipeline reflects
  *      that this couple has been invited into the platform.
  *
  * Each step is individually memoised by Inngest — safe to replay without
- * creating duplicate records or duplicate emails.
+ * creating duplicate records or duplicate invites.
  */
 export const opportunityWon = inngest.createFunction(
   { id: "opportunity-won", triggers: { event: "ghl/opportunity-won" } },
@@ -30,6 +31,33 @@ export const opportunityWon = inngest.createFunction(
     };
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.venueflow.io";
+
+    // ------------------------------------------------------------------
+    // 0. DOUBLE-GATE — re-confirm the opportunity is really won (§4.4).
+    //    The webhook in src/app/api/webhooks/ghl/route.ts already gates on
+    //    status="won" / a Booked stage name, but webhooks can be stray,
+    //    replayed, or forged. We re-fetch from the GHL API and bail before
+    //    creating a wedding unless GHL itself reports the opp as won.
+    //
+    //    If the venue has no GHL credentials (standalone/manual path), there is
+    //    nothing to confirm against — skip the gate gracefully and let the
+    //    contact-fetch step below decide (it returns no-ghl-credentials).
+    // ------------------------------------------------------------------
+    const confirm = await step.run("confirm-opportunity", async () => {
+      const client = await ghlClient(venueId);
+      if (!client) {
+        // No creds to confirm against — do not block; defer to fetch-ghl-contact.
+        return { confirmed: true, hadClient: false };
+      }
+      const opp = await client.getOpportunity(ghlOpportunityId);
+      return { confirmed: opp.status === "won", hadClient: true };
+    });
+
+    if (!confirm.confirmed) {
+      // A stray webhook for an opp that GHL does not report as won — do NOT
+      // create a phantom wedding.
+      return { skipped: true, reason: "not-won" };
+    }
 
     // ------------------------------------------------------------------
     // 1. Fetch GHL contact details
@@ -52,22 +80,19 @@ export const opportunityWon = inngest.createFunction(
     }
 
     // ------------------------------------------------------------------
-    // 2. Load venue details for the email sender identity
+    // 2. Confirm the venue still exists (guards against a deleted venue row).
     // ------------------------------------------------------------------
-    const venueCtx = await step.run("load-venue", async () => {
+    const venue = await step.run("load-venue", async () => {
       const admin = createAdminClient();
-      const [venueRes, settingsRes] = await Promise.all([
-        admin.from("venues").select("name").eq("id", venueId).maybeSingle(),
-        admin
-          .from("venue_email_settings")
-          .select("from_name, reply_to")
-          .eq("venue_id", venueId)
-          .maybeSingle(),
-      ]);
-      return { venue: venueRes.data, settings: settingsRes.data };
+      const { data } = await admin
+        .from("venues")
+        .select("name")
+        .eq("id", venueId)
+        .maybeSingle();
+      return data;
     });
 
-    if (!venueCtx.venue) {
+    if (!venue) {
       return { skipped: true, reason: "venue-not-found" };
     }
 
@@ -78,7 +103,7 @@ export const opportunityWon = inngest.createFunction(
       [contact.firstName, contact.lastName].filter(Boolean).join(" ") ||
       contact.email;
 
-    const { weddingId, alreadyExisted } = await step.run(
+    const { weddingId, alreadyExisted, coupleAccounts } = await step.run(
       "create-wedding",
       async () =>
         createWeddingFromOpportunity({
@@ -91,23 +116,50 @@ export const opportunityWon = inngest.createFunction(
     );
 
     // ------------------------------------------------------------------
-    // 4. Send portal invite email
+    // 4. Send each couple a Supabase magic-link invite (Slice 8, P0).
+    //    inviteUserByEmail emails the couple a clickable link that lands on
+    //    /portal/auth/magic-link, which reads data.couple_account_id from the
+    //    invite metadata and activates the couple_accounts row (sets user_id +
+    //    status='active'). Best-effort, mirroring the tag step: a failed invite
+    //    must NOT fail the run or roll back the wedding.
+    //
+    //    When alreadyExisted (replay / second webhook for the same opp),
+    //    coupleAccounts is empty — we skip re-inviting to avoid duplicate emails.
     // ------------------------------------------------------------------
-    const portalUrl = `${appUrl}/portal`;
+    const redirectTo = `${appUrl}/portal/auth/magic-link`;
 
-    await step.run("send-portal-invite", async () => {
-      return sendEmail({
-        to: contact.email!,
-        subject: `Your wedding planning portal is ready — ${venueCtx.venue!.name}`,
-        react: PortalInviteEmail({
-          venueName: venueCtx.venue!.name,
-          recipientName: contact.firstName,
-          coupleNames,
-          portalUrl,
-        }),
-        fromName: venueCtx.settings?.from_name ?? venueCtx.venue!.name,
-        replyTo: venueCtx.settings?.reply_to ?? null,
-      });
+    const invited = await step.run("send-magic-link-invites", async () => {
+      const admin = createAdminClient();
+      let sent = 0;
+
+      for (const account of coupleAccounts) {
+        try {
+          const { error } = await admin.auth.admin.inviteUserByEmail(account.email, {
+            data: {
+              couple_account_id: account.id,
+              wedding_id: account.weddingId,
+              venue_id: account.venueId,
+            },
+            redirectTo,
+          });
+          if (error) {
+            console.warn(
+              `[opportunity-won] invite failed for couple ${account.id}:`,
+              error.message,
+            );
+          } else {
+            sent += 1;
+          }
+        } catch (err) {
+          // Non-fatal: log and continue. The wedding row is already created.
+          console.warn(
+            `[opportunity-won] invite threw for couple ${account.id}:`,
+            err instanceof Error ? err.message : String(err),
+          );
+        }
+      }
+
+      return { sent };
     });
 
     // ------------------------------------------------------------------
@@ -115,6 +167,7 @@ export const opportunityWon = inngest.createFunction(
     //    GHL API: PUT /contacts/{id}/tags  { tags: ["vf2-portal-invited"] }
     //    Best-effort — a tagging failure must not surface to the couple or
     //    block the wedding record from being created.
+    //    (No-op if the venue disconnected from GHL between steps.)
     // ------------------------------------------------------------------
     await step.run("tag-ghl-contact", async () => {
       const client = await ghlClient(venueId);
@@ -136,6 +189,6 @@ export const opportunityWon = inngest.createFunction(
       }
     });
 
-    return { weddingId, alreadyExisted };
+    return { weddingId, alreadyExisted, invitesSent: invited.sent };
   },
 );

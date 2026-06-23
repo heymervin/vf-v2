@@ -1,5 +1,17 @@
 # Product
 
+> ⚠️ **Status — read [`BUILD-ROADMAP.md`](./BUILD-ROADMAP.md) first (flagged 2026-06-20).** Parts of
+> this doc — *The Combined Platform* §, the M8–M13 roadmap, and the "absorb / replace GoHighLevel"
+> framing — **predate the June 16 architecture pivot.** VF2 no longer replaces GHL: **GHL is the
+> pre-sales backend** and VF2 is the post-booking product on top (see `BUILD-ROADMAP.md` §Executive
+> Summary + Two-System Model and `specs/SPECS-INDEX.md`). Where this doc and the roadmap disagree,
+> **the roadmap wins.** Specifically, these items are **removed from the plan for now (decided
+> 2026-06-20):** a native Unified Inbox, native Twilio SMS + WhatsApp *inside* VF2,
+> multi-channel nurture *inside* VF2, and **couple deposit payment "via Stripe in the portal"**
+> (current build: *no* couple-facing Stripe — couples pay by bank transfer via a GHL invoice link;
+> Stripe is VF2 SaaS billing only). The long-term vision here is preserved for product decisions; it
+> is not a description of what is built.
+
 ## Register
 
 product
@@ -153,14 +165,14 @@ When a venue asks for a new toggle, the default answer is still no.
 
 | Milestone | Band | Ships |
 |---|---|---|
-| **M8** | ① | Native SMS + WhatsApp · **Unified Inbox** · multi-channel nurture |
+| ~~M8~~ | — | **Dropped (2026-06-20):** GHL owns pre-sales comms — native SMS/WhatsApp/Unified Inbox/multi-channel nurture removed from the plan |
 | **M9** | ② | Proposals · e-sign · deposits & payment schedules · accounting sync · minimal "pay & sign" couple link |
 | **M10** | ③ | **Wedding Workspace** · run-sheet/timeline · guest list · menu & allergens |
 | **M11** | ③ | Floor plans & seating · suppliers · document hub |
 | **M12** | ④ | Full **Couple Portal** (planning) |
 | **M13** | ⑤ | AI Wedding Copilot · full-lifecycle reporting · event-day mobile mode |
 
-**Sequencing rationale:** comms first (M8) — it benefits *every* contact, not just booked ones, and closes the most painful gap today. Money before event-ops (M9 before M10–11) — highest lock-in per unit of build, and closest to what's already built. The couple portal is **split**: a "pay & sign" link rides on the M9 money work; the full planning portal (M12) lands only once the event objects (M10–11) exist for it to expose.
+**Sequencing rationale:** **M8 comms dropped (2026-06-20)** — GHL owns pre-sales comms. Money first (M9 before M10–11) — highest lock-in per unit of build, and closest to what's already built. The couple portal is **split**: a "pay & sign" link rides on the M9 money work; the full planning portal (M12) lands only once the event objects (M10–11) exist for it to expose.
 
 ## Admin / setup surface
 

@@ -2,7 +2,7 @@
 
 **Status:** Build-ready  
 **Audience:** Emilio/Andres (migrations), Mervin (app code), Kai/Trey (decisions)  
-**Ground truth for existing schema:** `supabase/migrations/20260611*` – `20260614*`  
+**Ground truth for existing schema:** `supabase/migrations/20260611*` – `20260619*` (m1–m14 — all applied & green as of 2026-06-19; **the shipped migrations are canonical** wherever this doc's inline DDL has drifted)  
 **Ground truth for RLS helpers:** `public.current_venue_ids()`, `public.current_owner_or_admin_venue_ids()`, `public.current_owner_venue_ids()` — all defined in `20260611100000_tenancy_layer.sql`
 
 > ⚠️ **Resolved forks override this doc.** Where this spec's inline DDL conflicts with
@@ -10,6 +10,12 @@
 > `couple_accounts` + Supabase-native invite, the menu/course model, jsonb floor plans,
 > `wedding_documents`, minor-unit money, app-layer token encryption), **SCHEMA-DECISIONS.md wins.**
 > Read it before writing the M7+ migrations.
+>
+> ⚠️ **Post-build note (2026-06-20):** M7–M14 are now shipped, so where this doc still disagrees with
+> the migrations, **the migrations win.** Known stale spots (fix in-place when touched): **`weddings.status`**
+> here lists `final_details`/`this_week`, but m8 (SD-2) ships `CHECK (status IN ('planning','confirmed','completed','cancelled'))`;
+> **floor-plan storage** here is `canvas_json`, but m11 (SD-5) ships a `layout jsonb` column. Treat
+> these two as illustrative — re-audit other inline DDL against m7–m14 before relying on it.
 
 ---
 
@@ -21,7 +27,7 @@ All new migrations follow the existing naming convention: `YYYYMMDDHHMMSS_<slug>
 |------|------|---------|-------------|
 | `20260616000001_m7_ghl_credentials.sql` | m7_ghl_credentials | `ghl_credentials` table; `venues.ghl_enabled` + `venues.ghl_mode` flags; `contacts.ghl_contact_id`; `opportunities.ghl_opportunity_id` + `opportunities.ghl_location_id` | Slice 1 |
 | `20260617000001_m8_weddings.sql` | m8_weddings | `weddings` table; `couple_accounts` table; new `wedding_status` enum; new `couple_account_status` enum; new `payment_status_cache` enum | Slice 2 |
-| `20260618000001_m9_venue_config.sql` | m9_venue_config | `floor_templates` table; `floor_template_tables` table; `packages` table; `package_lines` table; `custom_fields` table; `invite_tokens` table; `venues`/`spaces` profile column additions (see `specs/venue-settings.md`) | Slice 3 |
+| `20260616140000_m9_venue_config.sql` | m9_venue_config | `floor_templates` table; `packages` table; `package_lines` table; `custom_fields` table; `venues`/`spaces` profile column additions (see `specs/venue-settings.md`). NOTE (SD-3): team invites use Supabase `auth.admin.inviteUserByEmail` — there is **no** `invite_tokens` table. | Slice 3 |
 | `20260619000001_m10_menu.sql` | m10_menu | `menu_items` table (venue library); `menus` table; `menu_item_selections` join table (D4 architecture) | Slice 3/4 |
 | `20260620000001_m11_planning.sql` | m11_planning | `wedding_guests`; `timeline_events`; `floor_plans` | Slice 4 |
 | `20260621000001_m12_suppliers.sql` | m12_suppliers | `suppliers` (venue directory); `wedding_suppliers` (per-wedding) | Slice 4 |

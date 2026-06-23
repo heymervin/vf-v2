@@ -22,7 +22,7 @@ vi.mock("server-only", () => ({}));
 const mockCtx = {
   ok: true as const,
   user: { id: "user-1", email: "owner@example.com" },
-  venue: { id: "venue-1", name: "Test Venue", slug: "test", timezone: "UTC", onboardingCompletedAt: null, trialEndsAt: null },
+  venue: { id: "venue-1", name: "Test Venue", slug: "test", timezone: "UTC", onboardingCompletedAt: null, trialEndsAt: null, mode: "bundled" as const },
   role: "owner" as const,
   access: "active" as const,
   billing: { stripeCustomerId: null, status: null, currentPeriodEnd: null },

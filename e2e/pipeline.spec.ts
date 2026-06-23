@@ -86,6 +86,11 @@ test("pipeline: drag across stages persists across reload", async ({ page }) => 
     await page.waitForTimeout(150);
     await page.mouse.move(tx, to.y + 130, { steps: 4 });
     await page.waitForTimeout(150);
+    // The move persists via a fire-and-forget server action (POST to /pipeline);
+    // capture its response so we don't reload before the DB write commits.
+    const dragPersisted = page.waitForResponse(
+      (r) => r.request().method() === "POST" && r.url().includes("/pipeline"),
+    );
     await page.mouse.up();
 
     // Optimistic: Olivia now in Responded.
@@ -94,7 +99,8 @@ test("pipeline: drag across stages persists across reload", async ({ page }) => 
     ).toBeVisible();
     await page.screenshot({ path: screenshotPath("m2-pipeline-board") });
 
-    // Persisted: reload and confirm she's still in Responded.
+    // Persisted: wait for the write, then reload and confirm she's still in Responded.
+    await dragPersisted;
     await page.reload();
     await expect(
       col(page, "Responded").getByText("Olivia Bennett"),
@@ -130,11 +136,17 @@ test("pipeline: menu move + card peek", async ({ page }) => {
     // Keyboard/mobile path: ⋯ menu → Move to stage → Appointment booked.
     await card.getByLabel("Card actions").click();
     await page.getByRole("menuitem", { name: "Move to stage" }).click();
+    // Capture the fire-and-forget move's server-action POST so we wait for the
+    // DB write before reloading (otherwise reload races the persist).
+    const movePersisted = page.waitForResponse(
+      (r) => r.request().method() === "POST" && r.url().includes("/pipeline"),
+    );
     await page.getByRole("menuitem", { name: "Appointment booked" }).click();
     await expect(
       col(page, "Appointment booked").getByText("Grace Mitchell"),
     ).toBeVisible();
 
+    await movePersisted;
     await page.reload();
     await expect(
       col(page, "Appointment booked").getByText("Grace Mitchell"),

@@ -23,6 +23,7 @@ import { ghlApiBase, ghlApiVersion } from "./env";
 import type {
   GhlContact,
   GhlContactsResponse,
+  GhlOpportunity,
   GhlOpportunitiesResponse,
   GhlPipelineStageCounts,
   GhlCreateInvoicePayload,
@@ -46,6 +47,12 @@ interface GhlClientInstance {
   request<T>(path: string, init?: RequestInit): Promise<T>;
   getContact(id: string): Promise<GhlContact>;
   listContacts(limit?: number): Promise<GhlContactsResponse>;
+  /**
+   * Fetch a single GHL opportunity by id.
+   * GET /opportunities/{id} — used by opportunity-won.ts to re-confirm a
+   * webhook-claimed win before creating a wedding (double-gate, §4.4).
+   */
+  getOpportunity(id: string): Promise<GhlOpportunity>;
   listOpportunities(limit?: number): Promise<GhlOpportunitiesResponse>;
   getPipelineCounts(): Promise<GhlPipelineStageCounts[]>;
   // ── Integration Point 4 — Invoices (specs/ghl-integration.md §8) ──────────
@@ -138,6 +145,15 @@ export function createGhlClient(creds: GhlClientCreds): GhlClientInstance {
       limit: String(limit),
     });
     return request<GhlContactsResponse>(`/contacts?${params.toString()}`);
+  }
+
+  /**
+   * Fetch a single GHL opportunity by id.
+   * GHL wraps the result under an `opportunity` key (mirrors getContact).
+   */
+  async function getOpportunity(id: string): Promise<GhlOpportunity> {
+    const data = await request<{ opportunity: GhlOpportunity }>(`/opportunities/${id}`);
+    return data.opportunity;
   }
 
   /**
@@ -266,6 +282,7 @@ export function createGhlClient(creds: GhlClientCreds): GhlClientInstance {
     request,
     getContact,
     listContacts,
+    getOpportunity,
     listOpportunities,
     getPipelineCounts,
     createInvoice,

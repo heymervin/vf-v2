@@ -70,10 +70,11 @@ export async function createWedding(
 
 // ── updateWeddingStatus ────────────────────────────────────────────────────────
 
+// Matches the DB CHECK on weddings.status (m8 / SD-2).
+// ponytail: auto-advance (date-driven planning→completed) deferred — staff set status manually for now.
 const VALID_STATUSES = [
   "planning",
-  "final_details",
-  "this_week",
+  "confirmed",
   "completed",
   "cancelled",
 ] as const;
@@ -118,5 +119,42 @@ export async function updateWeddingStatus(input: {
 
   revalidatePath(`/weddings/${parsed.data.weddingId}`);
   revalidatePath("/weddings");
+  return ok(undefined);
+}
+
+// ── toggleWeddingTask ──────────────────────────────────────────────────────────
+
+const ToggleTaskSchema = z.object({
+  taskId: z.string().uuid("Invalid task ID"),
+  done: z.boolean(),
+});
+
+/** Toggle a wedding_tasks row done/undone. Venue-scoped via the admin client's eq. */
+export async function toggleWeddingTask(input: {
+  taskId: string;
+  done: boolean;
+}): Promise<ActionResult<void>> {
+  const ctx = await getTenantContext();
+  if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
+
+  const parsed = ToggleTaskSchema.safeParse(input);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    return err(firstIssue?.message ?? "Invalid input.");
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("wedding_tasks")
+    .update({ done: parsed.data.done })
+    .eq("id", parsed.data.taskId)
+    .eq("venue_id", ctx.venue.id);
+
+  if (error) {
+    console.error("toggleWeddingTask failed:", error.message);
+    return err("Could not update task.");
+  }
   return ok(undefined);
 }

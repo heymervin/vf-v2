@@ -35,6 +35,8 @@ export default async function ContactsPage({
 }) {
   const ctx = await getTenantContext();
   if (!ctx.ok) redirect("/login");
+  // Bundled (GHL-backed) venues run pre-sales in GHL — the native CRM is standalone-only.
+  if (ctx.venue.mode === "bundled") redirect("/weddings");
 
   const sp = await searchParams;
   const q = sp.q ? sanitizeSearch(sp.q) : "";

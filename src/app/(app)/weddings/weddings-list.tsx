@@ -45,14 +45,14 @@ export interface WeddingRow {
   space_name: string | null;
 }
 
-type WeddingStatus = "planning" | "final_details" | "this_week" | "completed";
+type WeddingStatus = "planning" | "confirmed" | "completed" | "cancelled";
 
 function toSafeStatus(s: string): WeddingStatus {
   if (
     s === "planning" ||
-    s === "final_details" ||
-    s === "this_week" ||
-    s === "completed"
+    s === "confirmed" ||
+    s === "completed" ||
+    s === "cancelled"
   )
     return s;
   return "planning";

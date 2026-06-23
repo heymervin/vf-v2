@@ -15,6 +15,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
+import { addGuest as addGuestAction, updateGuest as updateGuestAction, upsertMenuSelection } from "./actions";
 import { Toaster } from "@/components/ui/sonner";
 import {
   Tabs,
@@ -47,7 +48,7 @@ import { EntitySheet } from "@/components/entity-sheet";
 import { ShapedTable } from "@/components/floorplan/shaped-table";
 import { FloorCanvas } from "@/components/floorplan/floor-canvas";
 import { cn } from "@/lib/utils";
-import type { FloorplanTable, RoomElement } from "@/lib/mock/planning";
+import type { FloorplanTable, RoomElement } from "@/lib/floorplan/types";
 import {
   CheckCircle2,
   Circle,
@@ -166,6 +167,8 @@ export interface PortalClientProps {
   payments: PaymentMilestone[];
   contractStatus: string;
   menu: MenuCourse[];
+  /** Per-wedding course → menu_item_id pick (one per course). */
+  menuSelections?: Record<string, string>;
   guests: Guest[];
   runsheet: RunsheetItem[];
   totalValue: number;
@@ -253,6 +256,7 @@ export function PortalClient({
   payments,
   contractStatus,
   menu,
+  menuSelections = {},
   guests: initialGuests,
   runsheet,
   totalValue,
@@ -287,34 +291,39 @@ export function PortalClient({
     totalValue > 0 ? Math.round((paid / totalValue) * 100) : 0;
   const balance = totalValue - paid;
 
+  const [, startTransition] = React.useTransition();
+
   // ── Optimistic: menu selections ─────────────────────────────────────────
-  // coupleMenuChoice maps courseId → optionId (starter/main/dessert pick)
+  // menuChoices maps courseId (= course key) → menu_item_id (the picked option).
   const [menuChoices, setMenuChoices] = React.useState<
     Record<string, string>
-  >(() => {
-    // Pre-seed from the first guest's mealChoice if available
-    const first = initialGuests.find(
-      (g) => g.mealChoice && g.sessionType === "day",
-    );
-    if (!first?.mealChoice) return {};
-    const mc = first.mealChoice;
-    // Map option ids back to course ids
-    const result: Record<string, string> = {};
-    menu.forEach((course) => {
-      const matchKey =
-        course.course.toLowerCase() as keyof typeof mc;
-      const optId = mc[matchKey];
-      if (optId) result[course.id] = optId;
-    });
-    return result;
-  });
+  >(menuSelections);
 
   function pickMenuOption(courseId: string, optionId: string) {
+    const prevChoice = menuChoices[courseId];
     setMenuChoices((prev) => ({ ...prev, [courseId]: optionId }));
     const course = menu.find((c) => c.id === courseId);
     const option = course?.options.find((o) => o.id === optionId);
-    toast.success(`${course?.course ?? "Course"} updated`, {
-      description: option?.name ?? "Choice saved",
+
+    startTransition(async () => {
+      const res = await upsertMenuSelection({
+        course: courseId,
+        menuItemId: optionId,
+      });
+      if (!res.ok) {
+        // Roll back the optimistic pick on failure.
+        setMenuChoices((prev) => {
+          const next = { ...prev };
+          if (prevChoice) next[courseId] = prevChoice;
+          else delete next[courseId];
+          return next;
+        });
+        toast.error(res.error);
+        return;
+      }
+      toast.success(`${course?.course ?? "Course"} updated`, {
+        description: option?.name ?? "Choice saved",
+      });
     });
   }
 
@@ -322,22 +331,62 @@ export function PortalClient({
   const [guests, setGuests] = React.useState<Guest[]>(initialGuests);
 
   function addGuest(g: Omit<Guest, "id" | "side" | "table" | "plusOne">) {
+    const tempId = `g-new-${Date.now()}`;
     const newGuest: Guest = {
-      id: `g-new-${Date.now()}`,
+      id: tempId,
       side: "partner1",
       table: null,
       plusOne: false,
       ...g,
     };
     setGuests((prev) => [...prev, newGuest]);
-    toast.success("Guest added", { description: newGuest.name });
+
+    startTransition(async () => {
+      const res = await addGuestAction({
+        name: g.name,
+        rsvp: g.rsvp,
+        dietary: g.dietary,
+        plusOne: false,
+        plusOneName: g.plusOneName ?? null,
+      });
+      if (!res.ok) {
+        // Roll back the optimistic insert on failure.
+        setGuests((prev) => prev.filter((x) => x.id !== tempId));
+        toast.error(res.error);
+        return;
+      }
+      // Swap the temp id for the persisted row id.
+      setGuests((prev) =>
+        prev.map((x) => (x.id === tempId ? { ...x, id: res.data.id } : x)),
+      );
+      toast.success("Guest added", { description: newGuest.name });
+    });
   }
 
   function updateGuest(id: string, patch: Partial<Guest>) {
-    setGuests((prev) =>
-      prev.map((g) => (g.id === id ? { ...g, ...patch } : g)),
+    const prev = guests.find((g) => g.id === id) ?? null;
+    setGuests((list) =>
+      list.map((g) => (g.id === id ? { ...g, ...patch } : g)),
     );
-    toast.success("Guest updated");
+
+    startTransition(async () => {
+      const res = await updateGuestAction({
+        guestId: id,
+        rsvp: patch.rsvp,
+        dietary: patch.dietary,
+        plusOneName:
+          patch.plusOneName !== undefined ? patch.plusOneName : undefined,
+      });
+      if (!res.ok) {
+        // Roll back to the pre-edit guest on failure.
+        if (prev) {
+          setGuests((list) => list.map((g) => (g.id === id ? prev : g)));
+        }
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Guest updated");
+    });
   }
 
   // ── Optimistic: messages ────────────────────────────────────────────────

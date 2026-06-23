@@ -23,7 +23,7 @@ const mockOwnerCtx = {
     slug: "test",
     timezone: "UTC",
     onboardingCompletedAt: null,
-    trialEndsAt: null,
+    trialEndsAt: null, mode: "bundled",
   },
   role: "owner" as const,
   access: "active" as const,

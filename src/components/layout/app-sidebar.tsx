@@ -61,6 +61,8 @@ const secondaryNav = [
 interface AppSidebarProps {
   venueName: string;
   userEmail: string | undefined;
+  /** Bundled (GHL-backed) venues hide the native CRM nav (Contacts/Pipeline). */
+  bundled: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,10 +109,16 @@ function NavItem({
 function SidebarContent({
   venueName,
   userEmail,
+  bundled,
   collapsed = false,
   onNavClick,
 }: AppSidebarProps & { collapsed?: boolean; onNavClick?: () => void }) {
   const pathname = usePathname();
+
+  // Bundled (GHL-backed) venues run pre-sales in GHL — hide the native CRM nav.
+  const nav = bundled
+    ? primaryNav.filter((i) => i.href !== "/contacts" && i.href !== "/pipeline")
+    : primaryNav;
 
   const initial = (userEmail ?? "V").charAt(0).toUpperCase();
 
@@ -143,7 +151,7 @@ function SidebarContent({
         className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4"
         aria-label="Main navigation"
       >
-        {primaryNav.map((item) => (
+        {nav.map((item) => (
           <span key={item.href} onClick={onNavClick}>
             <NavItem
               href={item.href}
@@ -219,7 +227,7 @@ function SidebarContent({
 // Desktop sidebar — full width with collapsible icon rail on tablet
 // ---------------------------------------------------------------------------
 
-function DesktopSidebar({ venueName, userEmail }: AppSidebarProps) {
+function DesktopSidebar({ venueName, userEmail, bundled }: AppSidebarProps) {
   return (
     <>
       {/* Tablet: icon rail (md) */}
@@ -227,13 +235,14 @@ function DesktopSidebar({ venueName, userEmail }: AppSidebarProps) {
         <SidebarContent
           venueName={venueName}
           userEmail={userEmail}
+          bundled={bundled}
           collapsed={true}
         />
       </aside>
 
       {/* Desktop: full sidebar (lg+) */}
       <aside className="hidden lg:flex w-[220px] shrink-0 flex-col border-r border-sidebar-border">
-        <SidebarContent venueName={venueName} userEmail={userEmail} />
+        <SidebarContent venueName={venueName} userEmail={userEmail} bundled={bundled} />
       </aside>
     </>
   );
@@ -243,7 +252,7 @@ function DesktopSidebar({ venueName, userEmail }: AppSidebarProps) {
 // Mobile topbar + sheet sidebar
 // ---------------------------------------------------------------------------
 
-function MobileNav({ venueName, userEmail }: AppSidebarProps) {
+function MobileNav({ venueName, userEmail, bundled }: AppSidebarProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -268,6 +277,7 @@ function MobileNav({ venueName, userEmail }: AppSidebarProps) {
           <SidebarContent
             venueName={venueName}
             userEmail={userEmail}
+            bundled={bundled}
             onNavClick={() => setOpen(false)}
           />
         </SheetContent>
@@ -284,11 +294,11 @@ function MobileNav({ venueName, userEmail }: AppSidebarProps) {
 // Public export — composes both into one component
 // ---------------------------------------------------------------------------
 
-export function AppSidebar({ venueName, userEmail }: AppSidebarProps) {
+export function AppSidebar({ venueName, userEmail, bundled }: AppSidebarProps) {
   return (
     <>
-      <DesktopSidebar venueName={venueName} userEmail={userEmail} />
-      <MobileNav venueName={venueName} userEmail={userEmail} />
+      <DesktopSidebar venueName={venueName} userEmail={userEmail} bundled={bundled} />
+      <MobileNav venueName={venueName} userEmail={userEmail} bundled={bundled} />
     </>
   );
 }

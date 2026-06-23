@@ -40,6 +40,8 @@ function emptyColumns(): BoardColumns {
 export default async function PipelinePage() {
   const ctx = await getTenantContext();
   if (!ctx.ok) redirect("/login");
+  // Bundled (GHL-backed) venues run pre-sales in GHL — the native CRM is standalone-only.
+  if (ctx.venue.mode === "bundled") redirect("/weddings");
 
   const supabase = await createClient();
   const { data, error } = await supabase

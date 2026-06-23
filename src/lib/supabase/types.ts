@@ -2253,6 +2253,66 @@ export type Database = {
           },
         ]
       }
+      wedding_tasks: {
+        Row: {
+          category: string
+          created_at: string
+          done: boolean
+          due_date: string | null
+          id: string
+          owner: string | null
+          sort_index: number
+          title: string
+          updated_at: string
+          venue_id: string
+          visible_to_couple: boolean
+          wedding_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          done?: boolean
+          due_date?: string | null
+          id?: string
+          owner?: string | null
+          sort_index?: number
+          title: string
+          updated_at?: string
+          venue_id: string
+          visible_to_couple?: boolean
+          wedding_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          done?: boolean
+          due_date?: string | null
+          id?: string
+          owner?: string | null
+          sort_index?: number
+          title?: string
+          updated_at?: string
+          venue_id?: string
+          visible_to_couple?: boolean
+          wedding_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wedding_tasks_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wedding_tasks_wedding_id_fkey"
+            columns: ["wedding_id"]
+            isOneToOne: false
+            referencedRelation: "weddings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weddings: {
         Row: {
           contact_id: string | null

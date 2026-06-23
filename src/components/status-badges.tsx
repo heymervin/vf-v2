@@ -7,7 +7,6 @@ import {
   FileX2,
   HelpCircle,
   Mail,
-  MinusCircle,
   Send,
   ThumbsDown,
   Timer,
@@ -118,16 +117,17 @@ export function DocStatusBadge({ status, className }: DocStatusBadgeProps) {
 // WeddingStatusBadge
 // ---------------------------------------------------------------------------
 
-type WeddingStatus = "planning" | "final_details" | "this_week" | "completed"
+// Matches the DB CHECK on weddings.status (m8 / SD-2).
+type WeddingStatus = "planning" | "confirmed" | "completed" | "cancelled"
 
 const WEDDING_MAP: Record<
   WeddingStatus,
   { variant: BadgeVariant; label: string; Icon: React.ElementType }
 > = {
-  planning:      { variant: "outline", label: "Planning",      Icon: HelpCircle },
-  final_details: { variant: "warning", label: "Final details", Icon: Clock },
-  this_week:     { variant: "pink",    label: "This week",     Icon: MinusCircle },
-  completed:     { variant: "success", label: "Completed",     Icon: XCircle },
+  planning:  { variant: "outline",     label: "Planning",  Icon: HelpCircle },
+  confirmed: { variant: "blue",        label: "Confirmed", Icon: Clock },
+  completed: { variant: "success",     label: "Completed", Icon: CheckCircle2 },
+  cancelled: { variant: "destructive", label: "Cancelled", Icon: XCircle },
 }
 
 interface WeddingStatusBadgeProps {

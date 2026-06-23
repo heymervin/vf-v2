@@ -5,6 +5,14 @@
 **Demo reference:** `src/app/(portal)/portal/portal-client.tsx` + `src/app/(portal)/portal/page.tsx`
 **Route group:** `src/app/(portal)/*`
 
+> ⚠️ **Schema reconciliation (2026-06-20) — some names below predate the shipped migrations.** The
+> couple menu-pick table is **`wedding_menu_selections`** (m10), not `couple_menu_selections`; there is
+> **no `courses` table** — `course` is a free-text column (SD-4), so any `course_id` FK reference does
+> not apply. `weddings.portal_theme` is **not** in any migration (portal branding comes from
+> `venues.accent_seed` + `logo_path`); verify `weddings.menu_id` / `contract_terms` against the schema
+> before relying on them. Where this doc and the m7–m14 migrations / [`SCHEMA-DECISIONS.md`](./SCHEMA-DECISIONS.md)
+> disagree, the migrations win.
+
 ---
 
 ## 1. Overview
