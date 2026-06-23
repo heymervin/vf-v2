@@ -62,13 +62,10 @@ export default function Home() {
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button size="lg" asChild>
-              <Link href="/preview">
-                Explore the platform
+              <Link href="/login">
+                Open the app
                 <ArrowRight className="size-4" />
               </Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link href="/login">Log in</Link>
             </Button>
             <Link
               href="/portal"

@@ -248,6 +248,78 @@ describe("createGhlClient — listOpportunities", () => {
   });
 });
 
+// ── createGhlClient — getOpportunity ─────────────────────────────────────────
+
+describe("createGhlClient — getOpportunity", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  it("hits GET /opportunities/{id} against the correct base URL", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce(
+      okResponse({
+        opportunity: {
+          id: FAKE_OPP_ID,
+          name: "Wedding 2027",
+          pipelineStageId: "stage_1",
+          status: "won",
+          monetaryValue: 5000,
+          contactId: "c_xyz",
+        },
+      })
+    );
+
+    const client = createGhlClient({
+      accessToken: FAKE_ACCESS_TOKEN,
+      locationId: FAKE_LOCATION_ID,
+    });
+    const opp = await client.getOpportunity(FAKE_OPP_ID);
+
+    const [url] = mockFetch.mock.calls[0];
+    expect(url).toBe(`${GHL_BASE}/opportunities/${FAKE_OPP_ID}`);
+    expect(opp.id).toBe(FAKE_OPP_ID);
+    expect(opp.status).toBe("won");
+  });
+
+  it("unwraps the opportunity from the response envelope", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce(
+      okResponse({
+        opportunity: {
+          id: FAKE_OPP_ID,
+          name: "W",
+          pipelineStageId: "stage_1",
+          status: "open",
+          monetaryValue: null,
+          contactId: null,
+        },
+      })
+    );
+
+    const client = createGhlClient({
+      accessToken: FAKE_ACCESS_TOKEN,
+      locationId: FAKE_LOCATION_ID,
+    });
+    const opp = await client.getOpportunity(FAKE_OPP_ID);
+
+    expect(opp.status).toBe("open");
+    expect(opp.monetaryValue).toBeNull();
+  });
+
+  it("throws on a non-200 response", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce(errorResponse(404, "Opportunity not found"));
+
+    const client = createGhlClient({
+      accessToken: FAKE_ACCESS_TOKEN,
+      locationId: FAKE_LOCATION_ID,
+    });
+
+    await expect(client.getOpportunity("nonexistent")).rejects.toThrow(/404/);
+  });
+});
+
 // ── createGhlClient — getPipelineCounts ──────────────────────────────────────
 
 describe("createGhlClient — getPipelineCounts", () => {

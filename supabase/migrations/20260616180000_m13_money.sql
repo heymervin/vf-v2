@@ -50,8 +50,8 @@ CREATE TABLE IF NOT EXISTS public.proposals (
   -- template_id: which package was used to start this proposal (M9, earlier)
   template_id            uuid        NULL REFERENCES public.packages(id) ON DELETE SET NULL,
   discount_type          text        NULL
-                           CHECK (discount_type IN ('pct', 'fixed')),
-  -- SD-7: discount_value_minor holds percentage (0-100) if type='pct', or
+                           CHECK (discount_type IN ('percentage', 'fixed')),
+  -- SD-7: discount_value_minor holds percentage (0-100) if type='percentage', or
   -- pence if type='fixed'. Integer in both cases (whole-percent discounts).
   discount_value_minor   int         NULL CHECK (discount_value_minor >= 0),
   deposit_pct            int         NOT NULL DEFAULT 25

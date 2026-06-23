@@ -1,5 +1,14 @@
 # PROCESS-MAP.md — VenueFlow (v2 combined platform)
 
+> ⚠️ **Status — pre-pivot; read [`BUILD-ROADMAP.md`](./BUILD-ROADMAP.md) first (flagged 2026-06-20).**
+> This lifecycle map was written for the original "absorb / replace GoHighLevel" model. As of the
+> **June 16 pivot**, VF2 uses **GHL as its pre-sales backend** rather than replacing it: the
+> **① Sales & Marketing** band (Unified Inbox, multi-channel Email/SMS/WhatsApp nurture, lead capture)
+> lives in **GHL**, and the couple deposit is collected via a **GHL invoice (bank transfer)**, not
+> Stripe-in-the-portal. VF2 owns the **②–④ post-booking** flow, which is broadly accurate below. The
+> ① band, the "deposit via Stripe", and the "No GoHighLevel" goal are **superseded** by
+> `BUILD-ROADMAP.md`. Treat this doc as vision narrative, not current build authority.
+
 The end-to-end journey for a single wedding, from first enquiry to post-event,
 across the unified VenueFlow platform (sales + event management). This is the
 "one record, the whole journey" thesis from `PRODUCT.md` made concrete: who

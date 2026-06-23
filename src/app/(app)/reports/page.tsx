@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/tenant";
 import { createClient } from "@/lib/supabase/server";
+import { ghlClient } from "@/lib/ghl/client";
+import { summariseGhlPipeline, type GhlPipelineSummary } from "@/lib/reports/ghl-pipeline";
 import {
   LeadsByStageChart,
   LeadsBySourceChart,
   ConversionTable,
+  GhlPipelineSection,
   type StageRow,
   type SourceRow,
   type ConversionRow,
@@ -59,7 +62,21 @@ export default async function ReportsPage() {
   // the underlying opportunities/contacts applies to the querying user.
   const supabase = await createClient();
 
-  const [stageRes, sourceRes] = await Promise.all([
+  // Fan out all data fetches in parallel. GHL pipeline is best-effort —
+  // failures are caught so they never crash the page (graceful degradation).
+  const ghlFetchPromise: Promise<GhlPipelineSummary | null> = (async () => {
+    try {
+      const client = await ghlClient(venueId);
+      if (!client) return null;
+      const stages = await client.getPipelineCounts();
+      return summariseGhlPipeline(stages);
+    } catch {
+      // GHL unreachable or credentials invalid — degrade silently.
+      return null;
+    }
+  })();
+
+  const [stageRes, sourceRes, ghlSummary] = await Promise.all([
     supabase
       .from("report_leads_by_stage")
       .select("stage, lead_count")
@@ -70,6 +87,7 @@ export default async function ReportsPage() {
       .select("source, lead_count")
       .eq("venue_id", venueId)
       .order("lead_count", { ascending: false }),
+    ghlFetchPromise,
   ]);
 
   const stageData: StageRow[] = (stageRes.data ?? []).map((r) => ({
@@ -153,6 +171,19 @@ export default async function ReportsPage() {
               <ConversionTable rows={conversionRows} />
             </div>
           </>
+        )}
+
+        {/* GHL Pipeline — shown when GHL is connected; hidden otherwise */}
+        {ghlSummary !== null && (
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              GoHighLevel
+            </p>
+            <h2 className="mb-5 text-base font-semibold text-foreground">
+              GHL Pipeline
+            </h2>
+            <GhlPipelineSection summary={ghlSummary} />
+          </div>
         )}
       </div>
     </div>

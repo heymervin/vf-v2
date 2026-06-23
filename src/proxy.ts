@@ -93,6 +93,18 @@ export async function proxy(request: NextRequest) {
     return redirectWithCookies(new URL("/login", request.url));
   }
 
+  // Couple Portal: the /portal data pages require auth, but /portal/login and
+  // /portal/auth/* (magic-link callback) must stay public. The couple-account
+  // resolution (and the couple-specific redirect target) is enforced by the
+  // guarded portal layout; here we only fast-redirect anonymous hits on the
+  // data pages so no portal render begins before a session exists (spec §9).
+  const isPortalPublic =
+    pathname === "/portal/login" || pathname.startsWith("/portal/auth/");
+  const isPortalData = pathname.startsWith("/portal") && !isPortalPublic;
+  if (isPortalData && !isAuthenticated) {
+    return redirectWithCookies(new URL("/portal/login", request.url));
+  }
+
   // Gate: authenticated user hitting /login or /signup → redirect to /dashboard
   const isAuthPage = AUTH_PATHS.includes(pathname);
   if (isAuthPage && isAuthenticated) {

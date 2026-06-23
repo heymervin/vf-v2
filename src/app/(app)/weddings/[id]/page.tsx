@@ -20,21 +20,22 @@ import { getTenantContext } from "@/lib/tenant";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { WeddingStatusBadge } from "@/components/status-badges";
+import { NextActionCallout } from "@/components/next-action-callout";
+import { pickNextAction } from "@/lib/weddings/next-action";
+import { WeddingTasks } from "./wedding-tasks";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type WeddingStatus = "planning" | "final_details" | "this_week" | "completed";
+type WeddingStatus = "planning" | "confirmed" | "completed" | "cancelled";
 
 function toSafeStatus(s: string): WeddingStatus {
   if (
     s === "planning" ||
-    s === "final_details" ||
-    s === "this_week" ||
-    s === "completed"
+    s === "confirmed" ||
+    s === "completed" ||
+    s === "cancelled"
   )
     return s;
   return "planning";
@@ -88,11 +89,15 @@ function StatusStrip({
   paidMinor,
   totalMinor,
   balanceMinor,
+  taskDone,
+  taskTotal,
 }: {
   weddingDate: string | null;
   paidMinor: number;
   totalMinor: number;
   balanceMinor: number;
+  taskDone: number;
+  taskTotal: number;
 }) {
   const days = daysFromToday(weddingDate);
 
@@ -145,15 +150,17 @@ function StatusStrip({
         </span>
       </div>
 
-      {/* Tasks placeholder — Slice 2 step 3 */}
+      {/* Tasks */}
       <div className="flex flex-col gap-0.5 rounded-r-xl bg-card px-4 py-3 sm:rounded-l-none">
         <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           Tasks
         </span>
-        <span className="text-2xl font-bold tabular-nums tracking-tight text-muted-foreground">
-          —
+        <span className="text-2xl font-bold tabular-nums tracking-tight text-foreground">
+          {taskTotal > 0 ? `${taskDone}/${taskTotal}` : "—"}
         </span>
-        <span className="text-xs text-muted-foreground">Coming in Slice 2</span>
+        <span className="text-xs text-muted-foreground">
+          {taskTotal > 0 ? "complete" : "No tasks yet"}
+        </span>
       </div>
     </div>
   );
@@ -313,6 +320,7 @@ export default async function WeddingHubPage({
     { count: floorTemplates },
     { count: milestoneCount },
     { data: milestoneTotals },
+    { data: taskRows },
   ] = await Promise.all([
     // Guests: total invited
     supabase
@@ -359,15 +367,27 @@ export default async function WeddingHubPage({
       .from("payment_milestones")
       .select("id", { count: "exact", head: true })
       .eq("wedding_id", id),
-    // Payments: amount_minor + status for summary strip
+    // Payments: amount_minor + status (+ due_date/label for the next-action ladder)
     supabase
       .from("payment_milestones")
-      .select("amount_minor, status")
-      .eq("wedding_id", id),
+      .select("amount_minor, status, due_date, label")
+      .eq("wedding_id", id)
+      .order("sort_order"),
+    // Tasks: live checklist + next-action source
+    supabase
+      .from("wedding_tasks")
+      .select("id, title, due_date, done")
+      .eq("wedding_id", id)
+      .order("sort_index"),
   ]);
 
   // Derive paid / balance from milestone rows
-  const milestoneRows = (milestoneTotals ?? []) as { amount_minor: number; status: string }[];
+  const milestoneRows = (milestoneTotals ?? []) as {
+    amount_minor: number;
+    status: string;
+    due_date: string;
+    label: string;
+  }[];
   const totalMinor = milestoneRows.reduce((s, m) => s + m.amount_minor, 0);
   const paidMinor = milestoneRows
     .filter((m) => m.status === "paid")
@@ -383,6 +403,22 @@ export default async function WeddingHubPage({
   }
 
   const base = `/weddings/${id}`;
+
+  // ── Tasks + next action ────────────────────────────────────────────────────
+  const tasks = (taskRows ?? []) as {
+    id: string;
+    title: string;
+    due_date: string | null;
+    done: boolean;
+  }[];
+  const tasksDone = tasks.filter((t) => t.done).length;
+  const today = new Date().toISOString().slice(0, 10);
+  const nextAction = pickNextAction(
+    tasks.map((t) => ({ title: t.title, due_date: t.due_date, done: t.done })),
+    milestoneRows.map((m) => ({ label: m.label, status: m.status, due_date: m.due_date })),
+    base,
+    today,
+  );
 
   const planningTiles: PlanningTileConfig[] = [
     {
@@ -529,12 +565,17 @@ export default async function WeddingHubPage({
         )}
       </div>
 
+      {/* ── Next action ─────────────────────────────────────────────────── */}
+      <NextActionCallout {...nextAction} className="mb-6" />
+
       {/* ── Status strip ────────────────────────────────────────────────── */}
       <StatusStrip
         weddingDate={wedding.wedding_date}
         paidMinor={paidMinor}
         totalMinor={totalMinor}
         balanceMinor={balanceMinor}
+        taskDone={tasksDone}
+        taskTotal={tasks.length}
       />
 
       {/* ── Planning rail (D7 — scoped to this wedding) ─────────────────── */}
@@ -606,25 +647,16 @@ export default async function WeddingHubPage({
           </CardContent>
         </Card>
 
-        {/* Tasks — stubbed for Slice 2 step 3 */}
+        {/* Tasks — live checklist */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <UserCheck className="size-4 text-fun-blue-strong" aria-hidden />
-                Tasks
-              </CardTitle>
-              <Badge variant="outline" className="text-xs">
-                Coming soon
-              </Badge>
-            </div>
-            <Progress value={0} className="mt-2 h-1.5" />
+            <CardTitle className="flex items-center gap-2">
+              <UserCheck className="size-4 text-fun-blue-strong" aria-hidden />
+              Tasks
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="py-4 text-center text-sm text-muted-foreground">
-              Tasks will be created automatically when a wedding is booked. Full
-              task management arrives in the next build step.
-            </p>
+            <WeddingTasks tasks={tasks} />
           </CardContent>
         </Card>
       </div>

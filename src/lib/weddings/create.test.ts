@@ -43,8 +43,13 @@ let weddingInsertResult: { data: { id: string } | null; error: { message: string
   error: null,
 };
 
-/** Controls what `.insert()` returns for couple_accounts (no .single needed). */
+/** Controls what `.insert().select().single()` returns for couple_accounts. */
 let coupleInsertError: { message: string } | null = null;
+/** The row echoed back by couple_accounts insert .select().single(). */
+let coupleInsertRow: { id: string; email: string } | null = {
+  id: "couple-uuid-generated",
+  email: "alice@example.com",
+};
 
 // ── mocks ──────────────────────────────────────────────────────────────────────
 
@@ -80,12 +85,22 @@ vi.mock("@/lib/supabase/admin", () => ({
           };
         }
 
-        // couple_accounts: .insert() only (no select chained)
+        // couple_accounts: supports BOTH bare `.insert()` (createWeddingManual)
+        // and `.insert().select().single()` (createWeddingFromOpportunity).
         if (table === "couple_accounts") {
           return {
             insert: (payload: unknown) => {
               insertCalls.push({ table, payload });
-              return Promise.resolve({ data: null, error: coupleInsertError });
+              const result = {
+                data: coupleInsertError ? null : coupleInsertRow,
+                error: coupleInsertError,
+              };
+              // Bare-insert path resolves directly; chained path adds select().single().
+              return Object.assign(Promise.resolve(result), {
+                select: (_cols: string) => ({
+                  single: async () => result,
+                }),
+              });
             },
           };
         }
@@ -114,6 +129,7 @@ beforeEach(async () => {
   insertCalls.length = 0;
   weddingInsertResult = { data: { id: FAKE_WEDDING_ID }, error: null };
   coupleInsertError = null;
+  coupleInsertRow = { id: "couple-uuid-generated", email: "alice@example.com" };
 
   // Fresh module import so mocks take effect cleanly.
   vi.resetModules();
@@ -183,6 +199,42 @@ describe("createWeddingFromOpportunity", () => {
     expect(invitedAt).toBeGreaterThanOrEqual(before);
   });
 
+  it("returns the inserted couple_accounts row in coupleAccounts", async () => {
+    coupleInsertRow = { id: "couple-uuid-xyz", email: "alice@example.com" };
+
+    const result = await createWeddingFromOpportunity({
+      venueId: FAKE_VENUE_ID,
+      ghlOpportunityId: FAKE_OPP_ID,
+      ghlContactId: FAKE_CONTACT_ID,
+      coupleNames: "Alice & Bob",
+      coupleEmail: "alice@example.com",
+    });
+
+    expect(result.coupleAccounts).toHaveLength(1);
+    expect(result.coupleAccounts[0]).toEqual({
+      id: "couple-uuid-xyz",
+      email: "alice@example.com",
+      weddingId: FAKE_WEDDING_ID,
+      venueId: FAKE_VENUE_ID,
+    });
+  });
+
+  it("returns an empty coupleAccounts when the couple insert fails (non-fatal)", async () => {
+    coupleInsertError = { message: "duplicate key" };
+
+    const result = await createWeddingFromOpportunity({
+      venueId: FAKE_VENUE_ID,
+      ghlOpportunityId: FAKE_OPP_ID,
+      ghlContactId: FAKE_CONTACT_ID,
+      coupleNames: "Alice & Bob",
+      coupleEmail: "alice@example.com",
+    });
+
+    // Wedding still created; invite just can't be sent this run.
+    expect(result.weddingId).toBe(FAKE_WEDDING_ID);
+    expect(result.coupleAccounts).toEqual([]);
+  });
+
   it("is idempotent: returns existing id without inserting when ghl_opportunity_id already exists", async () => {
     existingWeddingRow = { id: FAKE_EXISTING_WEDDING_ID };
 
@@ -197,6 +249,8 @@ describe("createWeddingFromOpportunity", () => {
     // Returns the existing id, not the generated one.
     expect(result.weddingId).toBe(FAKE_EXISTING_WEDDING_ID);
     expect(result.alreadyExisted).toBe(true);
+    // No new couple to invite on the idempotent path.
+    expect(result.coupleAccounts).toEqual([]);
 
     // No insert must have been made.
     expect(insertCalls).toHaveLength(0);

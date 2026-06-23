@@ -12,6 +12,26 @@
 
 ---
 
+## Build Status (as of 2026-06-19)
+
+**All 8 slices implemented and green.** Migrations m7–m14 applied; full suite passing:
+typecheck ✓ · 348 unit tests ✓ · lint 0 errors ✓ · **99 Playwright e2e ✓** · RLS cross-tenant 149/149 ✓.
+
+| Slice | State | Notes |
+|---|---|---|
+| 1 Foundation | ✅ Done | `ghl_credentials`, `ghlClient`, connect tile, live read. m14 added the missing `ghl_webhook_events` table + `location_id` NOT NULL/unique + partial-unique GHL link indexes. |
+| 2 Trigger (spine) | ✅ Done | opp-won → wedding + couple invite; manual-create fallback. m14/code added the **confirm-opportunity double-gate** (`getOpportunity`) and the **magic-link invite** (`inviteUserByEmail`). |
+| 3 Config / libraries | ✅ Done | spaces, floor templates, menu library, packages, team, custom fields; gating checklist. |
+| 4 Planning tools | ✅ Done | guests, menu, run sheet, floor plan, suppliers. Fixed a real edit bug (`updateEvent` validation + `HH:MM:SS` time). |
+| 5 Money | ✅ Done | proposals, milestones, GHL invoice mirror. Fixed `discount_type` CHECK (`pct`→`percentage`). |
+| 6 Messaging mirror | ✅ Done | GHL conversations read/send + realtime broadcast; no message storage in VF2. |
+| 7 Intelligence | ✅ Done | Daily Brief Inngest fn + email template; real `(app)/copilot` over live data; Reports gains live GHL pipeline counts. |
+| 8 Couple portal | ✅ Done | magic-link auth (`/portal/auth/magic-link` + `/portal/login`), couple-only RLS, real data, couple write actions (guests/menu), RLS-isolation e2e. |
+
+> ⚠️ **DB note:** the canonical Supabase project `kcnsywedplpliqfryejg` was behind at M6; m7–m14 were applied to bring it current (42 tables). Migrations are applied via direct `psql` to the pooler (`aws-1-ap-southeast-1`), not `db push` (the `schema_migrations` ledger is stale). External prerequisites for full production behaviour remain venue-side: real GHL PIT/OAuth, Resend domain verification, Stripe keys.
+
+---
+
 ## Executive Summary
 
 VF2 used to be trying to **replace** GoHighLevel (GHL) — rebuilding lead capture, nurture

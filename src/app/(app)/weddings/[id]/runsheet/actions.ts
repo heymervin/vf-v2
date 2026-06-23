@@ -28,7 +28,9 @@ const EventSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title is too long"),
   starts_at_time: z
     .string()
-    .regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format"),
+    // Accept HH:MM (from the time input on add) and HH:MM:SS (the value a
+    // `time` column returns when an existing event is re-saved on edit).
+    .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Time must be in HH:MM format"),
   duration_min: z.number().int().min(0).max(1440).default(30),
   category: z.enum(VALID_CATEGORIES).default("ceremony"),
   owner: z.string().max(100).default(""),
@@ -158,7 +160,7 @@ export async function updateEvent(
   const guard = assertCanMutate(ctx);
   if (guard) return guard;
 
-  const parsed = UpdateEventSchema.safeParse({ ...input, eventId });
+  const parsed = UpdateEventSchema.safeParse({ ...input, eventId, weddingId });
   if (!parsed.success) {
     const firstIssue = parsed.error.issues[0];
     return err(firstIssue?.message ?? "Invalid input.");

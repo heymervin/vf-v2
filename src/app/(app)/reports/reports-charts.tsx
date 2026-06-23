@@ -13,6 +13,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import type { GhlPipelineSummary } from "@/lib/reports/ghl-pipeline";
 
 // ── Shared palette (matches DESIGN.md fun-pastels, strong variants for bars)
 const STAGE_COLOR = "oklch(0.584 0.152 272)"; // fun-blue-strong
@@ -164,6 +165,91 @@ export function LeadsBySourceChart({ data }: LeadsBySourceChartProps) {
         />
       </PieChart>
     </ResponsiveContainer>
+  );
+}
+
+// ── GHL Pipeline section ──────────────────────────────────────────────────────
+
+export interface GhlPipelineSectionProps {
+  /** null = GHL not connected; render a subtle hint instead. */
+  summary: GhlPipelineSummary | null;
+}
+
+/**
+ * Server-rendered data passed down as props — no secrets reach the browser.
+ * Renders nothing when summary is null (GHL not connected or call failed).
+ */
+export function GhlPipelineSection({ summary }: GhlPipelineSectionProps) {
+  if (summary === null) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Connect GoHighLevel to see live pipeline data.
+      </p>
+    );
+  }
+
+  const { stages, totalCount, totalValue } = summary;
+
+  if (stages.length === 0) {
+    return (
+      <p className="py-4 text-center text-sm text-muted-foreground">
+        No open opportunities in GHL yet.
+      </p>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex gap-8">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Total opportunities
+          </p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+            {totalCount}
+          </p>
+        </div>
+        {totalValue > 0 && (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              Pipeline value
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+              {totalValue.toLocaleString()}
+            </p>
+          </div>
+        )}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+              <th className="pb-3 pr-6">Stage ID</th>
+              <th className="pb-3 pr-6 text-right">Count</th>
+              <th className="pb-3 text-right">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stages.map((s) => (
+              <tr
+                key={s.pipelineStageId}
+                className="border-b border-border/50 last:border-0"
+              >
+                <td className="py-3 pr-6 font-mono text-xs text-foreground">
+                  {s.pipelineStageId}
+                </td>
+                <td className="py-3 pr-6 text-right tabular-nums text-foreground">
+                  {s.count}
+                </td>
+                <td className="py-3 text-right tabular-nums text-foreground">
+                  {s.totalValue > 0 ? s.totalValue.toLocaleString() : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

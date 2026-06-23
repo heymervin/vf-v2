@@ -7,11 +7,11 @@
  * existing canvas components (FloorCanvas, ShapedTable).
  *
  * Adapters from DB guest rows to the Guest shape expected by ShapedTable
- * are also here so the client component stays import-free from @/lib/mock.
+ * are also here so the client component stays import-free from prototype mocks.
  */
 
-import type { FloorplanTable, RoomElement } from "@/lib/mock/planning";
-import type { Guest } from "@/lib/mock";
+import type { FloorplanTable, RoomElement } from "@/lib/floorplan/types";
+import type { Guest } from "@/lib/guests/types";
 
 // ---------------------------------------------------------------------------
 // Layout jsonb shape stored in floor_plans.layout

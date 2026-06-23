@@ -167,7 +167,7 @@ test("runsheet: add event via sheet — appears in timeline sorted by time", asy
     // Submit
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Save" })
+      .getByRole("button", { name: "Add event" })
       .click();
 
     // Success toast
@@ -241,7 +241,7 @@ test("runsheet: edit event title — updated title persists", async ({ page }) =
 
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Save" })
+      .getByRole("button", { name: "Save changes" })
       .click();
 
     await expect(page.getByText("Event updated")).toBeVisible({
@@ -303,16 +303,20 @@ test("runsheet: delete event — removed from timeline", async ({ page }) => {
       timeout: 10_000,
     });
 
+    // Delete lives inside the edit sheet — open it, then click Delete.
     await page
-      .getByRole("button", { name: /Delete.*Event to Delete/i })
+      .getByRole("button", { name: /Edit.*Event to Delete/i })
       .first()
       .click();
 
-    // Confirm dialog or direct deletion
-    const confirmBtn = page.getByRole("button", { name: "Delete" }).first();
-    if (await confirmBtn.isVisible({ timeout: 2_000 })) {
-      await confirmBtn.click();
-    }
+    await expect(
+      page.getByRole("dialog").getByRole("heading", { name: "Edit event" }),
+    ).toBeVisible({ timeout: 5_000 });
+
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Delete" })
+      .click();
 
     await expect(page.getByText("Event deleted")).toBeVisible({
       timeout: 10_000,
@@ -367,8 +371,11 @@ test("runsheet: event-day mode toggle shows check-off rows", async ({
     // Switch to Event Day mode
     await page.getByRole("button", { name: "Event Day" }).click();
 
-    // Event should still appear as a row
-    await expect(page.getByText("First Dance")).toBeVisible({ timeout: 8_000 });
+    // Event should still appear as a row (event-day view also renders a
+    // now/next hero card, so "First Dance" appears more than once).
+    await expect(page.getByText("First Dance").first()).toBeVisible({
+      timeout: 8_000,
+    });
 
     // Day Progress strip (event-day only)
     await expect(page.getByText("Day progress")).toBeVisible();

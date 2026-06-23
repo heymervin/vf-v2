@@ -14,6 +14,7 @@ import {
   X,
   Heart,
   Banknote,
+  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ const primaryNav = [
   { label: "Pipeline", href: "/pipeline", icon: Kanban },
   { label: "Appointments", href: "/appointments", icon: CalendarDays },
   { label: "Reports", href: "/reports", icon: BarChart3 },
+  { label: "Copilot", href: "/copilot", icon: Sparkles },
 ] as const;
 
 const secondaryNav = [

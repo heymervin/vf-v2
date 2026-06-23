@@ -2,21 +2,27 @@
  * Unit tests for src/inngest/functions/opportunity-won.ts
  *
  * Covers:
- *   1. Happy path — fetches contact, creates wedding, sends invite email,
- *      tags GHL contact.
- *   2. No GHL credentials for venue → skips with reason "no-ghl-credentials".
- *   3. Contact has no email → skips with reason "contact-has-no-email".
- *   4. Venue not found in DB → skips with reason "venue-not-found".
- *   5. Idempotency — when wedding alreadyExisted, still sends email + tags.
- *   6. GHL tag call failure is non-fatal (wedding + email still complete).
+ *   DOUBLE-GATE (Slice 2 P1):
+ *     1. Confirmed-won opportunity proceeds (creates wedding, invites, tags).
+ *     2. Not-won opportunity short-circuits with reason "not-won" — NO wedding.
+ *     3. No GHL credentials → confirm is skipped gracefully; the function then
+ *        falls through to the contact-fetch step and returns "no-ghl-credentials"
+ *        WITHOUT creating a wedding.
+ *
+ *   MAGIC-LINK INVITE (Slice 8 P0):
+ *     4. inviteUserByEmail is called once per inserted couple_accounts row with
+ *        the correct metadata + redirectTo.
+ *     5. A failed invite is non-fatal — wedding + tag still complete.
+ *     6. On replay (alreadyExisted → empty coupleAccounts), no invite is sent.
+ *
+ *   Plus the pre-existing guards: contact-has-no-email, venue-not-found, and
+ *   coupleNames fallbacks.
  *
  * All tests are DB-free and secret-free:
  *   - "server-only" is mocked to a no-op.
- *   - @/lib/supabase/admin is mocked.
+ *   - @/lib/supabase/admin is mocked (incl. auth.admin.inviteUserByEmail).
  *   - @/lib/ghl/client is mocked (ghlClient factory).
  *   - @/lib/weddings/create is mocked.
- *   - @/lib/email/send is mocked.
- *   - @/lib/email/templates/portal-invite-email is mocked.
  *   - @/inngest/client is mocked with a factory helper.
  */
 
@@ -28,7 +34,9 @@ const FAKE_VENUE_ID = "venue-uuid-0001";
 const FAKE_OPP_ID = "opp-ghl-0001";
 const FAKE_CONTACT_ID = "contact-ghl-0001";
 const FAKE_WEDDING_ID = "wedding-uuid-new";
+const FAKE_COUPLE_ID = "couple-uuid-0001";
 const FAKE_LOCATION_ID = "loc_test_abc123";
+const APP_URL = "https://app.test.local";
 
 // ── mock state ─────────────────────────────────────────────────────────────────
 
@@ -49,6 +57,12 @@ let mockContact: {
   tags: [],
 };
 
+// GHL opportunity returned by getOpportunity (the double-gate confirm)
+let mockOpportunity: { id: string; status: string } = {
+  id: FAKE_OPP_ID,
+  status: "won",
+};
+
 // Controls whether ghlClient returns a client or null
 let mockGhlClientNull = false;
 
@@ -56,18 +70,32 @@ let mockGhlClientNull = false;
 const ghlRequestSpy = vi.fn().mockResolvedValue({});
 
 // Controls createWeddingFromOpportunity return value
-let mockCreateWeddingResult = { weddingId: FAKE_WEDDING_ID, alreadyExisted: false };
+let mockCreateWeddingResult: {
+  weddingId: string;
+  alreadyExisted: boolean;
+  coupleAccounts: Array<{ id: string; email: string; weddingId: string; venueId: string }>;
+} = {
+  weddingId: FAKE_WEDDING_ID,
+  alreadyExisted: false,
+  coupleAccounts: [
+    {
+      id: FAKE_COUPLE_ID,
+      email: "alice@example.com",
+      weddingId: FAKE_WEDDING_ID,
+      venueId: FAKE_VENUE_ID,
+    },
+  ],
+};
 const createWeddingSpy = vi.fn(async () => mockCreateWeddingResult);
 
-// Controls sendEmail return value
-const sendEmailSpy = vi.fn().mockResolvedValue({ ok: true, id: "email-id-001" });
+// Captures auth.admin.inviteUserByEmail calls
+let mockInviteError: { message: string } | null = null;
+const inviteSpy = vi.fn(
+  async (_email: string, _opts: Record<string, unknown>) => ({ data: {}, error: mockInviteError }),
+);
 
-// Venue/settings DB state
+// Venue DB state
 let mockVenueData: { name: string } | null = { name: "The Grand Hall" };
-let mockEmailSettingsData: { from_name: string; reply_to: string } | null = {
-  from_name: "The Grand Hall",
-  reply_to: "venue@example.com",
-};
 
 // ── mocks ──────────────────────────────────────────────────────────────────────
 
@@ -78,6 +106,7 @@ vi.mock("@/lib/ghl/client", () => ({
     if (mockGhlClientNull) return null;
     return {
       getContact: async (_id: string) => mockContact,
+      getOpportunity: async (_id: string) => mockOpportunity,
       request: ghlRequestSpy,
     };
   },
@@ -85,21 +114,17 @@ vi.mock("@/lib/ghl/client", () => ({
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
+    auth: {
+      admin: {
+        inviteUserByEmail: inviteSpy,
+      },
+    },
     from: (table: string) => {
       if (table === "venues") {
         return {
           select: (_cols: string) => ({
             eq: (_col: string, _val: string) => ({
               maybeSingle: async () => ({ data: mockVenueData, error: null }),
-            }),
-          }),
-        };
-      }
-      if (table === "venue_email_settings") {
-        return {
-          select: (_cols: string) => ({
-            eq: (_col: string, _val: string) => ({
-              maybeSingle: async () => ({ data: mockEmailSettingsData, error: null }),
             }),
           }),
         };
@@ -113,14 +138,6 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 vi.mock("@/lib/weddings/create", () => ({
   createWeddingFromOpportunity: createWeddingSpy,
-}));
-
-vi.mock("@/lib/email/send", () => ({
-  sendEmail: sendEmailSpy,
-}));
-
-vi.mock("@/lib/email/templates/portal-invite-email", () => ({
-  PortalInviteEmail: (props: unknown) => props, // return props as the "element"
 }));
 
 // ── Inngest test harness ───────────────────────────────────────────────────────
@@ -191,16 +208,29 @@ beforeEach(async () => {
     phone: null,
     tags: [],
   };
+  mockOpportunity = { id: FAKE_OPP_ID, status: "won" };
   mockGhlClientNull = false;
-  mockCreateWeddingResult = { weddingId: FAKE_WEDDING_ID, alreadyExisted: false };
+  mockCreateWeddingResult = {
+    weddingId: FAKE_WEDDING_ID,
+    alreadyExisted: false,
+    coupleAccounts: [
+      {
+        id: FAKE_COUPLE_ID,
+        email: "alice@example.com",
+        weddingId: FAKE_WEDDING_ID,
+        venueId: FAKE_VENUE_ID,
+      },
+    ],
+  };
   mockVenueData = { name: "The Grand Hall" };
-  mockEmailSettingsData = { from_name: "The Grand Hall", reply_to: "venue@example.com" };
+  mockInviteError = null;
+
+  process.env.NEXT_PUBLIC_APP_URL = APP_URL;
 
   ghlRequestSpy.mockClear();
   createWeddingSpy.mockClear();
-  sendEmailSpy.mockClear();
+  inviteSpy.mockClear();
   ghlRequestSpy.mockResolvedValue({});
-  sendEmailSpy.mockResolvedValue({ ok: true, id: "email-id-001" });
 
   vi.resetModules();
   capturedHandler = null;
@@ -210,10 +240,10 @@ beforeEach(async () => {
 // ── tests ─────────────────────────────────────────────────────────────────────
 
 describe("opportunityWon Inngest function", () => {
-  // ── happy path ──────────────────────────────────────────────────────────────
+  // ── double-gate: confirmed won ────────────────────────────────────────────────
 
-  it("calls createWeddingFromOpportunity with correct arguments", async () => {
-    await runHandler();
+  it("proceeds and creates a wedding when GHL confirms the opportunity is won", async () => {
+    const result = await runHandler() as Record<string, unknown>;
 
     expect(createWeddingSpy).toHaveBeenCalledOnce();
     const args = (createWeddingSpy.mock.calls as unknown[][])[0][0] as Record<string, unknown>;
@@ -222,19 +252,110 @@ describe("opportunityWon Inngest function", () => {
     expect(args.ghlContactId).toBe(FAKE_CONTACT_ID);
     expect(args.coupleEmail).toBe("alice@example.com");
     expect(args.coupleNames).toBe("Alice Smith");
+
+    expect(result.weddingId).toBe(FAKE_WEDDING_ID);
+    expect(result.alreadyExisted).toBe(false);
   });
 
-  it("sends the portal invite email to the contact email", async () => {
+  // ── double-gate: not-won short-circuits ──────────────────────────────────────
+
+  it("short-circuits with reason=not-won and creates NO wedding when GHL says the opp is not won", async () => {
+    mockOpportunity = { id: FAKE_OPP_ID, status: "open" };
+
+    const result = await runHandler() as Record<string, unknown>;
+    expect(result.skipped).toBe(true);
+    expect(result.reason).toBe("not-won");
+
+    // A stray webhook must not create a phantom wedding.
+    expect(createWeddingSpy).not.toHaveBeenCalled();
+    expect(inviteSpy).not.toHaveBeenCalled();
+  });
+
+  it("short-circuits when the opp is lost", async () => {
+    mockOpportunity = { id: FAKE_OPP_ID, status: "lost" };
+
+    const result = await runHandler() as Record<string, unknown>;
+    expect(result.reason).toBe("not-won");
+    expect(createWeddingSpy).not.toHaveBeenCalled();
+  });
+
+  // ── double-gate: no creds skips confirm gracefully ───────────────────────────
+
+  it("skips the confirm gracefully when the venue has no GHL credentials", async () => {
+    mockGhlClientNull = true;
+
+    const result = await runHandler() as Record<string, unknown>;
+    // Confirm cannot run without a client — it must NOT short-circuit as not-won.
+    expect(result.reason).not.toBe("not-won");
+    // Falls through to fetch-ghl-contact which returns no-ghl-credentials.
+    expect(result.skipped).toBe(true);
+    expect(result.reason).toBe("no-ghl-credentials");
+    expect(createWeddingSpy).not.toHaveBeenCalled();
+    expect(inviteSpy).not.toHaveBeenCalled();
+  });
+
+  // ── magic-link invite ────────────────────────────────────────────────────────
+
+  it("sends a magic-link invite once per couple with the correct metadata + redirect", async () => {
     await runHandler();
 
-    expect(sendEmailSpy).toHaveBeenCalledOnce();
-    const args = sendEmailSpy.mock.calls[0][0] as Record<string, unknown>;
-    expect(args.to).toBe("alice@example.com");
-    expect(typeof args.subject).toBe("string");
-    expect((args.subject as string).length).toBeGreaterThan(0);
-    expect(args.fromName).toBe("The Grand Hall");
-    expect(args.replyTo).toBe("venue@example.com");
+    expect(inviteSpy).toHaveBeenCalledOnce();
+    const [email, opts] = inviteSpy.mock.calls[0];
+    expect(email).toBe("alice@example.com");
+
+    const data = opts.data as Record<string, unknown>;
+    expect(data.couple_account_id).toBe(FAKE_COUPLE_ID);
+    expect(data.wedding_id).toBe(FAKE_WEDDING_ID);
+    expect(data.venue_id).toBe(FAKE_VENUE_ID);
+
+    expect(opts.redirectTo).toBe(`${APP_URL}/portal/auth/magic-link`);
   });
+
+  it("invites every inserted couple account (e.g. two partners)", async () => {
+    mockCreateWeddingResult = {
+      weddingId: FAKE_WEDDING_ID,
+      alreadyExisted: false,
+      coupleAccounts: [
+        { id: "couple-a", email: "alice@example.com", weddingId: FAKE_WEDDING_ID, venueId: FAKE_VENUE_ID },
+        { id: "couple-b", email: "bob@example.com", weddingId: FAKE_WEDDING_ID, venueId: FAKE_VENUE_ID },
+      ],
+    };
+
+    const result = await runHandler() as Record<string, unknown>;
+
+    expect(inviteSpy).toHaveBeenCalledTimes(2);
+    const emails = inviteSpy.mock.calls.map((c) => c[0]);
+    expect(emails).toContain("alice@example.com");
+    expect(emails).toContain("bob@example.com");
+    expect(result.invitesSent).toBe(2);
+  });
+
+  it("does NOT throw when an invite fails — wedding + tag still complete", async () => {
+    mockInviteError = { message: "rate limited" };
+
+    const result = await runHandler() as Record<string, unknown>;
+    expect(result.weddingId).toBe(FAKE_WEDDING_ID);
+    expect(result.invitesSent).toBe(0);
+    // Tag still fires.
+    expect(ghlRequestSpy).toHaveBeenCalledOnce();
+  });
+
+  it("sends no invite when there are no inserted couple accounts (replay / alreadyExisted)", async () => {
+    mockCreateWeddingResult = {
+      weddingId: FAKE_WEDDING_ID,
+      alreadyExisted: true,
+      coupleAccounts: [],
+    };
+
+    const result = await runHandler() as Record<string, unknown>;
+    expect(result.alreadyExisted).toBe(true);
+    expect(inviteSpy).not.toHaveBeenCalled();
+    expect(result.invitesSent).toBe(0);
+    // Tag must still fire on replay.
+    expect(ghlRequestSpy).toHaveBeenCalledOnce();
+  });
+
+  // ── tag GHL contact ──────────────────────────────────────────────────────────
 
   it("tags the GHL contact vf2-portal-invited", async () => {
     await runHandler();
@@ -247,25 +368,15 @@ describe("opportunityWon Inngest function", () => {
     expect(body.tags).toContain("vf2-portal-invited");
   });
 
-  it("returns weddingId and alreadyExisted=false on success", async () => {
+  it("does not throw when the GHL tag call fails", async () => {
+    ghlRequestSpy.mockRejectedValueOnce(new Error("GHL API error 500"));
+
     const result = await runHandler() as Record<string, unknown>;
     expect(result.weddingId).toBe(FAKE_WEDDING_ID);
-    expect(result.alreadyExisted).toBe(false);
+    expect(inviteSpy).toHaveBeenCalledOnce();
   });
 
-  // ── no GHL credentials ──────────────────────────────────────────────────────
-
-  it("returns skipped=true when the venue has no GHL credentials", async () => {
-    mockGhlClientNull = true;
-
-    const result = await runHandler() as Record<string, unknown>;
-    expect(result.skipped).toBe(true);
-    expect(result.reason).toBe("no-ghl-credentials");
-    expect(createWeddingSpy).not.toHaveBeenCalled();
-    expect(sendEmailSpy).not.toHaveBeenCalled();
-  });
-
-  // ── contact has no email ────────────────────────────────────────────────────
+  // ── contact guards ───────────────────────────────────────────────────────────
 
   it("returns skipped=true when the GHL contact has no email", async () => {
     mockContact = { ...mockContact, email: null };
@@ -274,10 +385,8 @@ describe("opportunityWon Inngest function", () => {
     expect(result.skipped).toBe(true);
     expect(result.reason).toBe("contact-has-no-email");
     expect(createWeddingSpy).not.toHaveBeenCalled();
-    expect(sendEmailSpy).not.toHaveBeenCalled();
+    expect(inviteSpy).not.toHaveBeenCalled();
   });
-
-  // ── venue not found ─────────────────────────────────────────────────────────
 
   it("returns skipped=true when venue row is not found", async () => {
     mockVenueData = null;
@@ -288,30 +397,7 @@ describe("opportunityWon Inngest function", () => {
     expect(createWeddingSpy).not.toHaveBeenCalled();
   });
 
-  // ── idempotency ─────────────────────────────────────────────────────────────
-
-  it("still sends email and tags contact even when wedding alreadyExisted", async () => {
-    mockCreateWeddingResult = { weddingId: FAKE_WEDDING_ID, alreadyExisted: true };
-
-    const result = await runHandler() as Record<string, unknown>;
-    expect(result.alreadyExisted).toBe(true);
-    // Email + tag must still fire on replay.
-    expect(sendEmailSpy).toHaveBeenCalledOnce();
-    expect(ghlRequestSpy).toHaveBeenCalledOnce();
-  });
-
-  // ── GHL tag failure is non-fatal ────────────────────────────────────────────
-
-  it("does not throw when the GHL tag call fails", async () => {
-    ghlRequestSpy.mockRejectedValueOnce(new Error("GHL API error 500"));
-
-    // Should not throw — tagging is best-effort.
-    const result = await runHandler() as Record<string, unknown>;
-    expect(result.weddingId).toBe(FAKE_WEDDING_ID);
-    expect(sendEmailSpy).toHaveBeenCalledOnce();
-  });
-
-  // ── couple name fallback ────────────────────────────────────────────────────
+  // ── couple name fallback ─────────────────────────────────────────────────────
 
   it("falls back to email as coupleNames when contact has no first/last name", async () => {
     mockContact = { ...mockContact, firstName: null, lastName: null };

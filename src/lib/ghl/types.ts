@@ -100,7 +100,7 @@ export interface GhlInvoiceItem {
   /** Integer quantity. */
   quantity: number;
   /**
-   * Unit price in the invoice currency (minor units — pence/cents).
+   * Unit price in major units (e.g. pounds), as expected by the GHL invoices API.
    * GHL stores this as a float in its own system; we pass the value we hold.
    */
   price: number;
