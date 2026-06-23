@@ -18,7 +18,7 @@ const mockCtx = {
     slug: "test-venue",
     timezone: "Europe/London",
     onboardingCompletedAt: null,
-    trialEndsAt: null,
+    trialEndsAt: null, mode: "bundled",
   },
   role: "admin" as const,
   access: "active" as const,

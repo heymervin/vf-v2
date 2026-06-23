@@ -26,7 +26,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 let mockTenantCtx: Record<string, unknown> = {
   ok: true,
   user: { id: "user-1", email: "owner@example.com" },
-  venue: { id: "venue-uuid-1234", name: "Test Venue", slug: "test-venue", timezone: "Europe/London", onboardingCompletedAt: null, trialEndsAt: null },
+  venue: { id: "venue-uuid-1234", name: "Test Venue", slug: "test-venue", timezone: "Europe/London", onboardingCompletedAt: null, trialEndsAt: null, mode: "bundled" },
   role: "owner",
   access: "trialing",
   billing: { stripeCustomerId: null, status: null, currentPeriodEnd: null },
@@ -116,7 +116,7 @@ beforeEach(() => {
   mockTenantCtx = {
     ok: true,
     user: { id: "user-1", email: "owner@example.com" },
-    venue: { id: "venue-uuid-1234", name: "Test Venue", slug: "test-venue", timezone: "Europe/London", onboardingCompletedAt: null, trialEndsAt: null },
+    venue: { id: "venue-uuid-1234", name: "Test Venue", slug: "test-venue", timezone: "Europe/London", onboardingCompletedAt: null, trialEndsAt: null, mode: "bundled" },
     role: "owner",
     access: "trialing",
     billing: { stripeCustomerId: null, status: null, currentPeriodEnd: null },

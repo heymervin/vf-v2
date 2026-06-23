@@ -57,7 +57,7 @@ vi.mock("@/lib/tenant", () => ({
     return {
       ok: true,
       user: { id: "user-001", email: "staff@example.com" },
-      venue: { id: FAKE_VENUE_ID, name: "Grand Hall", slug: "grand-hall", timezone: "Europe/London", onboardingCompletedAt: null, trialEndsAt: null },
+      venue: { id: FAKE_VENUE_ID, name: "Grand Hall", slug: "grand-hall", timezone: "Europe/London", onboardingCompletedAt: null, trialEndsAt: null, mode: "bundled" },
       role: "admin",
       access: "active",
       billing: { stripeCustomerId: null, status: null, currentPeriodEnd: null },

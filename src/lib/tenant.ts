@@ -32,6 +32,8 @@ export type TenantContext =
         timezone: string;
         onboardingCompletedAt: string | null;
         trialEndsAt: string | null;
+        /** 'bundled' = GHL-backed (pre-sales in GHL); 'standalone' = native CRM (D2). */
+        mode: "bundled" | "standalone";
       };
       role: MembershipRole;
       access: AccessState;
@@ -146,6 +148,7 @@ export async function getTenantContext(): Promise<TenantContext> {
       timezone: venue.timezone,
       onboardingCompletedAt: venue.onboarding_completed_at,
       trialEndsAt: venue.trial_ends_at,
+      mode: (venue.mode ?? "bundled") as "bundled" | "standalone",
     },
     role: active.role as MembershipRole,
     access: accessState,
