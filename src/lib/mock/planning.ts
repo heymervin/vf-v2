@@ -6,20 +6,12 @@
  * plan can render at any size. Additive to `./index`.
  */
 
+import type { FloorplanTable, RoomElement } from "@/lib/floorplan/types";
+export type { FloorplanTable, RoomElement } from "@/lib/floorplan/types";
+
 // ---------------------------------------------------------------------------
 // Tables
 // ---------------------------------------------------------------------------
-
-export interface FloorplanTable {
-  id: string;
-  tableNumber: number;
-  shape: "round" | "banquet" | "square" | "top";
-  capacity: number;
-  /** Position as a percentage of the room canvas (0–100). */
-  x: number;
-  y: number;
-  label: string | null;
-}
 
 export const FLOORPLAN_TABLES: FloorplanTable[] = [
   { id: "ft1", tableNumber: 1, shape: "top", capacity: 10, x: 50, y: 12, label: "Head table" },
@@ -39,17 +31,6 @@ export const FLOORPLAN_TABLES: FloorplanTable[] = [
 // ---------------------------------------------------------------------------
 // Fixed room elements (The Long Barn)
 // ---------------------------------------------------------------------------
-
-export interface RoomElement {
-  id: string;
-  kind: "stage" | "dancefloor" | "bar" | "entrance" | "wall";
-  /** Position + size as percentages of the room canvas (0–100). */
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  label: string;
-}
 
 export const ROOM_ELEMENTS: RoomElement[] = [
   { id: "re1", kind: "stage", x: 42, y: 2, w: 16, h: 6, label: "Stage" },

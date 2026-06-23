@@ -10,8 +10,8 @@
  * are also here so the client component stays import-free from @/lib/mock.
  */
 
-import type { FloorplanTable, RoomElement } from "@/lib/mock/planning";
-import type { Guest } from "@/lib/mock";
+import type { FloorplanTable, RoomElement } from "@/lib/floorplan/types";
+import type { Guest } from "@/lib/guests/types";
 
 // ---------------------------------------------------------------------------
 // Layout jsonb shape stored in floor_plans.layout
