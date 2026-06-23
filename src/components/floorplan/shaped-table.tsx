@@ -17,8 +17,8 @@
  */
 
 import { cn } from "@/lib/utils";
-import type { FloorplanTable } from "@/lib/mock/planning";
-import type { Guest } from "@/lib/mock";
+import type { FloorplanTable } from "@/lib/floorplan/types";
+import type { Guest } from "@/lib/guests/types";
 
 // ---------------------------------------------------------------------------
 // Types

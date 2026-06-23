@@ -14,6 +14,8 @@
  */
 
 import type { PipelineStage } from "@/lib/pipeline";
+import type { Guest, Rsvp } from "@/lib/guests/types";
+export type { Guest, Rsvp } from "@/lib/guests/types";
 
 // Fixed reference point for the prototype (keeps "days until" stable-ish).
 export const TODAY = "2026-06-14";
@@ -142,28 +144,6 @@ export interface RunsheetItem {
   done?: boolean;
   supplierId?: string | null;
   notes?: string | null;
-}
-
-export type Rsvp = "yes" | "no" | "pending";
-
-export interface Guest {
-  id: string;
-  name: string;
-  side: "partner1" | "partner2" | "both";
-  table: number | null;
-  rsvp: Rsvp;
-  dietary: string[]; // e.g. ["Vegetarian"], ["Nut allergy"]
-  plusOne: boolean;
-  // --- v2 additive (optional) ---
-  /** vocab: 'VIP' | 'Family' | 'Wedding party' | 'Kids' | 'Supplier' | 'Evening' */
-  tags?: string[];
-  householdId?: string | null;
-  householdName?: string | null;
-  plusOneName?: string | null;
-  sessionType?: "day" | "evening" | "ceremony_only";
-  rsvpChasedAt?: string | null;
-  seatIndex?: number | null;
-  mealChoice?: { starter?: string; main?: string; dessert?: string };
 }
 
 export interface MenuOption {

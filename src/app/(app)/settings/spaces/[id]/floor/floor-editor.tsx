@@ -24,7 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { FloorCanvas } from "@/components/floorplan/floor-canvas";
 import { ShapedTable } from "@/components/floorplan/shaped-table";
 import type { Tables } from "@/lib/supabase/types";
-import type { RoomElement } from "@/lib/mock/planning";
+import type { RoomElement } from "@/lib/floorplan/types";
 import {
   saveFloorTemplate,
   deleteFloorTemplate,

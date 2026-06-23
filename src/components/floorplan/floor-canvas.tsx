@@ -16,7 +16,7 @@
  */
 
 import { cn } from "@/lib/utils";
-import type { RoomElement } from "@/lib/mock/planning";
+import type { RoomElement } from "@/lib/floorplan/types";
 
 // ---------------------------------------------------------------------------
 // Types

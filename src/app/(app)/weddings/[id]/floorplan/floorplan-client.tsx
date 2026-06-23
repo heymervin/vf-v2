@@ -33,9 +33,9 @@ import { SortableTable, type SortableColumn } from "@/components/sortable-table"
 import { FloorCanvas } from "@/components/floorplan/floor-canvas";
 import { ShapedTable } from "@/components/floorplan/shaped-table";
 import { TagChip } from "@/components/tag-chip";
-import type { Guest, Rsvp } from "@/lib/mock";
-import type { FloorplanTable } from "@/lib/mock/planning";
-import type { RoomElement } from "@/lib/mock/planning";
+import type { Guest, Rsvp } from "@/lib/guests/types";
+import type { FloorplanTable } from "@/lib/floorplan/types";
+import type { RoomElement } from "@/lib/floorplan/types";
 import { assignGuestToTable } from "./actions";
 
 // ---------------------------------------------------------------------------
