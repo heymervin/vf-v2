@@ -8,6 +8,7 @@ import {
   Kanban,
   CalendarDays,
   BarChart3,
+  Sparkles,
   Settings,
   LogOut,
   Menu,
@@ -46,6 +47,7 @@ const primaryNav = [
   { label: "Pipeline", href: "/pipeline", icon: Kanban },
   { label: "Appointments", href: "/appointments", icon: CalendarDays },
   { label: "Reports", href: "/reports", icon: BarChart3 },
+  { label: "Copilot", href: "/copilot", icon: Sparkles },
 ] as const;
 
 const secondaryNav = [
