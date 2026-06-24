@@ -60,14 +60,15 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  // getUser() — NOT getSession() — revalidates the token with Supabase Auth server.
-  // This is required by the @supabase/ssr pattern to prevent stale session exploitation.
+  // getClaims() locally verifies the JWT signature against the project JWKS — no
+  // network round-trip on asymmetric (RS256/ES256) keys, transparently falling back
+  // to a server getUser() call on legacy HS256 projects. The optimistic routing gate
+  // here only needs a cryptographically valid token; getTenantContext() re-resolves
+  // the full context in the render tree. Token rotation still threads via setAll above.
   let isAuthenticated = false;
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    isAuthenticated = !!user;
+    const { data } = await supabase.auth.getClaims();
+    isAuthenticated = !!data?.claims;
   } catch {
     // No reachable Supabase backend (e.g. placeholder env on a prototype
     // deploy) — treat as logged out so public routes (/, /preview, /portal)
