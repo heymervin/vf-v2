@@ -39,8 +39,8 @@ export interface DailyBriefEmailProps {
  * Daily morning brief emailed to venue owners at ~7am.
  * Sections: header, pipeline, portal activity, upcoming events, overdue payments, footer.
  *
- * Rendered server-side inside Inngest — the PipelineAggregate import is safe here
- * because this module is never bundled for the browser.
+ * Rendered server-side by the daily-brief cron — the PipelineAggregate import is
+ * safe here because this module is never bundled for the browser.
  */
 export function DailyBriefEmail({
   venueName,

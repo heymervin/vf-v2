@@ -3,7 +3,6 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { inngest } from "@/inngest/client";
 import { ok, err, type ActionResult } from "@/lib/actions";
 import { computeAvailableSlots } from "@/lib/booking/engine";
 import { getClientIp, rateLimitKey } from "@/lib/get-client-ip";
@@ -418,21 +417,6 @@ export async function bookSlot(
     return err("Could not complete booking. Please try again.");
   }
 
-  // Fire appointment/booked event for confirmation email + 24h reminder
-  try {
-    await inngest.send({
-      name: "appointment/booked",
-      data: {
-        appointmentId: appt.id,
-        venueId,
-        contactId,
-        opportunityId,
-      },
-    });
-  } catch (e) {
-    console.error("appointment/booked event:", (e as Error).message);
-  }
-
   return ok({ manageToken: appt.manage_token });
 }
 
@@ -611,29 +595,6 @@ export async function rescheduleAppointment(
 
   if (!newToken) {
     return err("Could not reschedule. Please try again.");
-  }
-
-  // Look up the new appointment id for the Inngest event.
-  const { data: newAppt } = await admin
-    .from("appointments")
-    .select("id")
-    .eq("manage_token", newToken)
-    .maybeSingle();
-
-  if (newAppt) {
-    try {
-      await inngest.send({
-        name: "appointment/booked",
-        data: {
-          appointmentId: newAppt.id,
-          venueId: appt.venue_id,
-          contactId: appt.contact_id,
-          opportunityId: appt.opportunity_id,
-        },
-      });
-    } catch (e) {
-      console.error("appointment/booked (reschedule) event:", (e as Error).message);
-    }
   }
 
   return ok({ manageToken: newToken });

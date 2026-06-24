@@ -1,5 +1,5 @@
 /**
- * Unit tests for src/inngest/functions/daily-brief.ts
+ * Unit tests for src/lib/reports/daily-brief.ts
  *
  * Covers:
  *   1. Happy path — all data present, GHL connected → brief assembled and sent.
@@ -16,7 +16,6 @@
  *   - @/lib/ghl/reports is mocked (getPipelineAggregate).
  *   - @/lib/email/send is mocked (sendEmail).
  *   - @/lib/email/templates/daily-brief-email is mocked.
- *   - @/inngest/client is mocked with a factory helper.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -72,8 +71,10 @@ let mockOwnerMembership: { user_id: string } | null = { user_id: USER_ID_OWNER }
 let mockAuthUser: { user: { email: string } } | null = { user: { email: OWNER_EMAIL } };
 let mockAuthError: { message: string } | null = null;
 
-// Spy to capture sendEmail calls
-const sendEmailSpy = vi.fn().mockResolvedValue({ ok: true, id: "email-abc" });
+// Spy to capture sendEmail calls (hoisted — referenced in vi.mock factory).
+const { sendEmailSpy } = vi.hoisted(() => ({
+  sendEmailSpy: vi.fn(),
+}));
 
 // ── mocks ──────────────────────────────────────────────────────────────────────
 
@@ -119,7 +120,7 @@ vi.mock("@/lib/supabase/admin", () => ({
         }
 
         if (table === "timeline_events") {
-          // Chain: .select().eq("venue_id").gte("weddings.wedding_date").lte("weddings.wedding_date").order().limit()
+          // Chain: .select().eq("venue_id").gte().lte().order().limit()
           return {
             select: () => ({
               eq: () => ({
@@ -186,44 +187,17 @@ vi.mock("@/lib/supabase/admin", () => ({
   },
 }));
 
-// ── Inngest test harness ───────────────────────────────────────────────────────
+// ── import under test ──────────────────────────────────────────────────────────
 
-/**
- * Minimal step harness — runs each step.run callback immediately (no replay).
- * Labels are recorded so we can assert step execution order in future tests.
- */
-function makeStepHarness() {
-  return {
-    run: async <T>(_name: string, fn: () => Promise<T>): Promise<T> => fn(),
-  };
-}
+import { runDailyBrief } from "./daily-brief";
 
-let capturedHandler:
-  | ((ctx: { step: ReturnType<typeof makeStepHarness> }) => Promise<unknown>)
-  | null = null;
-
-vi.mock("@/inngest/client", () => ({
-  inngest: {
-    createFunction: (
-      _config: unknown,
-      handler: (ctx: { step: ReturnType<typeof makeStepHarness> }) => Promise<unknown>,
-    ) => {
-      capturedHandler = handler;
-      return { id: "daily-brief" };
-    },
-  },
-}));
-
-// ── helper ─────────────────────────────────────────────────────────────────────
-
-async function runHandler() {
-  if (!capturedHandler) throw new Error("handler not captured — check mock order");
-  return capturedHandler({ step: makeStepHarness() });
+function runHandler() {
+  return runDailyBrief();
 }
 
 // ── setup ──────────────────────────────────────────────────────────────────────
 
-beforeEach(async () => {
+beforeEach(() => {
   // Reset all state to defaults
   mockPipelineMode = "connected";
   mockVenues = [
@@ -250,16 +224,11 @@ beforeEach(async () => {
 
   sendEmailSpy.mockClear();
   sendEmailSpy.mockResolvedValue({ ok: true, id: "email-abc" });
-
-  vi.resetModules();
-  capturedHandler = null;
-
-  await import("./daily-brief");
 });
 
 // ── tests ─────────────────────────────────────────────────────────────────────
 
-describe("dailyBrief Inngest function", () => {
+describe("runDailyBrief", () => {
   // ── happy path ──────────────────────────────────────────────────────────────
 
   it("sends an email to the venue owner on the happy path", async () => {
@@ -319,15 +288,11 @@ describe("dailyBrief Inngest function", () => {
 
     await runHandler();
 
-    // Email should still be sent
     expect(sendEmailSpy).toHaveBeenCalledOnce();
     const args = sendEmailSpy.mock.calls[0][0] as Record<string, unknown>;
     const react = args.react as Record<string, unknown>;
 
-    // pipeline must be null — the template renders the "Connect GHL" message
     expect(react.pipeline).toBeNull();
-
-    // Subject must still be correct
     expect(args.subject).toBe("Daily brief — The Grand Hall");
   });
 
@@ -353,7 +318,6 @@ describe("dailyBrief Inngest function", () => {
 
     expect(sendEmailSpy).not.toHaveBeenCalled();
 
-    // The result for the venue should indicate skipped
     const results = result.results as Record<string, unknown>[];
     expect(results[0].skipped).toBe(true);
     expect(results[0].reason).toBe("no-owner-membership");
@@ -423,7 +387,6 @@ describe("dailyBrief Inngest function", () => {
   // ── upcomingEvents payload shape ────────────────────────────────────────────
 
   it("upcomingEvents payload has title, starts_at_time, and wedding_date fields", async () => {
-    // The mock already sets mockUpcomingEvents in beforeEach — use it as-is.
     await runHandler();
 
     const args = sendEmailSpy.mock.calls[0][0] as Record<string, unknown>;
@@ -431,12 +394,10 @@ describe("dailyBrief Inngest function", () => {
     const events = react.upcomingEvents as Array<Record<string, unknown>>;
 
     expect(events).toHaveLength(1);
-    // All three fields required by DailyBriefEmailProps.upcomingEvents must be present.
     expect(events[0]).toHaveProperty("title");
     expect(events[0]).toHaveProperty("starts_at_time");
     expect(events[0]).toHaveProperty("wedding_date");
 
-    // Verify concrete values from the mock
     expect(events[0].title).toBe("Ceremony run-through");
     expect(events[0].starts_at_time).toBe("14:00");
     expect(events[0].wedding_date).toBe("2026-06-20");
@@ -463,13 +424,9 @@ describe("dailyBrief Inngest function", () => {
     const args = sendEmailSpy.mock.calls[0][0] as Record<string, unknown>;
     const react = args.react as Record<string, unknown>;
 
-    // Pipeline must be null
     expect(react.pipeline).toBeNull();
-
-    // But the other three sections must still have data
     expect((react.upcomingEvents as unknown[]).length).toBeGreaterThan(0);
     expect((react.portalActivity as unknown[]).length).toBeGreaterThan(0);
-    // overduePayments is [] in the default mock — that's fine, email sends anyway
     expect(Array.isArray(react.overduePayments)).toBe(true);
   });
 

@@ -15,22 +15,23 @@
  *   4. Resolve venueId from ghl_credentials.location_id → 200 {ignored} if unknown.
  *   5. Dedup via ghl_webhook_events upsert → 200 {duplicate} if seen before.
  *   6. Route by event type:
- *      - OpportunityStatusUpdate / OpportunityStageUpdate → emit ghl/opportunity-won.
+ *      - OpportunityStatusUpdate / OpportunityStageUpdate → handleOpportunityWon
+ *        scheduled via `after` (runs after the 200 ack is sent).
  *      - InboundMessage → resolve wedding from ghl_contact_id + venue_id, broadcast
  *        on Supabase Realtime channel "wedding:{weddingId}:messages" (best-effort).
  *      - Everything else → silent 200 ack.
- *   7. Return 200 fast (all business logic is async/Inngest).
+ *   7. Return 200 fast (the won-opportunity work runs in `after`).
  *
  * References:
  *   specs/ghl-integration.md §4 (webhook ingress), §7.3 (realtime inbound)
- *   src/lib/ghl/webhooks.ts   (verifyGhlSignature)
- *   src/inngest/client.ts     (inngest.send)
+ *   src/lib/ghl/webhooks.ts        (verifyGhlSignature)
+ *   src/lib/weddings/opportunity-won.ts (handleOpportunityWon)
  */
 
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
 import { verifyGhlSignature } from "@/lib/ghl/webhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { inngest } from "@/inngest/client";
+import { handleOpportunityWon } from "@/lib/weddings/opportunity-won";
 
 // ── GHL event payload types ───────────────────────────────────────────────────
 
@@ -152,15 +153,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (isWon) {
     const opp = payload as GhlOpportunityStatusPayload | GhlOpportunityStagePayload;
-    await inngest.send({
-      name: "ghl/opportunity-won",
-      data: {
+    after(() =>
+      handleOpportunityWon({
         venueId,
-        locationId,
         ghlOpportunityId: opp.id,
         ghlContactId: opp.contactId,
-      },
-    });
+      }).catch((e) =>
+        console.warn("[ghl-webhook] opportunity-won failed:", e),
+      ),
+    );
   } else if (payload.type === "InboundMessage") {
     // specs/ghl-integration.md §7.3 — broadcast a Realtime ping so the
     // Messages tab client can refetch. No message body is stored in VF2.
@@ -183,7 +184,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
  *   - OpportunityStatusUpdate with status === "won"
  *   - OpportunityStageUpdate with stageName in BOOKED_STAGE_NAMES
  *
- * Double-gated per §4.4 of ghl-integration.md: the Inngest function re-confirms
+ * Double-gated per §4.4 of ghl-integration.md: handleOpportunityWon re-confirms
  * via the GHL API before creating a wedding.
  */
 function isOpportunityWon(payload: GhlPayload): boolean {

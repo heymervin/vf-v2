@@ -106,8 +106,7 @@ function validInput() {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 // Import once — mocks are registered at module-scope and persist across tests.
-// No vi.resetModules() needed here (unlike the Inngest handler test which must
-// re-capture createFunction on each run).
+// No vi.resetModules() needed here.
 import { sendMessageAction } from "./actions";
 
 describe("sendMessageAction", () => {

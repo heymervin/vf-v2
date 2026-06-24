@@ -1,7 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { inngest } from "@/inngest/client";
+import { syncWonOpportunities } from "@/lib/ghl/contacts-sync";
+
+// The contacts sync runs in after() and can fetch many GHL opportunities +
+// a contact each; give it headroom beyond the default so a large account's
+// historical import isn't truncated. (Vercel Pro allows up to 300s.)
+export const maxDuration = 300;
 
 /**
  * GET /callback
@@ -51,12 +56,15 @@ export async function GET(request: NextRequest) {
   const hasVenue = Array.isArray(memberships) && memberships.length > 0;
   const destination = hasVenue ? "/dashboard" : "/onboarding";
 
-  // Fire GHL contacts sync in the background — non-blocking, no await.
+  // Fire GHL contacts sync in the background — runs after the redirect is sent.
   // Pulls any won opportunities not yet in the weddings table.
   if (hasVenue && memberships?.[0]?.venue_id) {
-    void inngest
-      .send({ name: "ghl/contacts-sync", data: { venueId: memberships[0].venue_id } })
-      .catch((err) => console.warn("[auth/callback] ghl-contacts-sync fire failed:", err));
+    const venueId = memberships[0].venue_id;
+    after(() =>
+      syncWonOpportunities(venueId).catch((e) =>
+        console.warn("[callback] contacts sync failed:", e),
+      ),
+    );
   }
 
   return NextResponse.redirect(new URL(destination, origin));
