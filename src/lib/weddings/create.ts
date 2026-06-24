@@ -1,5 +1,5 @@
 /**
- * Wedding domain service — shared by the Inngest opportunity-won function
+ * Wedding domain service — shared by the opportunity-won handler
  * and the manual createWedding server action.
  *
  * Two entry points:
@@ -165,8 +165,8 @@ export async function createWeddingFromOpportunity(
   const coupleAccounts: CreatedCoupleAccount[] = [];
 
   if (coupleErr || !couple) {
-    // Non-fatal for the calling Inngest step — log and continue. The
-    // couple invite can be re-attempted; the wedding row is already created.
+    // Non-fatal for the caller — log and continue. The couple invite can be
+    // re-attempted; the wedding row is already created.
     console.warn(
       `createWeddingFromOpportunity: couple_accounts insert failed — ${coupleErr?.message ?? "no data returned"}`,
     );

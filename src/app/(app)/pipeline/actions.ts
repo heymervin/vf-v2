@@ -51,8 +51,8 @@ export async function moveOpportunity(
   if (!data) return err("Opportunity not found.");
 
   // Eagerly stop any active nurture enrollment when the opportunity leaves
-  // inbound_enquiry. The sequence-run Inngest function rechecks before each
-  // send, but this DB write makes the stop immediate and avoids a wasted sleep.
+  // inbound_enquiry. The sequences cron rechecks before each send, but this DB
+  // write makes the stop immediate so no further step is ever sent.
   if (stage !== "inbound_enquiry") {
     const admin = createAdminClient();
     await admin

@@ -1,8 +1,9 @@
 "use server";
 
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { inngest } from "@/inngest/client";
+import { handleLeadCaptured } from "@/lib/leads/lead-captured";
 import { ok, err, type ActionResult } from "@/lib/actions";
 import { leadFormSchema } from "@/lib/zod-schemas/lead";
 import { getClientIp, rateLimitKey } from "@/lib/get-client-ip";
@@ -174,17 +175,14 @@ export async function submitLeadForm(
     .update({ contact_id: contactId, processed_at: new Date().toISOString() })
     .eq("id", submission.id);
 
-  // 5. Downstream: brochure delivery (and future nurture enrollment).
-  // Best-effort — the lead is already captured; a send failure must not fail
-  // the submission.
-  try {
-    await inngest.send({
-      name: "lead/captured",
-      data: { venueId, contactId, submissionId: submission.id },
-    });
-  } catch (e) {
-    console.error("lead/captured event send failed:", (e as Error).message);
-  }
+  // 5. Downstream: brochure delivery + nurture enrollment.
+  // Best-effort — the lead is already captured; this runs after the response
+  // so a send/enrollment failure never fails the submission.
+  after(() =>
+    handleLeadCaptured({ venueId, contactId }).catch((e) =>
+      console.warn("lead-captured failed:", e),
+    ),
+  );
 
   return ok(undefined);
 }

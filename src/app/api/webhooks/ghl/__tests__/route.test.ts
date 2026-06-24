@@ -4,19 +4,20 @@
  * These tests are DB-free and secret-free:
  *   - @/lib/supabase/admin is mocked (controls venue lookup + dedup insert +
  *     wedding resolution + Realtime channel.send)
- *   - @/inngest/client is mocked (asserts inngest.send calls)
+ *   - @/lib/weddings/opportunity-won is mocked (asserts handleOpportunityWon calls)
+ *   - next/server's `after` is mocked to run its callback synchronously
  *   - server-only is mocked to a no-op
  *   - GHL_WEBHOOK_SHARED_SECRET is set in process.env before import
  *
  * Scenarios:
  *   1. Bad HMAC → 401 (shared-secret path, PIT mode)
  *   2. Missing signature header → 401
- *   3. Unknown locationId → 200 {ignored: true}, no inngest.send
+ *   3. Unknown locationId → 200 {ignored: true}, no handleOpportunityWon
  *   4. Duplicate webhookId (already in ghl_webhook_events) → 200 {duplicate: true}
- *   5. OpportunityStatusUpdate with status=won → inngest.send("ghl/opportunity-won")
- *   6. OpportunityStatusUpdate with status≠won → 200, no inngest.send
- *   7. OpportunityStageUpdate (Booked stage) → inngest.send("ghl/opportunity-won")
- *   8. Unrecognised event type → 200, no inngest.send, no broadcast
+ *   5. OpportunityStatusUpdate with status=won → handleOpportunityWon invoked
+ *   6. OpportunityStatusUpdate with status≠won → 200, no handleOpportunityWon
+ *   7. OpportunityStageUpdate (Booked stage) → handleOpportunityWon invoked
+ *   8. Unrecognised event type → 200, no handleOpportunityWon, no broadcast
  *   9. InboundMessage (known contact) → 200, broadcast invoked on correct channel
  *  10. InboundMessage (no wedding for contact) → 200, no broadcast (graceful)
  *  11. Bad HMAC on InboundMessage → 401, no broadcast
@@ -80,8 +81,8 @@ let mockWeddingResult: { data: { id: string } | null; error: null } = {
   error: null,
 };
 
-// Captured inngest.send calls for assertion.
-const inngestSendSpy = vi.fn();
+// Captured handleOpportunityWon calls for assertion.
+const handleOpportunityWonSpy = vi.fn().mockResolvedValue({ weddingId: "w1" });
 
 // Captured Realtime broadcast calls for assertion.
 const channelSendSpy = vi.fn().mockResolvedValue("ok");
@@ -90,8 +91,19 @@ const channelSendSpy = vi.fn().mockResolvedValue("ok");
 
 vi.mock("server-only", () => ({}));
 
-vi.mock("@/inngest/client", () => ({
-  inngest: { send: inngestSendSpy },
+// Run `after` callbacks synchronously so we can assert the scheduled work.
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return {
+    ...actual,
+    after: (cb: () => unknown) => {
+      void cb();
+    },
+  };
+});
+
+vi.mock("@/lib/weddings/opportunity-won", () => ({
+  handleOpportunityWon: handleOpportunityWonSpy,
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -154,7 +166,8 @@ afterAll(() => {
 });
 
 beforeEach(() => {
-  inngestSendSpy.mockClear();
+  handleOpportunityWonSpy.mockClear();
+  handleOpportunityWonSpy.mockResolvedValue({ weddingId: "w1" });
   channelSendSpy.mockClear();
   channelSendSpy.mockResolvedValue("ok");
   // Default: a valid venue row exists and dedup sees it as new (non-duplicate).
@@ -222,7 +235,7 @@ describe("POST /api/webhooks/ghl", () => {
 
     const res = await POST(req);
     expect(res.status).toBe(401);
-    expect(inngestSendSpy).not.toHaveBeenCalled();
+    expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
   });
 
   it("returns 401 when the HMAC signature is wrong (bad secret)", async () => {
@@ -232,7 +245,7 @@ describe("POST /api/webhooks/ghl", () => {
 
     const res = await POST(req);
     expect(res.status).toBe(401);
-    expect(inngestSendSpy).not.toHaveBeenCalled();
+    expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
   });
 
   it("returns 401 when the body was tampered after signing", async () => {
@@ -245,7 +258,7 @@ describe("POST /api/webhooks/ghl", () => {
 
     const res = await POST(req);
     expect(res.status).toBe(401);
-    expect(inngestSendSpy).not.toHaveBeenCalled();
+    expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
   });
 
   // ── venue resolution ────────────────────────────────────────────────────────
@@ -261,7 +274,7 @@ describe("POST /api/webhooks/ghl", () => {
     expect(res.status).toBe(200);
     const json = await res.json() as Record<string, unknown>;
     expect(json.ignored).toBe(true);
-    expect(inngestSendSpy).not.toHaveBeenCalled();
+    expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
   });
 
   // ── dedup ───────────────────────────────────────────────────────────────────
@@ -278,12 +291,12 @@ describe("POST /api/webhooks/ghl", () => {
     expect(res.status).toBe(200);
     const json = await res.json() as Record<string, unknown>;
     expect(json.duplicate).toBe(true);
-    expect(inngestSendSpy).not.toHaveBeenCalled();
+    expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
   });
 
   // ── opportunity won ─────────────────────────────────────────────────────────
 
-  it("emits ghl/opportunity-won when OpportunityStatusUpdate has status=won", async () => {
+  it("invokes handleOpportunityWon when OpportunityStatusUpdate has status=won", async () => {
     const body = opportunityWonPayload({ status: "won" });
     const sig = sign(body, TEST_SECRET);
     const req = makeRequest(body, { "x-vf-webhook-secret": sig });
@@ -291,13 +304,11 @@ describe("POST /api/webhooks/ghl", () => {
     const res = await POST(req);
     expect(res.status).toBe(200);
 
-    expect(inngestSendSpy).toHaveBeenCalledOnce();
-    const [event] = inngestSendSpy.mock.calls[0] as [{ name: string; data: Record<string, unknown> }];
-    expect(event.name).toBe("ghl/opportunity-won");
-    expect(event.data.venueId).toBe(FAKE_VENUE_ID);
-    expect(event.data.locationId).toBe(FAKE_LOCATION_ID);
-    expect(event.data.ghlOpportunityId).toBe(FAKE_OPP_ID);
-    expect(event.data.ghlContactId).toBe(FAKE_CONTACT_ID);
+    expect(handleOpportunityWonSpy).toHaveBeenCalledOnce();
+    const [input] = handleOpportunityWonSpy.mock.calls[0] as [Record<string, unknown>];
+    expect(input.venueId).toBe(FAKE_VENUE_ID);
+    expect(input.ghlOpportunityId).toBe(FAKE_OPP_ID);
+    expect(input.ghlContactId).toBe(FAKE_CONTACT_ID);
   });
 
   it("does NOT emit an event when OpportunityStatusUpdate has status=open", async () => {
@@ -307,7 +318,7 @@ describe("POST /api/webhooks/ghl", () => {
 
     const res = await POST(req);
     expect(res.status).toBe(200);
-    expect(inngestSendSpy).not.toHaveBeenCalled();
+    expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
   });
 
   it("does NOT emit an event when OpportunityStatusUpdate has status=lost", async () => {
@@ -317,12 +328,12 @@ describe("POST /api/webhooks/ghl", () => {
 
     const res = await POST(req);
     expect(res.status).toBe(200);
-    expect(inngestSendSpy).not.toHaveBeenCalled();
+    expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
   });
 
   // ── booked stage (alternative win signal) ───────────────────────────────────
 
-  it("emits ghl/opportunity-won when OpportunityStageUpdate has stageName=Booked", async () => {
+  it("invokes handleOpportunityWon when OpportunityStageUpdate has stageName=Booked", async () => {
     const body = opportunityStagePayload("Booked");
     const sig = sign(body, TEST_SECRET);
     const req = makeRequest(body, { "x-vf-webhook-secret": sig });
@@ -330,10 +341,9 @@ describe("POST /api/webhooks/ghl", () => {
     const res = await POST(req);
     expect(res.status).toBe(200);
 
-    expect(inngestSendSpy).toHaveBeenCalledOnce();
-    const [event] = inngestSendSpy.mock.calls[0] as [{ name: string; data: Record<string, unknown> }];
-    expect(event.name).toBe("ghl/opportunity-won");
-    expect(event.data.venueId).toBe(FAKE_VENUE_ID);
+    expect(handleOpportunityWonSpy).toHaveBeenCalledOnce();
+    const [input] = handleOpportunityWonSpy.mock.calls[0] as [Record<string, unknown>];
+    expect(input.venueId).toBe(FAKE_VENUE_ID);
   });
 
   it("does NOT emit an event when OpportunityStageUpdate has a non-Booked stage", async () => {
@@ -343,7 +353,7 @@ describe("POST /api/webhooks/ghl", () => {
 
     const res = await POST(req);
     expect(res.status).toBe(200);
-    expect(inngestSendSpy).not.toHaveBeenCalled();
+    expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
   });
 
   // ── unrecognised event type ─────────────────────────────────────────────────
@@ -357,7 +367,7 @@ describe("POST /api/webhooks/ghl", () => {
     expect(res.status).toBe(200);
     const json = await res.json() as Record<string, unknown>;
     expect(json.received).toBe(true);
-    expect(inngestSendSpy).not.toHaveBeenCalled();
+    expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
     expect(channelSendSpy).not.toHaveBeenCalled();
   });
 
@@ -386,8 +396,8 @@ describe("POST /api/webhooks/ghl", () => {
     const json = await res.json() as Record<string, unknown>;
     expect(json.received).toBe(true);
 
-    // inngest.send must NOT be called — this is not an opportunity event.
-    expect(inngestSendSpy).not.toHaveBeenCalled();
+    // handleOpportunityWon must NOT be called — this is not an opportunity event.
+    expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
 
     // Realtime channel.send must have been called once with a broadcast payload.
     expect(channelSendSpy).toHaveBeenCalledOnce();
@@ -414,7 +424,7 @@ describe("POST /api/webhooks/ghl", () => {
     const json = await res.json() as Record<string, unknown>;
     expect(json.received).toBe(true);
     expect(channelSendSpy).not.toHaveBeenCalled();
-    expect(inngestSendSpy).not.toHaveBeenCalled();
+    expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
   });
 
   it("InboundMessage with bad signature returns 401 without broadcasting", async () => {
@@ -425,7 +435,7 @@ describe("POST /api/webhooks/ghl", () => {
     const res = await POST(req);
     expect(res.status).toBe(401);
     expect(channelSendSpy).not.toHaveBeenCalled();
-    expect(inngestSendSpy).not.toHaveBeenCalled();
+    expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
   });
 
   it("InboundMessage broadcast failure is non-fatal — still returns 200", async () => {

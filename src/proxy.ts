@@ -124,9 +124,9 @@ export const config = {
      * - _next/image   (image optimisation)
      * - favicon.ico
      * - public assets (files with extensions in /public)
-     * - /api/inngest  (Inngest webhook — no auth needed)
+     * - /api/cron     (Vercel Cron entrypoints — own CRON_SECRET auth)
      * - /api/webhooks (external webhook receivers)
      */
-    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$|api/inngest|api/webhooks).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$|api/cron|api/webhooks).*)",
   ],
 };

@@ -1,5 +1,5 @@
 /**
- * Unit tests for src/inngest/functions/opportunity-won.ts
+ * Unit tests for src/lib/weddings/opportunity-won.ts
  *
  * Covers:
  *   DOUBLE-GATE (Slice 2 P1):
@@ -23,7 +23,6 @@
  *   - @/lib/supabase/admin is mocked (incl. auth.admin.inviteUserByEmail).
  *   - @/lib/ghl/client is mocked (ghlClient factory).
  *   - @/lib/weddings/create is mocked.
- *   - @/inngest/client is mocked with a factory helper.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -35,7 +34,6 @@ const FAKE_OPP_ID = "opp-ghl-0001";
 const FAKE_CONTACT_ID = "contact-ghl-0001";
 const FAKE_WEDDING_ID = "wedding-uuid-new";
 const FAKE_COUPLE_ID = "couple-uuid-0001";
-const FAKE_LOCATION_ID = "loc_test_abc123";
 const APP_URL = "https://app.test.local";
 
 // ── mock state ─────────────────────────────────────────────────────────────────
@@ -66,8 +64,12 @@ let mockOpportunity: { id: string; status: string } = {
 // Controls whether ghlClient returns a client or null
 let mockGhlClientNull = false;
 
-// Captures PUT /contacts/{id}/tags calls
-const ghlRequestSpy = vi.fn().mockResolvedValue({});
+// Spies referenced inside hoisted vi.mock factories must themselves be hoisted.
+const { ghlRequestSpy, createWeddingSpy, inviteSpy } = vi.hoisted(() => ({
+  ghlRequestSpy: vi.fn().mockResolvedValue({}),
+  createWeddingSpy: vi.fn(),
+  inviteSpy: vi.fn(),
+}));
 
 // Controls createWeddingFromOpportunity return value
 let mockCreateWeddingResult: {
@@ -86,13 +88,9 @@ let mockCreateWeddingResult: {
     },
   ],
 };
-const createWeddingSpy = vi.fn(async () => mockCreateWeddingResult);
 
 // Captures auth.admin.inviteUserByEmail calls
 let mockInviteError: { message: string } | null = null;
-const inviteSpy = vi.fn(
-  async (_email: string, _opts: Record<string, unknown>) => ({ data: {}, error: mockInviteError }),
-);
 
 // Venue DB state
 let mockVenueData: { name: string } | null = { name: "The Grand Hall" };
@@ -140,66 +138,28 @@ vi.mock("@/lib/weddings/create", () => ({
   createWeddingFromOpportunity: createWeddingSpy,
 }));
 
-// ── Inngest test harness ───────────────────────────────────────────────────────
+// ── import under test ──────────────────────────────────────────────────────────
 
-/**
- * Minimal step harness that runs each step.run callback immediately
- * (no replay, no memoisation needed for unit tests).
- */
-function makeStepHarness() {
-  return {
-    run: async <T>(name: string, fn: () => Promise<T>): Promise<T> => fn(),
-  };
+import { handleOpportunityWon } from "./opportunity-won";
+
+function runHandler(
+  overrides: Partial<{
+    venueId: string;
+    ghlOpportunityId: string;
+    ghlContactId: string;
+  }> = {},
+) {
+  return handleOpportunityWon({
+    venueId: FAKE_VENUE_ID,
+    ghlOpportunityId: FAKE_OPP_ID,
+    ghlContactId: FAKE_CONTACT_ID,
+    ...overrides,
+  });
 }
 
-/**
- * The Inngest client mock — exposes createFunction so the module can register
- * its handler, and we capture it for direct invocation.
- */
-let capturedHandler: ((ctx: { event: unknown; step: ReturnType<typeof makeStepHarness> }) => Promise<unknown>) | null = null;
+// ── setup ──────────────────────────────────────────────────────────────────────
 
-vi.mock("@/inngest/client", () => ({
-  inngest: {
-    createFunction: (
-      _config: unknown,
-      handler: (ctx: { event: unknown; step: ReturnType<typeof makeStepHarness> }) => Promise<unknown>,
-    ) => {
-      capturedHandler = handler;
-      // Return a minimal object so the module compiles without errors.
-      return { id: "opportunity-won" };
-    },
-  },
-}));
-
-// ── helper to invoke the handler ──────────────────────────────────────────────
-
-function makeEvent(overrides: Partial<{
-  venueId: string;
-  locationId: string;
-  ghlOpportunityId: string;
-  ghlContactId: string;
-}> = {}) {
-  return {
-    name: "ghl/opportunity-won" as const,
-    data: {
-      venueId: FAKE_VENUE_ID,
-      locationId: FAKE_LOCATION_ID,
-      ghlOpportunityId: FAKE_OPP_ID,
-      ghlContactId: FAKE_CONTACT_ID,
-      ...overrides,
-    },
-  };
-}
-
-async function runHandler(event = makeEvent()) {
-  if (!capturedHandler) throw new Error("handler not captured — check mock order");
-  return capturedHandler({ event, step: makeStepHarness() });
-}
-
-// ── import (triggers createFunction + handler capture) ────────────────────────
-
-beforeEach(async () => {
-  // Reset state
+beforeEach(() => {
   mockContact = {
     id: FAKE_CONTACT_ID,
     firstName: "Alice",
@@ -227,23 +187,26 @@ beforeEach(async () => {
 
   process.env.NEXT_PUBLIC_APP_URL = APP_URL;
 
-  ghlRequestSpy.mockClear();
-  createWeddingSpy.mockClear();
-  inviteSpy.mockClear();
+  ghlRequestSpy.mockReset();
+  createWeddingSpy.mockReset();
+  inviteSpy.mockReset();
   ghlRequestSpy.mockResolvedValue({});
-
-  vi.resetModules();
-  capturedHandler = null;
-  await import("./opportunity-won");
+  createWeddingSpy.mockImplementation(async () => mockCreateWeddingResult);
+  inviteSpy.mockImplementation(
+    async (_email: string, _opts: Record<string, unknown>) => ({
+      data: {},
+      error: mockInviteError,
+    }),
+  );
 });
 
 // ── tests ─────────────────────────────────────────────────────────────────────
 
-describe("opportunityWon Inngest function", () => {
+describe("handleOpportunityWon", () => {
   // ── double-gate: confirmed won ────────────────────────────────────────────────
 
   it("proceeds and creates a wedding when GHL confirms the opportunity is won", async () => {
-    const result = await runHandler() as Record<string, unknown>;
+    const result = (await runHandler()) as Record<string, unknown>;
 
     expect(createWeddingSpy).toHaveBeenCalledOnce();
     const args = (createWeddingSpy.mock.calls as unknown[][])[0][0] as Record<string, unknown>;
@@ -262,7 +225,7 @@ describe("opportunityWon Inngest function", () => {
   it("short-circuits with reason=not-won and creates NO wedding when GHL says the opp is not won", async () => {
     mockOpportunity = { id: FAKE_OPP_ID, status: "open" };
 
-    const result = await runHandler() as Record<string, unknown>;
+    const result = (await runHandler()) as Record<string, unknown>;
     expect(result.skipped).toBe(true);
     expect(result.reason).toBe("not-won");
 
@@ -274,7 +237,7 @@ describe("opportunityWon Inngest function", () => {
   it("short-circuits when the opp is lost", async () => {
     mockOpportunity = { id: FAKE_OPP_ID, status: "lost" };
 
-    const result = await runHandler() as Record<string, unknown>;
+    const result = (await runHandler()) as Record<string, unknown>;
     expect(result.reason).toBe("not-won");
     expect(createWeddingSpy).not.toHaveBeenCalled();
   });
@@ -284,7 +247,7 @@ describe("opportunityWon Inngest function", () => {
   it("skips the confirm gracefully when the venue has no GHL credentials", async () => {
     mockGhlClientNull = true;
 
-    const result = await runHandler() as Record<string, unknown>;
+    const result = (await runHandler()) as Record<string, unknown>;
     // Confirm cannot run without a client — it must NOT short-circuit as not-won.
     expect(result.reason).not.toBe("not-won");
     // Falls through to fetch-ghl-contact which returns no-ghl-credentials.
@@ -321,7 +284,7 @@ describe("opportunityWon Inngest function", () => {
       ],
     };
 
-    const result = await runHandler() as Record<string, unknown>;
+    const result = (await runHandler()) as Record<string, unknown>;
 
     expect(inviteSpy).toHaveBeenCalledTimes(2);
     const emails = inviteSpy.mock.calls.map((c) => c[0]);
@@ -333,7 +296,7 @@ describe("opportunityWon Inngest function", () => {
   it("does NOT throw when an invite fails — wedding + tag still complete", async () => {
     mockInviteError = { message: "rate limited" };
 
-    const result = await runHandler() as Record<string, unknown>;
+    const result = (await runHandler()) as Record<string, unknown>;
     expect(result.weddingId).toBe(FAKE_WEDDING_ID);
     expect(result.invitesSent).toBe(0);
     // Tag still fires.
@@ -347,7 +310,7 @@ describe("opportunityWon Inngest function", () => {
       coupleAccounts: [],
     };
 
-    const result = await runHandler() as Record<string, unknown>;
+    const result = (await runHandler()) as Record<string, unknown>;
     expect(result.alreadyExisted).toBe(true);
     expect(inviteSpy).not.toHaveBeenCalled();
     expect(result.invitesSent).toBe(0);
@@ -371,7 +334,7 @@ describe("opportunityWon Inngest function", () => {
   it("does not throw when the GHL tag call fails", async () => {
     ghlRequestSpy.mockRejectedValueOnce(new Error("GHL API error 500"));
 
-    const result = await runHandler() as Record<string, unknown>;
+    const result = (await runHandler()) as Record<string, unknown>;
     expect(result.weddingId).toBe(FAKE_WEDDING_ID);
     expect(inviteSpy).toHaveBeenCalledOnce();
   });
@@ -381,7 +344,7 @@ describe("opportunityWon Inngest function", () => {
   it("returns skipped=true when the GHL contact has no email", async () => {
     mockContact = { ...mockContact, email: null };
 
-    const result = await runHandler() as Record<string, unknown>;
+    const result = (await runHandler()) as Record<string, unknown>;
     expect(result.skipped).toBe(true);
     expect(result.reason).toBe("contact-has-no-email");
     expect(createWeddingSpy).not.toHaveBeenCalled();
@@ -391,7 +354,7 @@ describe("opportunityWon Inngest function", () => {
   it("returns skipped=true when venue row is not found", async () => {
     mockVenueData = null;
 
-    const result = await runHandler() as Record<string, unknown>;
+    const result = (await runHandler()) as Record<string, unknown>;
     expect(result.skipped).toBe(true);
     expect(result.reason).toBe("venue-not-found");
     expect(createWeddingSpy).not.toHaveBeenCalled();
