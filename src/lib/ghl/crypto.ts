@@ -14,15 +14,13 @@ import {
   createHash,
   randomBytes,
 } from "node:crypto";
-import { ghlTokenEncryptionKey } from "./env";
-
 const ALGORITHM = "aes-256-gcm";
 const IV_BYTES = 12; // 96-bit IV — standard for GCM
 const VERSION_PREFIX = "v1";
 
 /** Derive a 32-byte key from the raw env string using SHA-256. */
 function deriveKey(): Buffer {
-  const raw = ghlTokenEncryptionKey();
+  const raw = process.env.GHL_TOKEN_ENCRYPTION_KEY ?? null;
   if (!raw) {
     throw new Error(
       "GHL_TOKEN_ENCRYPTION_KEY is not set. Cannot encrypt/decrypt GHL tokens."

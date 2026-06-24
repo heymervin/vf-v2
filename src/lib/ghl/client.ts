@@ -19,7 +19,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptToken } from "./crypto";
-import { ghlApiBase, ghlApiVersion } from "./env";
 import type {
   GhlContact,
   GhlContactsResponse,
@@ -87,8 +86,8 @@ interface GhlClientInstance {
  */
 export function createGhlClient(creds: GhlClientCreds): GhlClientInstance {
   const { accessToken, locationId } = creds;
-  const base = ghlApiBase();
-  const version = ghlApiVersion();
+  const base = "https://services.leadconnectorhq.com";
+  const version = "2021-07-28";
 
   /** Shared headers required on every GHL request (§2.2 of ghl-integration.md). */
   function buildHeaders(extra?: Record<string, string>): Headers {
