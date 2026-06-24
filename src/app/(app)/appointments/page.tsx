@@ -49,20 +49,24 @@ async function loadWeekAppointments(
     if (mb?.user_id) userIds.push(mb.user_id);
   }
 
-  // Build membership_id → display email map via admin auth
+  // Build membership_id → display email map via admin auth.
+  // Resolve all users in parallel (avoid an N+1 serial round-trip per member);
+  // name display is non-critical so failures resolve to a null email.
   const memberNames: Record<string, string> = {};
-  for (const uid of userIds) {
-    try {
-      const { data: u } = await admin.auth.admin.getUserById(uid);
-      const row = data.find(
-        (r) => (r.memberships as { user_id: string } | null)?.user_id === uid,
-      );
-      if (row && u?.user?.email) {
-        memberNames[row.membership_id] = u.user.email.split("@")[0] ?? u.user.email;
-      }
-    } catch {
-      // swallow — name display is non-critical
-    }
+  const resolved = await Promise.all(
+    userIds.map((uid) =>
+      admin.auth.admin
+        .getUserById(uid)
+        .then(({ data: u }) => ({ uid, email: u?.user?.email ?? null }))
+        .catch(() => ({ uid, email: null as string | null })),
+    ),
+  );
+  for (const { uid, email } of resolved) {
+    if (!email) continue;
+    const row = data.find(
+      (r) => (r.memberships as { user_id: string } | null)?.user_id === uid,
+    );
+    if (row) memberNames[row.membership_id] = email.split("@")[0] ?? email;
   }
 
   return data.map((r) => {

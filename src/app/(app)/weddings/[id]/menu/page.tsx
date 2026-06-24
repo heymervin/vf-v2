@@ -175,25 +175,27 @@ export default async function MenuPage({
 
   const supabase = await createClient();
 
-  // Verify wedding belongs to this venue
-  const { data: wedding, error: weddingError } = await supabase
-    .from("weddings")
-    .select("id, couple_names")
-    .eq("id", id)
-    .eq("venue_id", ctx.venue.id)
-    .maybeSingle();
+  // Verify wedding ownership + load the venue menu_items library in parallel
+  // (independent; include inactive items for selections that may reference them)
+  const [
+    { data: wedding, error: weddingError },
+    { data: menuItemsData, error: itemsError },
+  ] = await Promise.all([
+    supabase
+      .from("weddings")
+      .select("id, couple_names")
+      .eq("id", id)
+      .eq("venue_id", ctx.venue.id)
+      .maybeSingle(),
+    supabase
+      .from("menu_items")
+      .select("*")
+      .eq("venue_id", ctx.venue.id)
+      .order("sort_order", { ascending: true }),
+  ]);
 
   if (weddingError) console.error("menu page wedding load:", weddingError.message);
   if (!wedding) notFound();
-
-  // Load venue menu_items library (active only for display; include inactive
-  // for selections that may already reference them)
-  const { data: menuItemsData, error: itemsError } = await supabase
-    .from("menu_items")
-    .select("*")
-    .eq("venue_id", ctx.venue.id)
-    .order("sort_order", { ascending: true });
-
   if (itemsError) console.error("menu page items load:", itemsError.message);
 
   const menuItems: MenuItemRow[] = (menuItemsData ?? []) as MenuItemRow[];
@@ -204,26 +206,29 @@ export default async function MenuPage({
     return <LockedState weddingId={id} />;
   }
 
-  // Load wedding_menu_selections for this wedding
-  const { data: selectionsData, error: selectionsError } = await supabase
-    .from("wedding_menu_selections")
-    .select("*")
-    .eq("wedding_id", id)
-    .eq("venue_id", ctx.venue.id)
-    .order("sort_index", { ascending: true });
+  // Load selections + guests in parallel (independent; both scoped to this wedding)
+  const [
+    { data: selectionsData, error: selectionsError },
+    { data: guestsData, error: guestsError },
+  ] = await Promise.all([
+    supabase
+      .from("wedding_menu_selections")
+      .select("*")
+      .eq("wedding_id", id)
+      .eq("venue_id", ctx.venue.id)
+      .order("sort_index", { ascending: true }),
+    supabase
+      .from("wedding_guests")
+      .select("id, name, dietary, meal_choice")
+      .eq("wedding_id", id)
+      .eq("venue_id", ctx.venue.id)
+      .order("name", { ascending: true }),
+  ]);
 
   if (selectionsError)
     console.error("menu page selections load:", selectionsError.message);
 
   const selections: SelectionRow[] = (selectionsData ?? []) as SelectionRow[];
-
-  // Load guests (for chosenBy counts + dietary cross-check)
-  const { data: guestsData, error: guestsError } = await supabase
-    .from("wedding_guests")
-    .select("id, name, dietary, meal_choice")
-    .eq("wedding_id", id)
-    .eq("venue_id", ctx.venue.id)
-    .order("name", { ascending: true });
 
   if (guestsError) console.error("menu page guests load:", guestsError.message);
 
