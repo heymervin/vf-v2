@@ -6,6 +6,7 @@ import { sequenceRun } from "@/inngest/functions/sequence-run";
 import { appointmentBooked } from "@/inngest/functions/appointment-booked";
 import { opportunityWon } from "@/inngest/functions/opportunity-won";
 import { dailyBrief } from "@/inngest/functions/daily-brief";
+import { ghlContactsSync } from "@/inngest/functions/ghl-contacts-sync";
 
 // Add Inngest functions here as they are created.
 const functions: Parameters<typeof serve>[0]["functions"] = [
@@ -15,6 +16,7 @@ const functions: Parameters<typeof serve>[0]["functions"] = [
   appointmentBooked,
   opportunityWon,
   dailyBrief,
+  ghlContactsSync,
 ];
 
 export const { GET, POST, PUT } = serve({
