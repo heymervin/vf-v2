@@ -46,31 +46,32 @@ export default async function SuppliersPage({
   if (weddingError) console.error("suppliers page wedding load:", weddingError.message);
   if (!wedding) notFound();
 
-  // Load wedding suppliers (RLS enforces venue_id)
-  const { data: suppliersData, error: suppliersError } = await supabase
-    .from("wedding_suppliers")
-    .select("*")
-    .eq("wedding_id", id)
-    .order("name", { ascending: true });
+  // Wedding suppliers, wedding documents, and the venue directory are independent —
+  // load them in parallel (RLS enforces venue_id on the wedding-scoped tables).
+  const [
+    { data: suppliersData, error: suppliersError },
+    { data: documentsData, error: documentsError },
+    { data: directoryData, error: directoryError },
+  ] = await Promise.all([
+    supabase
+      .from("wedding_suppliers")
+      .select("*")
+      .eq("wedding_id", id)
+      .order("name", { ascending: true }),
+    supabase
+      .from("wedding_documents")
+      .select("*")
+      .eq("wedding_id", id)
+      .order("name", { ascending: true }),
+    supabase
+      .from("suppliers")
+      .select("*")
+      .eq("venue_id", ctx.venue.id)
+      .order("name", { ascending: true }),
+  ]);
 
   if (suppliersError) console.error("suppliers page load:", suppliersError.message);
-
-  // Load wedding documents scoped to this wedding
-  const { data: documentsData, error: documentsError } = await supabase
-    .from("wedding_documents")
-    .select("*")
-    .eq("wedding_id", id)
-    .order("name", { ascending: true });
-
   if (documentsError) console.error("suppliers docs load:", documentsError.message);
-
-  // Load venue supplier directory (preferred suppliers)
-  const { data: directoryData, error: directoryError } = await supabase
-    .from("suppliers")
-    .select("*")
-    .eq("venue_id", ctx.venue.id)
-    .order("name", { ascending: true });
-
   if (directoryError) console.error("suppliers directory load:", directoryError.message);
 
   const suppliers: WeddingSupplierRow[] = (suppliersData ?? []) as WeddingSupplierRow[];

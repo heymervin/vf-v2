@@ -50,15 +50,22 @@ export default async function ContactsPage({
   if (q) query = query.ilike("couple_names", `%${q}%`);
   if (source) query = query.eq("source", source);
 
-  const { data, error } = await query.overrideTypes<ContactRow[]>();
+  // The contacts query is filtered by q/source, so the source dropdown needs its
+  // own unfiltered scan. The two are independent — run them in parallel.
+  const [
+    { data, error },
+    { data: sourceRows },
+  ] = await Promise.all([
+    query.overrideTypes<ContactRow[]>(),
+    supabase
+      .from("weddings")
+      .select("source")
+      .eq("venue_id", ctx.venue.id)
+      .not("source", "is", null),
+  ]);
   if (error) console.error("contacts query failed:", error.message);
   const contacts = data ?? [];
 
-  const { data: sourceRows } = await supabase
-    .from("weddings")
-    .select("source")
-    .eq("venue_id", ctx.venue.id)
-    .not("source", "is", null);
   const sources = Array.from(
     new Set((sourceRows ?? []).map((r) => r.source).filter(Boolean)),
   ).sort();

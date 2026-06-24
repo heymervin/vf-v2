@@ -98,6 +98,12 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Barrel-optimise large icon/chart/email packages so a single named import
+  // doesn't pull the whole index into the route chunk. (lucide-react is already
+  // covered by Next's built-in defaults.)
+  experimental: {
+    optimizePackageImports: ["radix-ui", "recharts", "@react-email/components"],
+  },
 };
 
 export default nextConfig;
