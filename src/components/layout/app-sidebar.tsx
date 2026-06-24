@@ -115,10 +115,7 @@ function SidebarContent({
 }: AppSidebarProps & { collapsed?: boolean; onNavClick?: () => void }) {
   const pathname = usePathname();
 
-  // Bundled (GHL-backed) venues run pre-sales in GHL — hide the native CRM nav.
-  const nav = bundled
-    ? primaryNav.filter((i) => i.href !== "/contacts" && i.href !== "/pipeline")
-    : primaryNav;
+  const nav = primaryNav;
 
   const initial = (userEmail ?? "V").charAt(0).toUpperCase();
 

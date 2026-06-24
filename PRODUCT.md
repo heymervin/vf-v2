@@ -11,6 +11,8 @@
 > (current build: *no* couple-facing Stripe — couples pay by bank transfer via a GHL invoice link;
 > Stripe is VF2 SaaS billing only). The long-term vision here is preserved for product decisions; it
 > is not a description of what is built.
+>
+> **Additional update (2026-06-23): standalone mode is retired.** All VenueFlow venues are GHL-backed (`bundled`). GHL is the system of record for contacts, pipeline, and pre-sales communications — the native VF2 contacts table is not the source of truth. Contacts displayed in VF2 come from GHL (via API or sync). The `venue.mode` field exists in the DB but should not drive feature visibility; build all features assuming GHL is always present.
 
 ## Register
 

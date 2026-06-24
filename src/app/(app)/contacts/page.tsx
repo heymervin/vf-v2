@@ -1,92 +1,69 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Users } from "lucide-react";
+import { Users, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/lib/tenant";
-import { StageBadge } from "@/components/stage-badge";
 import { ContactsToolbar } from "./contacts-toolbar";
-import { formatWeddingDate, contactDisplayName } from "./format";
-import { STAGE_VALUES, type PipelineStage } from "@/lib/pipeline";
+import { formatWeddingDate, formatBudget } from "./format";
 
 export const metadata = { title: "Contacts" };
 
-// Strip PostgREST `or`-filter delimiters so a search term can't break the query.
 function sanitizeSearch(q: string): string {
   return q.replace(/[,()*]/g, " ").trim();
 }
 
-interface ContactListRow {
+interface ContactRow {
   id: string;
-  first_name: string;
-  last_name: string | null;
-  email: string | null;
-  phone: string | null;
+  couple_names: string;
   wedding_date: string | null;
-  guest_count: number | null;
-  source: string | null;
-  created_at: string;
-  opportunities: { id: string; stage: PipelineStage; archived_at: string | null }[];
+  guest_count_day: number | null;
+  guest_count_evening: number | null;
+  total_value_minor: number | null;
+  source: string;
+  ghl_contact_id: string | null;
+  couple_accounts: { email: string }[];
 }
 
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; stage?: string; source?: string }>;
+  searchParams: Promise<{ q?: string; source?: string }>;
 }) {
   const ctx = await getTenantContext();
   if (!ctx.ok) redirect("/login");
-  // Bundled (GHL-backed) venues run pre-sales in GHL — the native CRM is standalone-only.
-  if (ctx.venue.mode === "bundled") redirect("/weddings");
 
   const sp = await searchParams;
   const q = sp.q ? sanitizeSearch(sp.q) : "";
-  const stage: PipelineStage | null =
-    sp.stage && STAGE_VALUES.includes(sp.stage as PipelineStage)
-      ? (sp.stage as PipelineStage)
-      : null;
   const source = sp.source ?? "";
 
   const supabase = await createClient();
 
-  // Active opportunity is embedded; inner-join only when filtering by stage so
-  // the stage filter actually excludes non-matching contacts.
-  const oppEmbed = stage
-    ? "opportunities!inner(id, stage, archived_at)"
-    : "opportunities(id, stage, archived_at)";
-
   let query = supabase
-    .from("contacts")
+    .from("weddings")
     .select(
-      `id, first_name, last_name, email, phone, wedding_date, guest_count, source, created_at, ${oppEmbed}`,
+      "id, couple_names, wedding_date, guest_count_day, guest_count_evening, total_value_minor, source, ghl_contact_id, couple_accounts(email)",
     )
     .eq("venue_id", ctx.venue.id)
-    .is("opportunities.archived_at", null)
     .order("created_at", { ascending: false })
     .limit(500);
 
-  if (q) {
-    query = query.or(
-      `first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`,
-    );
-  }
-  if (stage) query = query.eq("opportunities.stage", stage);
+  if (q) query = query.ilike("couple_names", `%${q}%`);
   if (source) query = query.eq("source", source);
 
-  const { data, error } = await query.overrideTypes<ContactListRow[]>();
-  if (error) console.error("contacts list query failed:", error.message);
+  const { data, error } = await query.overrideTypes<ContactRow[]>();
+  if (error) console.error("contacts query failed:", error.message);
   const contacts = data ?? [];
 
-  // Distinct sources for the filter dropdown (small payload at MVP scale).
   const { data: sourceRows } = await supabase
-    .from("contacts")
+    .from("weddings")
     .select("source")
     .eq("venue_id", ctx.venue.id)
     .not("source", "is", null);
   const sources = Array.from(
-    new Set((sourceRows ?? []).map((r) => r.source).filter((s): s is string => !!s)),
+    new Set((sourceRows ?? []).map((r) => r.source).filter(Boolean)),
   ).sort();
 
-  const isFiltered = !!q || !!stage || !!source;
+  const isFiltered = !!q || !!source;
 
   return (
     <div className="mx-auto max-w-[1400px]">
@@ -95,7 +72,7 @@ export default async function ContactsPage({
           Contacts
         </h1>
         <p className="mt-5 text-sm text-muted-foreground">
-          Every enquiry for {ctx.venue.name}, with its current pipeline stage.
+          Booked couples for {ctx.venue.name}, synced from GHL.
         </p>
       </div>
 
@@ -112,46 +89,37 @@ export default async function ContactsPage({
   );
 }
 
-function ContactsTable({ contacts }: { contacts: ContactListRow[] }) {
+function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      {/* Column headers (desktop only) */}
-      <div className="hidden grid-cols-[2fr_1.5fr_1.2fr_1fr_0.8fr] gap-4 border-b border-border px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground md:grid">
+      <div className="hidden grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] gap-4 border-b border-border px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground md:grid">
         <span>Name</span>
-        <span>Contact</span>
-        <span>Stage</span>
+        <span>Email</span>
         <span>Wedding date</span>
-        <span>Source</span>
+        <span>Guests</span>
+        <span>Value</span>
+        <span>GHL</span>
       </div>
 
       <ul className="divide-y divide-border">
         {contacts.map((c) => {
-          const opp = c.opportunities[0];
+          const email = c.couple_accounts[0]?.email ?? null;
+          const guests = (c.guest_count_day ?? 0) + (c.guest_count_evening ?? 0);
           return (
-            <li key={c.id}>
+            <li key={c.id} className="group relative">
               <Link
-                href={`/contacts/${c.id}`}
-                className="grid grid-cols-1 gap-2 px-5 py-4 transition-colors hover:bg-accent/40 focus-visible:bg-accent/40 focus-visible:outline-none md:grid-cols-[2fr_1.5fr_1.2fr_1fr_0.8fr] md:items-center md:gap-4"
+                href={`/weddings/${c.id}`}
+                className="grid grid-cols-1 gap-2 px-5 py-4 transition-colors hover:bg-accent/40 focus-visible:bg-accent/40 focus-visible:outline-none md:grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] md:items-center md:gap-4"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">
-                    {contactDisplayName(c)}
-                  </p>
-                  {c.guest_count != null && (
-                    <p className="text-xs text-muted-foreground tabular-nums">
-                      {c.guest_count} guests
-                    </p>
+                  <p className="truncate font-medium text-foreground">{c.couple_names}</p>
+                  {c.source && (
+                    <p className="text-xs text-muted-foreground">{c.source}</p>
                   )}
                 </div>
 
                 <div className="min-w-0 text-sm text-muted-foreground">
-                  {c.email && <p className="truncate">{c.email}</p>}
-                  {c.phone && <p className="truncate tabular-nums">{c.phone}</p>}
-                  {!c.email && !c.phone && <span>—</span>}
-                </div>
-
-                <div>
-                  {opp ? <StageBadge stage={opp.stage} /> : <span className="text-sm text-muted-foreground">—</span>}
+                  {email ? <p className="truncate">{email}</p> : <span>—</span>}
                 </div>
 
                 <div className="text-sm text-foreground tabular-nums">
@@ -160,8 +128,30 @@ function ContactsTable({ contacts }: { contacts: ContactListRow[] }) {
                   )}
                 </div>
 
-                <div className="truncate text-sm text-muted-foreground">
-                  {c.source ?? "—"}
+                <div className="text-sm text-foreground tabular-nums">
+                  {guests > 0 ? guests : <span className="text-muted-foreground">—</span>}
+                </div>
+
+                <div className="text-sm text-foreground tabular-nums">
+                  {formatBudget(c.total_value_minor) ?? (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </div>
+
+                <div onClick={(e) => e.preventDefault()}>
+                  {c.ghl_contact_id ? (
+                    <a
+                      href={`https://app.gohighlevel.com/contacts/${c.ghl_contact_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                      aria-label="Open in GHL"
+                    >
+                      <ExternalLink className="size-3.5" />
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </div>
               </Link>
             </li>
@@ -184,7 +174,7 @@ function EmptyState({ filtered }: { filtered: boolean }) {
             No contacts match these filters
           </h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-            Try clearing the search or filters to see all of your enquiries.
+            Try clearing the search or filters to see all contacts.
           </p>
         </>
       ) : (
@@ -193,9 +183,7 @@ function EmptyState({ filtered }: { filtered: boolean }) {
             No contacts yet
           </h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-            Add your first enquiry with{" "}
-            <span className="font-medium text-foreground">New contact</span>, or
-            it will appear here automatically once your lead form is live.
+            Contacts appear here when an opportunity is marked as won in GHL.
           </p>
         </>
       )}
