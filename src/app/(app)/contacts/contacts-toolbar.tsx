@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Search, Plus, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,8 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { STAGES } from "@/lib/pipeline";
-import { ContactFormSheet } from "./contact-form-sheet";
 
 const ALL = "all";
 
@@ -22,10 +20,8 @@ export function ContactsToolbar({ sources }: { sources: string[] }) {
   const pathname = usePathname();
   const params = useSearchParams();
 
-  const [createOpen, setCreateOpen] = React.useState(false);
   const [query, setQuery] = React.useState(params.get("q") ?? "");
 
-  // Build a new URL with one param changed (empty/ALL clears it).
   const setParam = React.useCallback(
     (key: string, value: string) => {
       const next = new URLSearchParams(params.toString());
@@ -37,7 +33,6 @@ export function ContactsToolbar({ sources }: { sources: string[] }) {
     [params, pathname, router],
   );
 
-  // Debounce the free-text search.
   React.useEffect(() => {
     const current = params.get("q") ?? "";
     if (query === current) return;
@@ -46,41 +41,22 @@ export function ContactsToolbar({ sources }: { sources: string[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
-  const stage = params.get("stage") ?? ALL;
   const source = params.get("source") ?? ALL;
-  const hasFilters =
-    !!params.get("q") || !!params.get("stage") || !!params.get("source");
+  const hasFilters = !!params.get("q") || !!params.get("source");
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {/* Search */}
       <div className="relative w-full sm:w-64">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search name or email"
+          placeholder="Search by name"
           className="pl-9"
           aria-label="Search contacts"
         />
       </div>
 
-      {/* Stage filter */}
-      <Select value={stage} onValueChange={(v) => setParam("stage", v)}>
-        <SelectTrigger className="w-[170px]" aria-label="Filter by stage">
-          <SelectValue placeholder="All stages" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL}>All stages</SelectItem>
-          {STAGES.map((s) => (
-            <SelectItem key={s.value} value={s.value}>
-              {s.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {/* Source filter (only when sources exist) */}
       {sources.length > 0 && (
         <Select value={source} onValueChange={(v) => setParam("source", v)}>
           <SelectTrigger className="w-[150px]" aria-label="Filter by source">
@@ -106,13 +82,6 @@ export function ContactsToolbar({ sources }: { sources: string[] }) {
           <X /> Clear
         </Button>
       )}
-
-      {/* New contact — pushed to the right */}
-      <Button className="ml-auto" onClick={() => setCreateOpen(true)}>
-        <Plus /> New contact
-      </Button>
-
-      <ContactFormSheet open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }
