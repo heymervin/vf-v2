@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { cookies } from "next/headers";
@@ -76,27 +77,31 @@ function computeAccessState(
  * Resolves the active tenant context for a Server Component or Server Action.
  *
  * Resolution order:
- * 1. Authenticate via auth.getUser() (NOT getSession — revalidates with Supabase server)
+ * 1. Authenticate via auth.getClaims() — locally verifies the JWT signature with
+ *    the project JWKS (no network round-trip on asymmetric keys; transparently
+ *    falls back to a server getUser() call on legacy HS256 projects)
  * 2. Load the user's memberships + venue + billing subscription in one pass
  * 3. Pick the active venue: prefer the `vf-venue-id` cookie if it matches a membership,
  *    otherwise fall back to the first membership row
  * 4. Compute access state (trialing / active / past_due / expired) without an extra query
  *
+ * Wrapped in React.cache() so the layout call and the page call within a single
+ * render pass share one result instead of re-running all queries.
+ *
  * Cookie SETTING is intentionally out-of-scope here (Server Component safe).
  * To switch active venue, call setActiveVenue() from a Server Action.
  */
-export async function getTenantContext(): Promise<TenantContext> {
+export const getTenantContext = cache(async function getTenantContext(): Promise<TenantContext> {
   const supabase = await createClient();
 
   // Step 1: authenticate
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
 
-  if (userError || !user) {
+  if (claimsError || !claimsData?.claims) {
     return { ok: false, reason: "unauthenticated" };
   }
+
+  const user = { id: claimsData.claims.sub, email: claimsData.claims.email };
 
   // Step 2: load memberships + venue data in one query
   const { data: memberships, error: membershipError } = await supabase
@@ -158,4 +163,4 @@ export async function getTenantContext(): Promise<TenantContext> {
       currentPeriodEnd: billingRow?.current_period_end ?? null,
     },
   };
-}
+});
