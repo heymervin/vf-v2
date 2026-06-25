@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MessageSquare } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/lib/tenant";
 import { StageBadge } from "@/components/stage-badge";
@@ -103,11 +103,20 @@ export default async function ContactDetailPage({
             </p>
           )}
         </div>
-        <ContactDetailActions
-          contactId={contact.id}
-          contactName={name}
-          initialValues={initialValues}
-        />
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/contacts/${contact.id}/messages`}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            <MessageSquare className="size-4" aria-hidden />
+            Messages
+          </Link>
+          <ContactDetailActions
+            contactId={contact.id}
+            contactName={name}
+            initialValues={initialValues}
+          />
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-[1.4fr_1fr]">

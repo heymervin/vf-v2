@@ -15,6 +15,7 @@ import {
   X,
   Heart,
   Banknote,
+  MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ const primaryNav = [
   { label: "Weddings", href: "/weddings", icon: Heart },
   { label: "Money", href: "/money", icon: Banknote },
   { label: "Contacts", href: "/contacts", icon: Users },
+  { label: "Inbox", href: "/conversations", icon: MessageSquare },
   { label: "Pipeline", href: "/pipeline", icon: Kanban },
   { label: "Appointments", href: "/appointments", icon: CalendarDays },
   { label: "Reports", href: "/reports", icon: BarChart3 },

@@ -172,6 +172,19 @@ export interface GhlConversation {
 }
 
 /**
+ * A conversation thread as returned by the location-wide
+ * GET /conversations/search (no contactId filter). Extends GhlConversation
+ * with the contact's display name + raw channel hints so the global inbox can
+ * label a row without a per-contact lookup.
+ */
+export interface GhlInboxConversation extends GhlConversation {
+  /** Contact display name (GHL returns `fullName` and/or `contactName`). */
+  contactName: string | null;
+  /** Raw GHL channel string of the last message (e.g. "TYPE_PHONE"); used to refine `type`. */
+  lastMessageType?: string | null;
+}
+
+/**
  * A single GHL message as returned inside GET /conversations/{id}/messages.
  * VF2 renders these in the Messages tab — no storage.
  */

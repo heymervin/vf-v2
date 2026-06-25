@@ -441,3 +441,70 @@ describe("createGhlClient — sendMessage", () => {
     ).rejects.toThrow(/GHL API error 500/);
   });
 });
+
+// ── searchConversations (location-wide inbox) ───────────────────────────────────
+
+describe("createGhlClient — searchConversations", () => {
+  it("sends GET to /conversations/search with locationId, status and sort — no contactId", async () => {
+    const fetchSpy = stubFetch(makeResponse({ conversations: [] }));
+    const client = createGhlClient({ accessToken: FAKE_TOKEN, locationId: FAKE_LOCATION_ID });
+
+    await client.searchConversations({ status: "unread" });
+
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain(`${GHL_BASE}/conversations/search`);
+    expect(url).toContain(`locationId=${FAKE_LOCATION_ID}`);
+    expect(url).toContain("status=unread");
+    expect(url).toContain("sortBy=last_message_date");
+    expect(url).not.toContain("contactId=");
+    expect(init.method ?? "GET").toBe("GET");
+  });
+
+  it("defaults status to 'all' when omitted", async () => {
+    const fetchSpy = stubFetch(makeResponse({ conversations: [] }));
+    const client = createGhlClient({ accessToken: FAKE_TOKEN, locationId: FAKE_LOCATION_ID });
+
+    await client.searchConversations();
+
+    const [url] = fetchSpy.mock.calls[0] as [string];
+    expect(url).toContain("status=all");
+  });
+
+  it("maps contactName from fullName and normalises the channel type", async () => {
+    stubFetch(
+      makeResponse({
+        conversations: [
+          {
+            ...makeConversation({ id: "c1" }),
+            type: "TYPE_PHONE",
+            lastMessageType: "TYPE_PHONE",
+            fullName: "Jane & John",
+            contactName: null,
+          },
+        ],
+      }),
+    );
+    const client = createGhlClient({ accessToken: FAKE_TOKEN, locationId: FAKE_LOCATION_ID });
+
+    const result = await client.searchConversations({ status: "all" });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].contactName).toBe("Jane & John");
+    expect(result[0].type).toBe("SMS"); // TYPE_PHONE → SMS
+  });
+
+  it("returns an empty array when conversations is absent", async () => {
+    stubFetch(makeResponse({ meta: { total: 0 } }));
+    const client = createGhlClient({ accessToken: FAKE_TOKEN, locationId: FAKE_LOCATION_ID });
+
+    const result = await client.searchConversations();
+    expect(result).toEqual([]);
+  });
+
+  it("throws a descriptive error on non-200", async () => {
+    stubFetch(makeResponse({ message: "Location not found" }, 404));
+    const client = createGhlClient({ accessToken: FAKE_TOKEN, locationId: FAKE_LOCATION_ID });
+
+    await expect(client.searchConversations()).rejects.toThrow(/GHL API error 404/);
+  });
+});
