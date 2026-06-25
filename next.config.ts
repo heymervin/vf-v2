@@ -15,8 +15,9 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 function buildCsp(frameAncestors: string): string {
   const directives: string[] = [
     "default-src 'self'",
-    // Scripts: self + Stripe.js
-    "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+    // Scripts: self + Stripe.js; unsafe-eval dev-only (React needs it for
+    // cross-environment call-stack reconstruction in the error overlay).
+    `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""} https://js.stripe.com`,
     // Styles: self + inline (required for Tailwind runtime)
     "style-src 'self' 'unsafe-inline'",
     // Images: self + data URIs + Supabase storage

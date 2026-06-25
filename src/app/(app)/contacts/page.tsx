@@ -110,14 +110,16 @@ function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
 
       <ul className="divide-y divide-border">
         {contacts.map((c) => {
-          const email = c.couple_accounts[0]?.email ?? null;
+          const email = c.couple_accounts?.[0]?.email ?? null;
           const guests = (c.guest_count_day ?? 0) + (c.guest_count_evening ?? 0);
           return (
-            <li key={c.id} className="group relative">
+            <li key={c.id} className="group relative transition-colors hover:bg-accent/40 focus-within:bg-accent/40">
               <Link
                 href={`/weddings/${c.id}`}
-                className="grid grid-cols-1 gap-2 px-5 py-4 transition-colors hover:bg-accent/40 focus-visible:bg-accent/40 focus-visible:outline-none md:grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] md:items-center md:gap-4"
-              >
+                className="absolute inset-0 focus-visible:outline-none"
+                aria-label={`Open ${c.couple_names}`}
+              />
+              <div className="grid grid-cols-1 gap-2 px-5 py-4 md:grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] md:items-center md:gap-4">
                 <div className="min-w-0">
                   <p className="truncate font-medium text-foreground">{c.couple_names}</p>
                   {c.source && (
@@ -145,7 +147,7 @@ function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
                   )}
                 </div>
 
-                <div onClick={(e) => e.preventDefault()}>
+                <div className="relative z-10">
                   {c.ghl_contact_id ? (
                     <a
                       href={`https://app.gohighlevel.com/contacts/${c.ghl_contact_id}`}
@@ -160,7 +162,7 @@ function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
                     <span className="text-muted-foreground">—</span>
                   )}
                 </div>
-              </Link>
+              </div>
             </li>
           );
         })}
