@@ -29,9 +29,29 @@ import type {
   GhlInvoice,
   GhlInvoiceDisplayStatus,
   GhlConversation,
+  GhlInboxConversation,
+  GhlConversationType,
   GhlMessage,
   GhlSendMessagePayload,
 } from "./types";
+
+// ── channel normalisation ─────────────────────────────────────────────────────
+
+/**
+ * Map GHL's raw channel strings to VF2's display channels.
+ * GHL's conversation search returns values like "TYPE_PHONE" / "TYPE_EMAIL";
+ * per-contact threads already carry "SMS" / "Email" / "WhatsApp". This collapses
+ * both into one display type. Unknown values pass through unchanged.
+ * ponytail: best-effort string map — extend the cases if a new channel shows up.
+ */
+export function normalizeChannelType(raw: string | null | undefined): GhlConversationType {
+  if (!raw) return "SMS";
+  const v = raw.toUpperCase();
+  if (v.includes("EMAIL")) return "Email";
+  if (v.includes("WHATSAPP")) return "WhatsApp";
+  if (v.includes("PHONE") || v.includes("SMS") || v.includes("TEXT")) return "SMS";
+  return raw; // already "SMS" | "Email" | "WhatsApp", or an unmapped GHL value
+}
 
 // ── internal types ────────────────────────────────────────────────────────────
 
@@ -65,6 +85,15 @@ interface GhlClientInstance {
    * GET /conversations/search?locationId=&contactId=
    */
   listConversations(params: { contactId: string }): Promise<GhlConversation[]>;
+  /**
+   * Search ALL conversation threads for the connected location (no contact filter).
+   * GET /conversations/search?locationId=&status=&sortBy=last_message_date&sort=desc
+   * Powers the global inbox. `status` defaults to "all".
+   */
+  searchConversations(params?: {
+    status?: "all" | "unread";
+    limit?: number;
+  }): Promise<GhlInboxConversation[]>;
   /**
    * Fetch the message history for a single conversation thread.
    * GET /conversations/{conversationId}/messages
@@ -246,6 +275,39 @@ export function createGhlClient(creds: GhlClientCreds): GhlClientInstance {
   }
 
   /**
+   * Search ALL threads for the location (global inbox). GHL's search returns the
+   * contact name as `fullName`/`contactName` and a raw channel under
+   * `lastMessageType`/`type`; we normalise both for display.
+   */
+  async function searchConversations(params: {
+    status?: "all" | "unread";
+    limit?: number;
+  } = {}): Promise<GhlInboxConversation[]> {
+    const qs = new URLSearchParams({
+      locationId,
+      status: params.status ?? "all",
+      sortBy: "last_message_date",
+      sort: "desc",
+      limit: String(params.limit ?? 50),
+    });
+    const data = await request<{
+      conversations?: Array<
+        GhlConversation & {
+          fullName?: string | null;
+          contactName?: string | null;
+          lastMessageType?: string | null;
+        }
+      >;
+    }>(`/conversations/search?${qs.toString()}`);
+
+    return (data.conversations ?? []).map((c) => ({
+      ...c,
+      type: normalizeChannelType(c.lastMessageType ?? c.type),
+      contactName: c.contactName ?? c.fullName ?? null,
+    }));
+  }
+
+  /**
    * Fetch the message history for a single conversation thread.
    * GET /conversations/{conversationId}/messages
    *
@@ -288,6 +350,7 @@ export function createGhlClient(creds: GhlClientCreds): GhlClientInstance {
     getInvoice,
     sendInvoice,
     listConversations,
+    searchConversations,
     getMessages,
     sendMessage,
   };

@@ -34,7 +34,6 @@ const FAKE_LOCATION_ID = "loc_test_abc123";
 const FAKE_WEBHOOK_ID = "wh_event_unique_001";
 const FAKE_OPP_ID = "opp_xyz_999";
 const FAKE_CONTACT_ID = "contact_abc_111";
-const FAKE_WEDDING_ID = "wedding-uuid-ffff-0001";
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -72,20 +71,13 @@ let mockDedupResult: {
   error: null | { message: string };
 } = { data: [{ webhook_id: FAKE_WEBHOOK_ID }], error: null };
 
-/**
- * Controls what createAdminClient().from("weddings").select().eq().eq().maybeSingle()
- * returns for InboundMessage wedding-resolution.
- */
-let mockWeddingResult: { data: { id: string } | null; error: null } = {
-  data: null,
-  error: null,
-};
-
 // Captured handleOpportunityWon calls for assertion.
 const handleOpportunityWonSpy = vi.fn().mockResolvedValue({ weddingId: "w1" });
 
 // Captured Realtime broadcast calls for assertion.
 const channelSendSpy = vi.fn().mockResolvedValue("ok");
+// Captured channel names passed to admin.channel(name).
+const channelNameSpy = vi.fn();
 
 // ── vi.mock declarations (hoisted before imports) ─────────────────────────────
 
@@ -125,25 +117,16 @@ vi.mock("@/lib/supabase/admin", () => ({
           }),
         };
       }
-      if (table === "weddings") {
-        // Chainable .eq().eq().maybeSingle() — both .eq() calls return the same
-        // builder so double-chaining works.
-        const builder = {
-          select: (_cols: string) => builder,
-          eq: (_col: string, _val: string) => builder,
-          maybeSingle: async () => mockWeddingResult,
-        };
-        return builder;
-      }
       // Fallback for any other table — return empty.
       return {
         upsert: () => ({ select: () => ({ data: [], error: null }) }),
       };
     },
     // Supabase Realtime channel — used by broadcastInboundMessage.
-    channel: (_name: string) => ({
-      send: channelSendSpy,
-    }),
+    channel: (name: string) => {
+      channelNameSpy(name);
+      return { send: channelSendSpy };
+    },
   }),
 }));
 
@@ -170,11 +153,10 @@ beforeEach(() => {
   handleOpportunityWonSpy.mockResolvedValue({ weddingId: "w1" });
   channelSendSpy.mockClear();
   channelSendSpy.mockResolvedValue("ok");
+  channelNameSpy.mockClear();
   // Default: a valid venue row exists and dedup sees it as new (non-duplicate).
   mockVenueResult = { data: { venue_id: FAKE_VENUE_ID }, error: null };
   mockDedupResult = { data: [{ webhook_id: FAKE_WEBHOOK_ID }], error: null };
-  // Default: a wedding is linked to FAKE_CONTACT_ID in this venue.
-  mockWeddingResult = { data: { id: FAKE_WEDDING_ID }, error: null };
 });
 
 // ── helpers: payload builders ─────────────────────────────────────────────────
@@ -386,7 +368,7 @@ describe("POST /api/webhooks/ghl", () => {
 
   // ── InboundMessage → Realtime broadcast ────────────────────────────────────
 
-  it("InboundMessage with known contact invokes Realtime broadcast on the wedding channel", async () => {
+  it("InboundMessage broadcasts on the contact + venue inbox channels", async () => {
     const body = inboundMessagePayload();
     const sig = sign(body, TEST_SECRET);
     const req = makeRequest(body, { "x-vf-webhook-secret": sig });
@@ -399,23 +381,22 @@ describe("POST /api/webhooks/ghl", () => {
     // handleOpportunityWon must NOT be called — this is not an opportunity event.
     expect(handleOpportunityWonSpy).not.toHaveBeenCalled();
 
-    // Realtime channel.send must have been called once with a broadcast payload.
-    expect(channelSendSpy).toHaveBeenCalledOnce();
+    // Broadcast once per channel: the contact thread + the venue inbox.
+    expect(channelNameSpy).toHaveBeenCalledWith(`contact:${FAKE_CONTACT_ID}:messages`);
+    expect(channelNameSpy).toHaveBeenCalledWith(`venue:${FAKE_VENUE_ID}:inbox`);
+    expect(channelSendSpy).toHaveBeenCalledTimes(2);
+
     const [broadcastArgs] = channelSendSpy.mock.calls[0] as [Record<string, unknown>];
     expect(broadcastArgs.type).toBe("broadcast");
     expect(broadcastArgs.event).toBe("new-message");
     const broadcastPayload = broadcastArgs.payload as Record<string, unknown>;
-    expect(broadcastPayload.weddingId).toBe(FAKE_WEDDING_ID);
     expect(broadcastPayload.contactId).toBe(FAKE_CONTACT_ID);
     expect(broadcastPayload.conversationId).toBe("conv_abc_001");
     expect(broadcastPayload.messageId).toBe("msg_xyz_001");
   });
 
-  it("InboundMessage with no linked wedding returns 200 without broadcasting", async () => {
-    // No wedding found for this contact.
-    mockWeddingResult = { data: null, error: null };
-
-    const body = inboundMessagePayload();
+  it("InboundMessage missing contactId returns 200 without broadcasting", async () => {
+    const body = inboundMessagePayload({ contactId: "" });
     const sig = sign(body, TEST_SECRET);
     const req = makeRequest(body, { "x-vf-webhook-secret": sig });
 
