@@ -2,15 +2,21 @@ import "server-only";
 import { ghlClient } from "@/lib/ghl/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createWeddingFromOpportunity } from "@/lib/weddings/create";
+import { upsertGhlContact } from "@/lib/ghl/upsert-contact";
 
 /**
  * syncWonOpportunities — runs on every venue-owner login (fire-and-forget via
  * Next.js `after`).
  *
- * Pulls won opportunities from GHL, checks which ones are already in the
- * weddings table, and imports any that are missing. No magic-link invites
- * are sent (this is a historical import, not a live booking event).
- * Idempotent — createWeddingFromOpportunity short-circuits on ghl_opportunity_id.
+ * Pulls WON opportunities from GHL. For each, upserts a native `contacts` row
+ * (the person) and creates/links a `weddings` row (the booked event) via
+ * weddings.contact_id — keeping the two tables separate but connected. Scope is
+ * won/booked only; non-won GHL leads stay in GHL.
+ *
+ * Idempotent: createWeddingFromOpportunity short-circuits on ghl_opportunity_id,
+ * and already-linked weddings are skipped without a GHL fetch. Weddings imported
+ * before contacts were synced get their contact_id backfilled on the next login.
+ * No magic-link invites are sent (historical import, not a live booking event).
  */
 export async function syncWonOpportunities(
   venueId: string,
@@ -20,32 +26,48 @@ export async function syncWonOpportunities(
   if (!client) return { synced: 0 };
 
   const { opportunities } = await client.listOpportunities(500);
-  const wonOpportunities = opportunities.filter((opp) => opp.status === "won");
+  const wonOpportunities = opportunities.filter(
+    (opp) => opp.status === "won" && opp.contactId,
+  );
 
   if (!wonOpportunities.length) return { synced: 0 };
 
-  // 2. Get ghl_opportunity_ids already in Supabase for this venue.
+  // 2. Map existing weddings by GHL opportunity id (with their contact link state).
   const admin = createAdminClient();
   const { data } = await admin
     .from("weddings")
-    .select("ghl_opportunity_id")
+    .select("id, ghl_opportunity_id, contact_id")
     .eq("venue_id", venueId)
     .not("ghl_opportunity_id", "is", null);
 
-  const existingSet = new Set((data ?? []).map((r) => r.ghl_opportunity_id as string));
-  const missing = wonOpportunities.filter(
-    (opp) => !existingSet.has(opp.id) && opp.contactId,
+  const existingByOpp = new Map(
+    (data ?? []).map((r) => [r.ghl_opportunity_id as string, r]),
   );
 
-  if (!missing.length) return { synced: 0 };
-
-  // 3. Import each missing opportunity (sequential to avoid GHL rate limits).
+  // 3. Import / link each won opportunity (sequential to avoid GHL rate limits).
   let synced = 0;
-  for (const opp of missing) {
+  for (const opp of wonOpportunities) {
     if (!opp.contactId) continue;
+
+    const existing = existingByOpp.get(opp.id);
+    // Already imported AND linked — nothing to do, skip the GHL fetch.
+    if (existing && existing.contact_id) continue;
 
     const contact = await client.getContact(opp.contactId);
     if (!contact.email) continue;
+
+    const contactId = await upsertGhlContact(admin, venueId, contact);
+
+    if (existing) {
+      // Backfill the contact link on a wedding imported before this change.
+      if (contactId) {
+        await admin
+          .from("weddings")
+          .update({ contact_id: contactId })
+          .eq("id", existing.id);
+      }
+      continue;
+    }
 
     const coupleNames =
       [contact.firstName, contact.lastName].filter(Boolean).join(" ") ||
@@ -55,6 +77,7 @@ export async function syncWonOpportunities(
       venueId,
       ghlOpportunityId: opp.id,
       ghlContactId: opp.contactId,
+      contactId: contactId ?? undefined,
       coupleNames,
       coupleEmail: contact.email,
       totalValueMinor: opp.monetaryValue ?? undefined,

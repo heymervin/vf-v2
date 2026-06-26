@@ -26,6 +26,7 @@
 | [`staff-workspace.md`](./staff-workspace.md) | The post-booking heart — Weddings index, Wedding Workspace hub, the 5 per-wedding planning tools, tasks/notes, and how the workspace borrows GHL surfaces. | 2, 4, 5, 7 |
 | [`venue-settings.md`](./venue-settings.md) | Venue config / libraries — profile, spaces, floor templates, menu library, packages, team, custom fields, GHL connect tile, the gating model + setup checklist. | 3 |
 | [`couple-portal.md`](./couple-portal.md) | The couple-facing portal — magic-link auth, couple-only RLS, what couples see/edit, screen-by-screen. | 8 |
+| [`COMPETITIVE-GAP-ANALYSIS.md`](./COMPETITIVE-GAP-ANALYSIS.md) | **Competitive gap analysis** — VF2 vs 9 wedding-venue platforms (Sonas, Perfect Venue, Tripleseat, Planning Pod, HoneyBook, Dubsado, Aisle Planner, EventTemple, Prismm). 125-capability coverage matrix + ranked gaps + Now/Next/Later roadmap. Visual report: [`../reports/competitive-gap-analysis.html`](../reports/competitive-gap-analysis.html). | roadmap |
 
 ### Slice → GHL Phase map (so the two numbering systems never drift)
 

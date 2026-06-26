@@ -38,7 +38,8 @@ export default async function AppLayout({
       <AppSidebar
         venueName={ctx.venue.name}
         userEmail={ctx.user.email}
-        bundled={ctx.venue.mode === "bundled"}
+        venues={ctx.venues}
+        activeVenueId={ctx.venue.id}
       />
 
       {/* Right column: topbar + scrollable content */}

@@ -58,12 +58,27 @@ test("contacts: create → list → detail timeline → edit", async ({ page }) 
     await page.getByLabel("Budget (£)").fill("18000");
     await page.getByRole("button", { name: "Create contact" }).click();
 
-    // Appears in the list with the opening stage
+    // Appears in the list as a Lead (no booked wedding yet) with its value
     const row = page.getByRole("link", { name: /Anna Smith/ });
     await expect(row).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("Inbound enquiry").first()).toBeVisible();
-    await expect(page.getByText("120 guests")).toBeVisible();
+    await expect(page.getByText("Lead").first()).toBeVisible();
+    await expect(page.getByText("£18,000")).toBeVisible();
     await page.screenshot({ path: screenshotPath("m2-contacts-list") });
+
+    // Search matches on email, not just name
+    const search = page.getByPlaceholder("Search by name, email, or phone");
+    await search.fill(`anna+${random}@example.com`);
+    await expect(row).toBeVisible();
+    await search.fill("zzz-no-such-contact");
+    await expect(row).toHaveCount(0);
+    await search.fill("");
+    await expect(row).toBeVisible();
+
+    // Export CSV downloads a file
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe("contacts.csv");
 
     // Open detail → timeline shows the creation event
     await row.click();

@@ -578,6 +578,11 @@ export function FloorplanClient({
         const guestName =
           guests.find((g) => g.id === pendingGuestId)?.name ?? "Guest";
 
+        // Will this assignment push the table past capacity? (count before + 1)
+        const seatedAfter =
+          guestsAtTable(ft.tableNumber, guests, tableOverrides).length + 1;
+        const over = seatedAfter > ft.capacity;
+
         // Optimistic update
         setTableOverrides((prev) => {
           const next = new Map(prev);
@@ -587,9 +592,17 @@ export function FloorplanClient({
         setPendingGuestId(null);
         setSelectedTableId(ft.id);
 
-        toast.success(`${guestName} assigned to Table ${ft.tableNumber}`, {
-          description: ft.label ?? undefined,
-        });
+        // Assignment is still allowed when over capacity — just warn loudly.
+        if (over) {
+          toast.warning(
+            `Table ${ft.tableNumber} over capacity — ${seatedAfter}/${ft.capacity} seated`,
+            { description: `${guestName} assigned anyway.` },
+          );
+        } else {
+          toast.success(`${guestName} assigned to Table ${ft.tableNumber}`, {
+            description: ft.label ?? undefined,
+          });
+        }
 
         // Persist to DB
         startTransition(async () => {
@@ -614,7 +627,7 @@ export function FloorplanClient({
         setSelectedTableId((prev) => (prev === ft.id ? null : ft.id));
       }
     },
-    [pendingGuestId, guests, weddingId],
+    [pendingGuestId, guests, weddingId, tableOverrides],
   );
 
   const handleGuestSelect = useCallback((guestId: string) => {

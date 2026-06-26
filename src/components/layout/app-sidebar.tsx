@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  Kanban,
   CalendarDays,
   BarChart3,
   Sparkles,
@@ -16,8 +15,11 @@ import {
   Heart,
   Banknote,
   MessageSquare,
+  Building2,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -34,27 +36,49 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { signOut } from "@/app/(app)/actions";
+import { setActiveVenue, signOut } from "@/app/(app)/actions";
 
 // ---------------------------------------------------------------------------
-// Nav structure
+// Nav structure — grouped by workflow. Dashboard is the home; the rest cluster
+// into CRM (people + scheduling), Weddings (booked workspace + money), and
+// Insights. No Pipeline: V2 has no pre-sales stages — GHL owns pre-sales.
 // ---------------------------------------------------------------------------
 
-const primaryNav = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Weddings", href: "/weddings", icon: Heart },
-  { label: "Money", href: "/money", icon: Banknote },
-  { label: "Contacts", href: "/contacts", icon: Users },
-  { label: "Inbox", href: "/conversations", icon: MessageSquare },
-  { label: "Pipeline", href: "/pipeline", icon: Kanban },
-  { label: "Appointments", href: "/appointments", icon: CalendarDays },
-  { label: "Reports", href: "/reports", icon: BarChart3 },
-  { label: "Copilot", href: "/copilot", icon: Sparkles },
-] as const;
+type NavLink = {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
 
-const secondaryNav = [
+const navSections: { heading?: string; items: NavLink[] }[] = [
+  { items: [{ label: "Dashboard", href: "/dashboard", icon: LayoutDashboard }] },
+  {
+    heading: "CRM",
+    items: [
+      { label: "Contacts", href: "/contacts", icon: Users },
+      { label: "Inbox", href: "/conversations", icon: MessageSquare },
+      { label: "Appointments", href: "/appointments", icon: CalendarDays },
+    ],
+  },
+  {
+    heading: "Weddings",
+    items: [
+      { label: "Weddings", href: "/weddings", icon: Heart },
+      { label: "Money", href: "/money", icon: Banknote },
+    ],
+  },
+  {
+    heading: "Insights",
+    items: [
+      { label: "Reports", href: "/reports", icon: BarChart3 },
+      { label: "Copilot", href: "/copilot", icon: Sparkles },
+    ],
+  },
+];
+
+const secondaryNav: NavLink[] = [
   { label: "Settings", href: "/settings", icon: Settings },
-] as const;
+];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,8 +87,8 @@ const secondaryNav = [
 interface AppSidebarProps {
   venueName: string;
   userEmail: string | undefined;
-  /** Bundled (GHL-backed) venues hide the native CRM nav (Contacts/Pipeline). */
-  bundled: boolean;
+  venues: { id: string; name: string }[];
+  activeVenueId: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -105,19 +129,80 @@ function NavItem({
 }
 
 // ---------------------------------------------------------------------------
+// Venue switcher — only for users who can reach more than one venue (agency
+// owners). The plumbing (setActiveVenue cookie + getTenantContext) already
+// exists; this just surfaces it.
+// ---------------------------------------------------------------------------
+
+function VenueSwitcher({
+  venues,
+  activeVenueId,
+}: {
+  venues: { id: string; name: string }[];
+  activeVenueId: string;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const active = venues.find((v) => v.id === activeVenueId);
+
+  function switchTo(id: string) {
+    if (id === activeVenueId) return;
+    startTransition(async () => {
+      const res = await setActiveVenue(id);
+      if (res.ok) router.refresh();
+    });
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          disabled={pending}
+          className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-white/10 min-h-[44px] disabled:opacity-50"
+          aria-label="Switch venue"
+        >
+          <Building2 className="size-4 shrink-0 text-sidebar-foreground/60" />
+          <span className="min-w-0 flex-1 truncate font-medium text-sidebar-foreground">
+            {active?.name ?? "Select venue"}
+          </span>
+          <ChevronsUpDown className="size-3.5 shrink-0 text-sidebar-foreground/40" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        {venues.map((v) => (
+          <DropdownMenuItem
+            key={v.id}
+            className="cursor-pointer"
+            onSelect={() => switchTo(v.id)}
+          >
+            <Check
+              className={cn(
+                "size-4",
+                v.id === activeVenueId ? "opacity-100" : "opacity-0",
+              )}
+            />
+            <span className="truncate">{v.name}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Sidebar inner content — shared between desktop and mobile sheet
 // ---------------------------------------------------------------------------
 
 function SidebarContent({
   venueName,
   userEmail,
-  bundled,
+  venues,
+  activeVenueId,
   collapsed = false,
   onNavClick,
 }: AppSidebarProps & { collapsed?: boolean; onNavClick?: () => void }) {
   const pathname = usePathname();
-
-  const nav = primaryNav;
 
   const initial = (userEmail ?? "V").charAt(0).toUpperCase();
 
@@ -145,21 +230,40 @@ function SidebarContent({
         )}
       </div>
 
-      {/* Primary nav */}
+      {/* Venue switcher — only when the user has more than one venue */}
+      {!collapsed && venues.length > 1 && (
+        <div className="shrink-0 border-b border-sidebar-border px-3 py-2">
+          <VenueSwitcher venues={venues} activeVenueId={activeVenueId} />
+        </div>
+      )}
+
+      {/* Primary nav — grouped sections */}
       <nav
-        className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4"
+        className="flex flex-1 flex-col overflow-y-auto px-3 py-4"
         aria-label="Main navigation"
       >
-        {nav.map((item) => (
-          <span key={item.href} onClick={onNavClick}>
-            <NavItem
-              href={item.href}
-              icon={item.icon}
-              label={item.label}
-              active={isActive(item.href)}
-              collapsed={collapsed}
-            />
-          </span>
+        {navSections.map((section, i) => (
+          <div
+            key={section.heading ?? "home"}
+            className={cn("flex flex-col gap-1", i > 0 && "mt-4")}
+          >
+            {section.heading && !collapsed && (
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-sidebar-foreground/40">
+                {section.heading}
+              </p>
+            )}
+            {section.items.map((item) => (
+              <span key={item.href} onClick={onNavClick}>
+                <NavItem
+                  href={item.href}
+                  icon={item.icon}
+                  label={item.label}
+                  active={isActive(item.href)}
+                  collapsed={collapsed}
+                />
+              </span>
+            ))}
+          </div>
         ))}
 
         <Separator className="my-3 bg-sidebar-border" />
@@ -226,22 +330,17 @@ function SidebarContent({
 // Desktop sidebar — full width with collapsible icon rail on tablet
 // ---------------------------------------------------------------------------
 
-function DesktopSidebar({ venueName, userEmail, bundled }: AppSidebarProps) {
+function DesktopSidebar(props: AppSidebarProps) {
   return (
     <>
       {/* Tablet: icon rail (md) */}
       <aside className="hidden md:flex lg:hidden w-[64px] shrink-0 flex-col border-r border-sidebar-border">
-        <SidebarContent
-          venueName={venueName}
-          userEmail={userEmail}
-          bundled={bundled}
-          collapsed={true}
-        />
+        <SidebarContent {...props} collapsed={true} />
       </aside>
 
       {/* Desktop: full sidebar (lg+) */}
       <aside className="hidden lg:flex w-[220px] shrink-0 flex-col border-r border-sidebar-border">
-        <SidebarContent venueName={venueName} userEmail={userEmail} bundled={bundled} />
+        <SidebarContent {...props} />
       </aside>
     </>
   );
@@ -251,7 +350,7 @@ function DesktopSidebar({ venueName, userEmail, bundled }: AppSidebarProps) {
 // Mobile topbar + sheet sidebar
 // ---------------------------------------------------------------------------
 
-function MobileNav({ venueName, userEmail, bundled }: AppSidebarProps) {
+function MobileNav(props: AppSidebarProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -273,12 +372,7 @@ function MobileNav({ venueName, userEmail, bundled }: AppSidebarProps) {
           <SheetHeader className="sr-only">
             <SheetTitle>Navigation</SheetTitle>
           </SheetHeader>
-          <SidebarContent
-            venueName={venueName}
-            userEmail={userEmail}
-            bundled={bundled}
-            onNavClick={() => setOpen(false)}
-          />
+          <SidebarContent {...props} onNavClick={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
 
@@ -293,11 +387,11 @@ function MobileNav({ venueName, userEmail, bundled }: AppSidebarProps) {
 // Public export — composes both into one component
 // ---------------------------------------------------------------------------
 
-export function AppSidebar({ venueName, userEmail, bundled }: AppSidebarProps) {
+export function AppSidebar(props: AppSidebarProps) {
   return (
     <>
-      <DesktopSidebar venueName={venueName} userEmail={userEmail} bundled={bundled} />
-      <MobileNav venueName={venueName} userEmail={userEmail} bundled={bundled} />
+      <DesktopSidebar {...props} />
+      <MobileNav {...props} />
     </>
   );
 }

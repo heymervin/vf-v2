@@ -122,6 +122,48 @@ export async function updateWeddingStatus(input: {
   return ok(undefined);
 }
 
+// ── updateWeddingNotes ─────────────────────────────────────────────────────────
+
+const UpdateNotesSchema = z.object({
+  weddingId: z.string().uuid("Invalid wedding ID"),
+  notes: z.string().max(5000, "Notes must be under 5000 characters").nullable(),
+});
+
+/** Edit a wedding's free-text notes. Venue-scoped via the admin client's eq. */
+export async function updateWeddingNotes(input: {
+  weddingId: string;
+  notes: string | null;
+}): Promise<ActionResult<void>> {
+  const ctx = await getTenantContext();
+  if (!ctx.ok) return err("Not authenticated.");
+  const guard = assertCanMutate(ctx);
+  if (guard) return guard;
+
+  const parsed = UpdateNotesSchema.safeParse(input);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    return err(firstIssue?.message ?? "Invalid input.");
+  }
+
+  const admin = createAdminClient();
+  const notes = parsed.data.notes?.trim() || null;
+
+  const { error } = await admin
+    .from("weddings")
+    .update({ notes })
+    .eq("id", parsed.data.weddingId)
+    .eq("venue_id", ctx.venue.id);
+
+  if (error) {
+    console.error("updateWeddingNotes failed:", error.message);
+    return err("Could not save notes.");
+  }
+
+  revalidatePath(`/weddings/${parsed.data.weddingId}`);
+  revalidatePath(`/weddings/${parsed.data.weddingId}/beo`);
+  return ok(undefined);
+}
+
 // ── toggleWeddingTask ──────────────────────────────────────────────────────────
 
 const ToggleTaskSchema = z.object({

@@ -150,9 +150,15 @@ function buildLists(weddings: WeddingRow[]): SmartList[] {
     );
   });
 
+  const byStatus = (s: WeddingStatus) =>
+    weddings.filter((w) => toSafeStatus(w.status) === s).length;
+
   return [
     { id: "all", name: "All", count: weddings.length },
     { id: "this_month", name: "This month", count: thisMonth.length },
+    { id: "planning", name: "Planning", count: byStatus("planning") },
+    { id: "confirmed", name: "Confirmed", count: byStatus("confirmed") },
+    { id: "completed", name: "Completed", count: byStatus("completed") },
   ];
 }
 
@@ -167,6 +173,9 @@ function filterByList(weddings: WeddingRow[], listId: string): WeddingRow[] {
         d.getMonth() === now.getMonth()
       );
     });
+  }
+  if (listId === "planning" || listId === "confirmed" || listId === "completed") {
+    return weddings.filter((w) => toSafeStatus(w.status) === listId);
   }
   return weddings;
 }

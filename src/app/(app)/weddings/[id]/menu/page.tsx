@@ -1,20 +1,19 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Lock, Utensils } from "lucide-react";
+import { ArrowLeft, ChefHat, Lock, Utensils } from "lucide-react";
 import { getTenantContext } from "@/lib/tenant";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { MenuClient } from "./menu-client";
-import type { DishRow, GuestForMenu, MenuPageData } from "./menu-types";
-import type { Tables, Json } from "@/lib/supabase/types";
-
-type MenuItemRow = Tables<"menu_items">;
-type SelectionRow = Tables<"wedding_menu_selections">;
-type GuestRow = Pick<
-  Tables<"wedding_guests">,
-  "id" | "name" | "dietary" | "meal_choice"
->;
+import type { GuestForMenu, MenuPageData } from "./menu-types";
+import {
+  composeDishRows,
+  parseMealChoice,
+  type MenuItemRow,
+  type SelectionRow,
+  type GuestRow,
+} from "./menu-data";
 
 // ---------------------------------------------------------------------------
 // Metadata
@@ -80,83 +79,6 @@ function LockedState({ weddingId }: { weddingId: string }) {
       </Card>
     </div>
   );
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Parse meal_choice jsonb (shape: { [course]: menuItemId }) to look up
- * which menu_items id a guest chose.
- */
-function parseMealChoice(raw: Json | null): Record<string, string> | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  return raw as Record<string, string>;
-}
-
-/**
- * Count how many guests chose each menu_item id, and collect those guest ids.
- * Returns a Map<menuItemId, { count, guestIds }>.
- */
-function buildChosenByMap(
-  guests: GuestRow[],
-): Map<string, { count: number; guestIds: string[] }> {
-  const map = new Map<string, { count: number; guestIds: string[] }>();
-
-  for (const guest of guests) {
-    const choice = parseMealChoice(guest.meal_choice);
-    if (!choice) continue;
-
-    // Each value in the meal_choice object is a menu_item id (one per course)
-    const chosenItemIds = new Set(Object.values(choice));
-    for (const itemId of chosenItemIds) {
-      const existing = map.get(itemId) ?? { count: 0, guestIds: [] };
-      existing.count += 1;
-      existing.guestIds.push(guest.id);
-      map.set(itemId, existing);
-    }
-  }
-
-  return map;
-}
-
-/**
- * Compose the DishRow list from venue menu_items + per-wedding selections
- * + guest meal choices.
- */
-function composeDishRows(
-  items: MenuItemRow[],
-  selections: SelectionRow[],
-  guests: GuestRow[],
-): DishRow[] {
-  const selectionByItemId = new Map<string, SelectionRow>();
-  for (const sel of selections) {
-    selectionByItemId.set(sel.menu_item_id, sel);
-  }
-
-  const chosenByMap = buildChosenByMap(guests);
-
-  return items.map((item): DishRow => {
-    const sel = selectionByItemId.get(item.id) ?? null;
-    const chosen = chosenByMap.get(item.id) ?? { count: 0, guestIds: [] };
-
-    return {
-      itemId: item.id,
-      selectionId: sel?.id ?? null,
-      name: item.name,
-      course: sel?.course ?? item.course,
-      description: item.description,
-      allergens: item.allergens,
-      dietaryTags: item.dietary_tags,
-      pricePerHeadMinor: item.price_per_head_minor,
-      isActive: item.is_active,
-      sortOrder: item.sort_order,
-      chosenBy: chosen.count,
-      guestIds: chosen.guestIds,
-      isSelected: sel !== null,
-    };
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -268,13 +190,22 @@ export default async function MenuPage({
         title="Menu"
         subtitle={`${wedding.couple_names} · ${selectedCount} item${selectedCount !== 1 ? "s" : ""} selected`}
         actions={
-          <Link
-            href={`/weddings/${id}`}
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-xs transition-all hover:border-foreground/30 hover:shadow-sm"
-          >
-            <ArrowLeft className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            {wedding.couple_names}
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/weddings/${id}/menu/chef`}
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-xs transition-all hover:border-foreground/30 hover:shadow-sm"
+            >
+              <ChefHat className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              Kitchen sheet
+            </Link>
+            <Link
+              href={`/weddings/${id}`}
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-xs transition-all hover:border-foreground/30 hover:shadow-sm"
+            >
+              <ArrowLeft className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              {wedding.couple_names}
+            </Link>
+          </div>
         }
       />
 

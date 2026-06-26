@@ -188,6 +188,9 @@ export function ShapedTable({
 }: ShapedTableProps) {
   const { shape, capacity, tableNumber, label } = table;
   const seated = seatedGuests.length;
+  // Only `capacity` seat circles are drawn, so over-seating is invisible on the
+  // table itself — flag it on the count instead.
+  const over = seated > capacity;
 
   const vb = sizePx;
   const cx = vb / 2;
@@ -356,8 +359,8 @@ export function ShapedTable({
           textAnchor="middle"
           dominantBaseline="middle"
           fontSize={countFontSize}
-          fontWeight={500}
-          fill="var(--muted-foreground)"
+          fontWeight={over ? 700 : 500}
+          fill={over ? "var(--destructive)" : "var(--muted-foreground)"}
           fontFamily="inherit"
         >
           {seated}/{capacity}

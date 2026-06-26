@@ -17,8 +17,74 @@ import {
   type KpiData,
   KpiCards,
 } from "./reports-charts";
+import { formatMinor } from "@/lib/money/proposal";
+import { ReportsExport } from "./reports-export";
 
 export const metadata = { title: "Reports" };
+
+// ── forward-booking forecast (the "pace" metric venues sell on) ────────────────
+
+interface ForecastRow {
+  month: string;
+  label: string;
+  count: number;
+  sumMinor: number;
+}
+
+function buildForecast(
+  rows: { wedding_date: string | null; total_value_minor: number | null }[],
+): ForecastRow[] {
+  const map = new Map<string, { count: number; sumMinor: number }>();
+  for (const r of rows) {
+    if (!r.wedding_date) continue;
+    const month = r.wedding_date.slice(0, 7); // YYYY-MM
+    const e = map.get(month) ?? { count: 0, sumMinor: 0 };
+    e.count += 1;
+    e.sumMinor += r.total_value_minor ?? 0;
+    map.set(month, e);
+  }
+  return Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, agg]) => ({
+      month,
+      label: new Date(month + "-01").toLocaleDateString("en-GB", {
+        month: "short",
+        year: "numeric",
+      }),
+      count: agg.count,
+      sumMinor: agg.sumMinor,
+    }));
+}
+
+// ── cross-venue (agency) roll-up — forward bookings per managed venue ──────────
+
+interface VenueRollupRow {
+  id: string;
+  name: string;
+  count: number;
+  sumMinor: number;
+}
+
+function buildVenueRollup(
+  venues: { id: string; name: string }[],
+  upcoming: { venue_id: string; total_value_minor: number | null }[],
+): VenueRollupRow[] {
+  const agg = new Map<string, { count: number; sumMinor: number }>();
+  for (const w of upcoming) {
+    const e = agg.get(w.venue_id) ?? { count: 0, sumMinor: 0 };
+    e.count += 1;
+    e.sumMinor += w.total_value_minor ?? 0;
+    agg.set(w.venue_id, e);
+  }
+  return venues
+    .map((v) => ({
+      id: v.id,
+      name: v.name,
+      count: agg.get(v.id)?.count ?? 0,
+      sumMinor: agg.get(v.id)?.sumMinor ?? 0,
+    }))
+    .sort((a, b) => b.sumMinor - a.sumMinor);
+}
 
 // ── stage ordering ────────────────────────────────────────────────────────────
 
@@ -258,20 +324,149 @@ export default async function ReportsPage() {
     weddingCount,
   });
 
+  // Forward-booking forecast — upcoming (non-cancelled) weddings by month.
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: upcomingWeddings } = await supabase
+    .from("weddings")
+    .select("wedding_date, total_value_minor")
+    .eq("venue_id", venueId)
+    .neq("status", "cancelled")
+    .gte("wedding_date", today)
+    .order("wedding_date", { ascending: true });
+  const forecast = buildForecast(upcomingWeddings ?? []);
+  const totalUpcoming = forecast.reduce((s, f) => s + f.count, 0);
+  const totalForwardMinor = forecast.reduce((s, f) => s + f.sumMinor, 0);
+  const maxForecastMinor = Math.max(1, ...forecast.map((f) => f.sumMinor));
+
+  // Cross-venue roll-up — only meaningful when the user manages >1 venue. RLS
+  // scopes both queries to the user's accessible venues automatically.
+  const { data: myVenues } = await supabase
+    .from("venues")
+    .select("id, name")
+    .order("name", { ascending: true });
+  const venueList = myVenues ?? [];
+  let venueRollup: VenueRollupRow[] = [];
+  if (venueList.length > 1) {
+    const { data: allUpcoming } = await supabase
+      .from("weddings")
+      .select("venue_id, total_value_minor")
+      .neq("status", "cancelled")
+      .gte("wedding_date", today);
+    venueRollup = buildVenueRollup(venueList, allUpcoming ?? []);
+  }
+  const rollupTotalCount = venueRollup.reduce((s, v) => s + v.count, 0);
+  const rollupTotalMinor = venueRollup.reduce((s, v) => s + v.sumMinor, 0);
+
   return (
     <div className="mx-auto max-w-[1200px]">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-[-0.022em] leading-[1.1] text-foreground">
-          Reports
-        </h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Pipeline analytics for {ctx.venue.name}.
-        </p>
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold tracking-[-0.022em] leading-[1.1] text-foreground">
+            Reports
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Pipeline analytics for {ctx.venue.name}.
+          </p>
+        </div>
+        <ReportsExport
+          venueName={ctx.venue.name}
+          kpis={kpis}
+          sources={sourceDataForChart}
+          forecast={forecast}
+          payments={{
+            collectedMinor: paymentHealthData.collectedMinor,
+            outstandingMinor: paymentHealthData.outstandingMinor,
+            overdueMinor: paymentHealthData.overdueMinor,
+          }}
+        />
       </div>
 
       <div className="space-y-8">
+        {/* Cross-venue roll-up — agency owners managing multiple venues */}
+        {venueRollup.length > 1 && (
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              Portfolio
+            </p>
+            <h2 className="mb-5 text-base font-semibold text-foreground">
+              Across your {venueRollup.length} venues
+            </h2>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
+                  <th className="py-1.5 font-semibold">Venue</th>
+                  <th className="py-1.5 text-right font-semibold">Upcoming</th>
+                  <th className="py-1.5 text-right font-semibold">Forward booked</th>
+                </tr>
+              </thead>
+              <tbody>
+                {venueRollup.map((v) => (
+                  <tr key={v.id} className="border-b border-border/60">
+                    <td className="py-1.5 font-medium text-foreground">{v.name}</td>
+                    <td className="py-1.5 text-right tabular-nums text-foreground">{v.count}</td>
+                    <td className="py-1.5 text-right tabular-nums text-foreground">
+                      {formatMinor(v.sumMinor)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="font-semibold">
+                  <td className="py-2 text-foreground">Total</td>
+                  <td className="py-2 text-right tabular-nums text-foreground">{rollupTotalCount}</td>
+                  <td className="py-2 text-right tabular-nums text-foreground">
+                    {formatMinor(rollupTotalMinor)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
         {/* KPI row */}
         <KpiCards kpis={kpis} />
+
+        {/* Forward bookings / pace */}
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Forward bookings
+          </p>
+          <h2 className="mb-1 text-base font-semibold text-foreground">Booking pace</h2>
+          {forecast.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">
+              No upcoming weddings booked yet.
+            </p>
+          ) : (
+            <>
+              <p className="mb-5 text-sm text-muted-foreground">
+                {totalUpcoming} upcoming wedding{totalUpcoming === 1 ? "" : "s"} ·{" "}
+                <span className="font-medium text-foreground">{formatMinor(totalForwardMinor)}</span>{" "}
+                forward booked
+              </p>
+              <ul className="space-y-2">
+                {forecast.map((f) => (
+                  <li key={f.month} className="flex items-center gap-3">
+                    <span className="w-20 shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+                      {f.label}
+                    </span>
+                    <div className="h-5 flex-1 overflow-hidden rounded bg-muted">
+                      <div
+                        className="h-full rounded bg-fun-pink"
+                        style={{ width: `${Math.round((f.sumMinor / maxForecastMinor) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="w-8 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                      {f.count}
+                    </span>
+                    <span className="w-24 shrink-0 text-right text-xs font-medium tabular-nums text-foreground">
+                      {formatMinor(f.sumMinor)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
 
         {totalLeads === 0 ? (
           <div className="rounded-xl border border-border bg-card p-8 shadow-sm max-w-xl">

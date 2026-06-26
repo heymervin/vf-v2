@@ -1,201 +1,58 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Users, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantContext } from "@/lib/tenant";
-import { ContactsToolbar } from "./contacts-toolbar";
-import { formatWeddingDate, formatBudget } from "./format";
+import { PageHeader } from "@/components/layout/page-header";
+import { ContactsList, type ContactRow } from "./contacts-list";
 
 export const metadata = { title: "Contacts" };
 
-function sanitizeSearch(q: string): string {
-  return q.replace(/[,()*]/g, " ").trim();
-}
-
-interface ContactRow {
-  id: string;
-  first_name: string;
-  last_name: string | null;
-  email: string | null;
-  wedding_date: string | null;
-  guest_count: number | null;
-  budget_minor: number | null;
-  source: string | null;
-  ghl_contact_id: string | null;
-}
-
-export default async function ContactsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string; source?: string }>;
-}) {
+export default async function ContactsPage() {
   const ctx = await getTenantContext();
   if (!ctx.ok) redirect("/login");
 
-  const sp = await searchParams;
-  const q = sp.q ? sanitizeSearch(sp.q) : "";
-  const source = sp.source ?? "";
-
   const supabase = await createClient();
-  const admin = createAdminClient();
 
-  // Check GHL connection (service-role — ghl_credentials has no RLS)
-  const { data: creds } = await admin
-    .from("ghl_credentials")
-    .select("location_id")
-    .eq("venue_id", ctx.venue.id)
-    .maybeSingle();
-
-  let query = supabase
-    .from("contacts")
-    .select("id, first_name, last_name, email, wedding_date, guest_count, budget_minor, source, ghl_contact_id")
-    .eq("venue_id", ctx.venue.id)
-    .order("created_at", { ascending: false })
-    .limit(500);
-
-  if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`);
-  if (source) query = query.eq("source", source);
-
-  const [{ data, error }, { data: sourceRows }] = await Promise.all([
-    query.overrideTypes<ContactRow[]>(),
+  // Contacts are first-class V2 records (own id + linked ghl_contact_id). To
+  // derive a Lead/Booked status we also pull which contacts a wedding points at.
+  const [{ data, error }, { data: weddingRows }] = await Promise.all([
     supabase
       .from("contacts")
-      .select("source")
+      .select(
+        "id, first_name, last_name, email, phone, partner_first_name, partner_last_name, wedding_date, guest_count, budget_minor, source, ghl_contact_id, created_at",
+      )
       .eq("venue_id", ctx.venue.id)
-      .not("source", "is", null),
+      .order("created_at", { ascending: false })
+      .limit(1000),
+    supabase
+      .from("weddings")
+      .select("contact_id")
+      .eq("venue_id", ctx.venue.id)
+      .neq("status", "cancelled"),
   ]);
 
   if (error) console.error("contacts query failed:", error.message);
-  const contacts = data ?? [];
 
-  const sources = Array.from(
-    new Set((sourceRows ?? []).map((r) => r.source).filter((s): s is string => s !== null)),
-  ).sort();
+  const bookedContactIds = new Set(
+    (weddingRows ?? []).map((w) => w.contact_id).filter(Boolean),
+  );
+  const today = new Date().toISOString().slice(0, 10);
 
-  const isFiltered = !!q || !!source;
+  const contacts: ContactRow[] = (data ?? []).map((c) => {
+    const booked = bookedContactIds.has(c.id);
+    return {
+      ...c,
+      status: booked ? "booked" : "lead",
+      is_upcoming: booked && !!c.wedding_date && c.wedding_date >= today,
+    };
+  });
 
   return (
     <div className="mx-auto max-w-[1400px]">
-      <div className="mb-8">
-        <h1 className="title-shimmer-underline inline-block text-3xl font-bold tracking-[-0.022em] leading-[1.1] text-foreground">
-          Contacts
-        </h1>
-        <p className="mt-5 text-sm text-muted-foreground">
-          All contacts for {ctx.venue.name}.
-        </p>
-      </div>
-
-      <div className="mb-5">
-        <ContactsToolbar sources={sources} ghlConnected={creds !== null} />
-      </div>
-
-      {contacts.length === 0 ? (
-        <EmptyState filtered={isFiltered} ghlConnected={creds !== null} />
-      ) : (
-        <ContactsTable contacts={contacts} />
-      )}
-    </div>
-  );
-}
-
-function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      <div className="hidden grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] gap-4 border-b border-border px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground md:grid">
-        <span>Name</span>
-        <span>Email</span>
-        <span>Wedding date</span>
-        <span>Guests</span>
-        <span>Budget</span>
-        <span>VenueFlow</span>
-      </div>
-
-      <ul className="divide-y divide-border">
-        {contacts.map((c) => {
-          const name = [c.first_name, c.last_name].filter(Boolean).join(" ");
-          return (
-            <li key={c.id} className="group relative transition-colors hover:bg-accent/40 focus-within:bg-accent/40">
-              <Link
-                href={`/contacts/${c.id}`}
-                className="absolute inset-0 focus-visible:outline-none"
-                aria-label={`Open ${name}`}
-              />
-              <div className="grid grid-cols-1 gap-2 px-5 py-4 md:grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] md:items-center md:gap-4">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">{name}</p>
-                  {c.source && (
-                    <p className="text-xs text-muted-foreground">{c.source}</p>
-                  )}
-                </div>
-
-                <div className="min-w-0 text-sm text-muted-foreground">
-                  {c.email ? <p className="truncate">{c.email}</p> : <span>—</span>}
-                </div>
-
-                <div className="text-sm text-foreground tabular-nums">
-                  {formatWeddingDate(c.wedding_date) ?? (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </div>
-
-                <div className="text-sm text-foreground tabular-nums">
-                  {c.guest_count ?? <span className="text-muted-foreground">—</span>}
-                </div>
-
-                <div className="text-sm text-foreground tabular-nums">
-                  {formatBudget(c.budget_minor) ?? (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </div>
-
-                <div className="relative z-10">
-                  {c.ghl_contact_id ? (
-                    <a
-                      href={`https://app.gohighlevel.com/contacts/${c.ghl_contact_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                      aria-label="Open in VenueFlow"
-                    >
-                      <ExternalLink className="size-3.5" />
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
-function EmptyState({ filtered, ghlConnected }: { filtered: boolean; ghlConnected: boolean }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-10 text-center shadow-sm">
-      <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-accent text-accent-foreground">
-        <Users className="size-6" />
-      </div>
-      {filtered ? (
-        <>
-          <h2 className="text-lg font-semibold text-foreground">No contacts match</h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-            Try clearing the search or filters.
-          </p>
-        </>
-      ) : (
-        <>
-          <h2 className="text-lg font-semibold text-foreground">No contacts yet</h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-            {ghlConnected
-              ? 'Use "Sync from VenueFlow" above to import your contacts.'
-              : "Add contacts manually or connect VenueFlow in Settings to import them."}
-          </p>
-        </>
-      )}
+      <PageHeader
+        title="Contacts"
+        subtitle={`Everyone in ${ctx.venue.name}'s book — leads and booked couples.`}
+      />
+      <ContactsList contacts={contacts} />
     </div>
   );
 }
