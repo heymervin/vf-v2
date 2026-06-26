@@ -65,3 +65,42 @@ export async function syncWonOpportunities(
 
   return { synced };
 }
+
+/**
+ * syncAllGhlContacts — manual "import all" triggered from the contacts page.
+ *
+ * Pulls every contact from the connected GHL location and inserts any that
+ * aren't already in the weddings table (matched by ghl_contact_id).
+ * Does not create couple_accounts or tasks — this is a bulk lead import,
+ * not a booking event.
+ */
+export async function syncAllGhlContacts(
+  venueId: string,
+): Promise<{ imported: number }> {
+  const client = await ghlClient(venueId);
+  if (!client) return { imported: 0 };
+
+  const { contacts } = await client.listContacts(1000);
+  if (!contacts.length) return { imported: 0 };
+
+  const admin = createAdminClient();
+
+  const rows = contacts.map((c) => ({
+    venue_id: venueId,
+    first_name: c.firstName || c.email?.split("@")[0] || "Unknown",
+    last_name: c.lastName ?? null,
+    email: c.email ?? null,
+    phone: c.phone ?? null,
+    ghl_contact_id: c.id,
+    source: "ghl_import",
+  }));
+
+  // Upsert — unique index on (venue_id, ghl_contact_id) handles dedup.
+  const { error } = await admin
+    .from("contacts")
+    .upsert(rows, { onConflict: "venue_id,ghl_contact_id" });
+
+  if (error) throw new Error(`contacts upsert failed: ${error.message}`);
+
+  return { imported: rows.length };
+}
