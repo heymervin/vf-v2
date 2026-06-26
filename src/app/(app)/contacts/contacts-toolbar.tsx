@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { Search, X, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,15 +13,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { importGhlContactsAction } from "./actions";
 
 const ALL = "all";
 
-export function ContactsToolbar({ sources }: { sources: string[] }) {
+export function ContactsToolbar({
+  sources,
+  ghlConnected,
+}: {
+  sources: string[];
+  ghlConnected: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
 
   const [query, setQuery] = React.useState(params.get("q") ?? "");
+  const [syncing, setSyncing] = React.useState(false);
 
   const setParam = React.useCallback(
     (key: string, value: string) => {
@@ -44,6 +53,23 @@ export function ContactsToolbar({ sources }: { sources: string[] }) {
   const source = params.get("source") ?? ALL;
   const hasFilters = !!params.get("q") || !!params.get("source");
 
+  async function handleSync() {
+    setSyncing(true);
+    const result = await importGhlContactsAction();
+    setSyncing(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    const n = result.data.imported;
+    toast.success(
+      n > 0
+        ? `Imported ${n} contact${n === 1 ? "" : "s"} from VenueFlow.`
+        : "Already up to date.",
+    );
+    router.refresh();
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative w-full sm:w-64">
@@ -51,7 +77,7 @@ export function ContactsToolbar({ sources }: { sources: string[] }) {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name"
+          placeholder="Search by name or email"
           className="pl-9"
           aria-label="Search contacts"
         />
@@ -80,6 +106,19 @@ export function ContactsToolbar({ sources }: { sources: string[] }) {
           onClick={() => router.replace(pathname, { scroll: false })}
         >
           <X /> Clear
+        </Button>
+      )}
+
+      {ghlConnected && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSync}
+          disabled={syncing}
+          className="ml-auto"
+        >
+          <RefreshCw className={syncing ? "animate-spin" : ""} />
+          {syncing ? "Syncing…" : "Sync from VenueFlow"}
         </Button>
       )}
     </div>
