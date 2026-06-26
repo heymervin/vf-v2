@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, ExternalLink, Download, Upload, SlidersHorizontal, Users } from "lucide-react";
+import { Plus, ExternalLink, Download, Upload, RefreshCw, SlidersHorizontal, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +31,7 @@ import { BulkActionBar } from "@/components/bulk-action-bar";
 import { ContactStatusBadge } from "@/components/status-badges";
 import { contactDisplayName, formatWeddingDate, formatBudget } from "./format";
 import { ContactFormSheet } from "./contact-form-sheet";
-import { importContacts } from "./actions";
+import { importContacts, importGhlContactsAction } from "./actions";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { scoreLead } from "@/lib/leads/score";
 
@@ -187,6 +187,21 @@ export function ContactsList({ contacts }: { contacts: ContactRow[] }) {
         (skipped ? ` · skipped ${skipped} duplicate${skipped === 1 ? "" : "s"}` : ""),
     );
     router.refresh();
+  }
+
+  // Pull every contact from the connected GHL location (main's importGhlContactsAction).
+  const [syncing, startSync] = React.useTransition();
+  function handleGhlSync() {
+    startSync(async () => {
+      const res = await importGhlContactsAction();
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      const { imported } = res.data;
+      toast.success(`Synced ${imported} contact${imported === 1 ? "" : "s"} from GHL.`);
+      router.refresh();
+    });
   }
 
   // Saved-view counts
@@ -400,6 +415,10 @@ export function ContactsList({ contacts }: { contacts: ContactRow[] }) {
             <Button variant="outline" onClick={() => fileRef.current?.click()}>
               <Upload /> Import CSV
             </Button>
+            <Button variant="outline" onClick={handleGhlSync} disabled={syncing}>
+              <RefreshCw className={syncing ? "animate-spin" : undefined} />
+              Sync GHL
+            </Button>
           </div>
         </div>
         <input
@@ -476,6 +495,16 @@ export function ContactsList({ contacts }: { contacts: ContactRow[] }) {
                 onClick={() => fileRef.current?.click()}
               >
                 <Upload /> Import
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGhlSync}
+                disabled={syncing}
+              >
+                <RefreshCw className={syncing ? "animate-spin" : undefined} />
+                Sync GHL
               </Button>
 
               <Button size="sm" onClick={() => setFormOpen(true)}>
