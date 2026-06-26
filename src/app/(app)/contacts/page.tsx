@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Users, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantContext } from "@/lib/tenant";
 import { ContactsToolbar } from "./contacts-toolbar";
 import { formatWeddingDate, formatBudget } from "./format";
@@ -14,14 +15,14 @@ function sanitizeSearch(q: string): string {
 
 interface ContactRow {
   id: string;
-  couple_names: string;
+  first_name: string;
+  last_name: string | null;
+  email: string | null;
   wedding_date: string | null;
-  guest_count_day: number | null;
-  guest_count_evening: number | null;
-  total_value_minor: number | null;
-  source: string;
+  guest_count: number | null;
+  budget_minor: number | null;
+  source: string | null;
   ghl_contact_id: string | null;
-  couple_accounts: { email: string }[];
 }
 
 export default async function ContactsPage({
@@ -37,37 +38,39 @@ export default async function ContactsPage({
   const source = sp.source ?? "";
 
   const supabase = await createClient();
+  const admin = createAdminClient();
+
+  // Check GHL connection (service-role — ghl_credentials has no RLS)
+  const { data: creds } = await admin
+    .from("ghl_credentials")
+    .select("location_id")
+    .eq("venue_id", ctx.venue.id)
+    .maybeSingle();
 
   let query = supabase
-    .from("weddings")
-    .select(
-      "id, couple_names, wedding_date, guest_count_day, guest_count_evening, total_value_minor, source, ghl_contact_id, couple_accounts(email)",
-    )
+    .from("contacts")
+    .select("id, first_name, last_name, email, wedding_date, guest_count, budget_minor, source, ghl_contact_id")
     .eq("venue_id", ctx.venue.id)
     .order("created_at", { ascending: false })
     .limit(500);
 
-  if (q) query = query.ilike("couple_names", `%${q}%`);
+  if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`);
   if (source) query = query.eq("source", source);
 
-  // The contacts query is filtered by q/source, so the source dropdown needs its
-  // own unfiltered scan. The two are independent — run them in parallel.
-  const [
-    { data, error },
-    { data: sourceRows },
-  ] = await Promise.all([
+  const [{ data, error }, { data: sourceRows }] = await Promise.all([
     query.overrideTypes<ContactRow[]>(),
     supabase
-      .from("weddings")
+      .from("contacts")
       .select("source")
       .eq("venue_id", ctx.venue.id)
       .not("source", "is", null),
   ]);
+
   if (error) console.error("contacts query failed:", error.message);
   const contacts = data ?? [];
 
   const sources = Array.from(
-    new Set((sourceRows ?? []).map((r) => r.source).filter(Boolean)),
+    new Set((sourceRows ?? []).map((r) => r.source).filter((s): s is string => s !== null)),
   ).sort();
 
   const isFiltered = !!q || !!source;
@@ -79,16 +82,16 @@ export default async function ContactsPage({
           Contacts
         </h1>
         <p className="mt-5 text-sm text-muted-foreground">
-          Booked couples for {ctx.venue.name}, synced from GHL.
+          All contacts for {ctx.venue.name}.
         </p>
       </div>
 
       <div className="mb-5">
-        <ContactsToolbar sources={sources} />
+        <ContactsToolbar sources={sources} ghlConnected={creds !== null} />
       </div>
 
       {contacts.length === 0 ? (
-        <EmptyState filtered={isFiltered} />
+        <EmptyState filtered={isFiltered} ghlConnected={creds !== null} />
       ) : (
         <ContactsTable contacts={contacts} />
       )}
@@ -104,31 +107,30 @@ function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
         <span>Email</span>
         <span>Wedding date</span>
         <span>Guests</span>
-        <span>Value</span>
+        <span>Budget</span>
         <span>GHL</span>
       </div>
 
       <ul className="divide-y divide-border">
         {contacts.map((c) => {
-          const email = c.couple_accounts?.[0]?.email ?? null;
-          const guests = (c.guest_count_day ?? 0) + (c.guest_count_evening ?? 0);
+          const name = [c.first_name, c.last_name].filter(Boolean).join(" ");
           return (
             <li key={c.id} className="group relative transition-colors hover:bg-accent/40 focus-within:bg-accent/40">
               <Link
-                href={`/weddings/${c.id}`}
+                href={`/contacts/${c.id}`}
                 className="absolute inset-0 focus-visible:outline-none"
-                aria-label={`Open ${c.couple_names}`}
+                aria-label={`Open ${name}`}
               />
               <div className="grid grid-cols-1 gap-2 px-5 py-4 md:grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] md:items-center md:gap-4">
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">{c.couple_names}</p>
+                  <p className="truncate font-medium text-foreground">{name}</p>
                   {c.source && (
                     <p className="text-xs text-muted-foreground">{c.source}</p>
                   )}
                 </div>
 
                 <div className="min-w-0 text-sm text-muted-foreground">
-                  {email ? <p className="truncate">{email}</p> : <span>—</span>}
+                  {c.email ? <p className="truncate">{c.email}</p> : <span>—</span>}
                 </div>
 
                 <div className="text-sm text-foreground tabular-nums">
@@ -138,11 +140,11 @@ function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
                 </div>
 
                 <div className="text-sm text-foreground tabular-nums">
-                  {guests > 0 ? guests : <span className="text-muted-foreground">—</span>}
+                  {c.guest_count ?? <span className="text-muted-foreground">—</span>}
                 </div>
 
                 <div className="text-sm text-foreground tabular-nums">
-                  {formatBudget(c.total_value_minor) ?? (
+                  {formatBudget(c.budget_minor) ?? (
                     <span className="text-muted-foreground">—</span>
                   )}
                 </div>
@@ -171,7 +173,7 @@ function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
   );
 }
 
-function EmptyState({ filtered }: { filtered: boolean }) {
+function EmptyState({ filtered, ghlConnected }: { filtered: boolean; ghlConnected: boolean }) {
   return (
     <div className="rounded-xl border border-border bg-card p-10 text-center shadow-sm">
       <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-accent text-accent-foreground">
@@ -179,20 +181,18 @@ function EmptyState({ filtered }: { filtered: boolean }) {
       </div>
       {filtered ? (
         <>
-          <h2 className="text-lg font-semibold text-foreground">
-            No contacts match these filters
-          </h2>
+          <h2 className="text-lg font-semibold text-foreground">No contacts match</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-            Try clearing the search or filters to see all contacts.
+            Try clearing the search or filters.
           </p>
         </>
       ) : (
         <>
-          <h2 className="text-lg font-semibold text-foreground">
-            No contacts yet
-          </h2>
+          <h2 className="text-lg font-semibold text-foreground">No contacts yet</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-            Contacts appear here when an opportunity is marked as won in GHL.
+            {ghlConnected
+              ? 'Use "Sync from GHL" above to import your contacts.'
+              : "Add contacts manually or connect GHL in Settings to import them."}
           </p>
         </>
       )}
