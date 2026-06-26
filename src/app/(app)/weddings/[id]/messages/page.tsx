@@ -27,7 +27,7 @@ import { getTenantContext } from "@/lib/tenant";
 import { createClient } from "@/lib/supabase/server";
 import { ghlClient } from "@/lib/ghl/client";
 import { PageHeader } from "@/components/layout/page-header";
-import { MessagesClient, MessagesConnectPrompt } from "./messages-client";
+import { ConversationsPane, ConnectPrompt } from "@/components/conversations/thread-view";
 
 // ── Metadata ──────────────────────────────────────────────────────────────────
 
@@ -85,7 +85,7 @@ export default async function MessagesPage({
     return (
       <div className="mx-auto max-w-[1400px]">
         <MessagesPageHeader weddingId={id} coupleName={coupleName} />
-        <MessagesConnectPrompt reason="no-ghl" />
+        <ConnectPrompt reason="no-ghl" />
       </div>
     );
   }
@@ -94,7 +94,7 @@ export default async function MessagesPage({
     return (
       <div className="mx-auto max-w-[1400px]">
         <MessagesPageHeader weddingId={id} coupleName={coupleName} />
-        <MessagesConnectPrompt reason="no-contact" />
+        <ConnectPrompt reason="no-contact" />
       </div>
     );
   }
@@ -125,9 +125,9 @@ export default async function MessagesPage({
   return (
     <div className="mx-auto max-w-[1400px]">
       <MessagesPageHeader weddingId={id} coupleName={coupleName} />
-      <MessagesClient
-        weddingId={id}
-        coupleName={coupleName}
+      <ConversationsPane
+        ghlContactId={ghlContactId}
+        contactName={coupleName}
         conversations={conversations}
         initialMessages={initialMessages}
         initialConversationId={firstConv?.id ?? null}
@@ -156,7 +156,7 @@ function MessagesPageHeader({
       </Link>
       <PageHeader
         title="Messages"
-        subtitle={`GHL conversations for ${coupleName} — read, reply, and receive live.`}
+        subtitle={`Conversations for ${coupleName} — read, reply, and receive live.`}
       />
     </div>
   );

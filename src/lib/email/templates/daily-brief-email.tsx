@@ -145,7 +145,7 @@ export function DailyBriefEmail({
                   borderRadius: "8px",
                 }}
               >
-                Connect GHL to see your live pipeline in this brief.
+                Connect VenueFlow to see your live pipeline in this brief.
               </Text>
             ) : (
               <>

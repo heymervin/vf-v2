@@ -7,9 +7,29 @@ import { ok, err, type ActionResult } from "@/lib/actions";
 import { assertCanMutate } from "@/lib/billing/access";
 import { contactInputSchema, type ContactParsed } from "@/lib/zod-schemas/contact";
 import { parseCsv } from "@/lib/csv";
+import { syncAllGhlContacts } from "@/lib/ghl/contacts-sync";
 import type { Database } from "@/lib/supabase/types";
 
 type ContactInsert = Database["public"]["Tables"]["contacts"]["Insert"];
+
+// ---------------------------------------------------------------------------
+// GHL import — pull all contacts from the connected GHL location
+// ---------------------------------------------------------------------------
+export async function importGhlContactsAction(): Promise<
+  ActionResult<{ imported: number }>
+> {
+  const ctx = await getTenantContext();
+  if (!ctx.ok) return err("Not authenticated.");
+
+  try {
+    const { imported } = await syncAllGhlContacts(ctx.venue.id);
+    revalidatePath("/contacts");
+    return ok({ imported });
+  } catch (e) {
+    console.error("[importGhlContacts]", e);
+    return err("VenueFlow sync failed — check your connection in Settings.");
+  }
+}
 
 /** Maps validated input → DB columns; clears absent optionals, converts £→pence. */
 function toColumns(p: ContactParsed) {

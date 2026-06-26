@@ -14,6 +14,7 @@ import {
   X,
   Heart,
   Banknote,
+  MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -52,6 +53,7 @@ const navSections: { heading?: string; items: NavLink[] }[] = [
     heading: "CRM",
     items: [
       { label: "Contacts", href: "/contacts", icon: Users },
+      { label: "Inbox", href: "/conversations", icon: MessageSquare },
       { label: "Appointments", href: "/appointments", icon: CalendarDays },
     ],
   },

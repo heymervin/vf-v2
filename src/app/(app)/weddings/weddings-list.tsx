@@ -463,7 +463,7 @@ export function WeddingsList({ weddings }: { weddings: WeddingRow[] }) {
           </p>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             Create your first wedding manually, or mark an opportunity as{" "}
-            <span className="font-medium">Won</span> in GoHighLevel to have it
+            <span className="font-medium">Won</span> in VenueFlow to have it
             appear here automatically.
           </p>
           <Button

@@ -17,8 +17,8 @@
  *   6. Route by event type:
  *      - OpportunityStatusUpdate / OpportunityStageUpdate → handleOpportunityWon
  *        scheduled via `after` (runs after the 200 ack is sent).
- *      - InboundMessage → resolve wedding from ghl_contact_id + venue_id, broadcast
- *        on Supabase Realtime channel "wedding:{weddingId}:messages" (best-effort).
+ *      - InboundMessage → broadcast a "new-message" ping on Supabase Realtime
+ *        channels "contact:{contactId}:messages" + "venue:{venueId}:inbox" (best-effort).
  *      - Everything else → silent 200 ack.
  *   7. Return 200 fast (the won-opportunity work runs in `after`).
  *
@@ -202,15 +202,16 @@ function isOpportunityWon(payload: GhlPayload): boolean {
 }
 
 /**
- * Handle an InboundMessage GHL event (specs/ghl-integration.md §7.3).
+ * Handle an InboundMessage GHL event (specs/conversations-module.md, §7.3).
  *
- * Resolves the VF2 wedding from the GHL contact id + venue id, then publishes
- * a lightweight "new-message" ping on a Supabase Realtime channel keyed by
- * the wedding id. The client subscribes to this channel and re-fetches the
- * GHL thread — no message body is stored in VF2.
+ * Publishes a lightweight "new-message" ping on two Supabase Realtime channels —
+ * the contact's thread channel (the contact Messages view / wedding tab subscribe
+ * to this) and the venue inbox channel (the global inbox subscribes). The clients
+ * re-fetch the GHL thread on ping — no message body is stored in VF2.
  *
- * This is intentionally best-effort: a failed lookup or broadcast is logged
- * but never causes the webhook to return an error status (we always ack GHL).
+ * The webhook already carries `contactId`, so no DB lookup is needed. This is
+ * best-effort: a failed broadcast is logged but never fails the webhook (we
+ * always ack GHL).
  */
 async function broadcastInboundMessage(
   admin: ReturnType<typeof createAdminClient>,
@@ -221,46 +222,27 @@ async function broadcastInboundMessage(
     const { contactId, conversationId, messageId, messageType } = payload;
 
     if (!contactId) {
-      console.warn("[ghl-webhook] InboundMessage missing contactId — cannot resolve wedding");
+      console.warn("[ghl-webhook] InboundMessage missing contactId — cannot broadcast");
       return;
     }
 
-    // Resolve the wedding via ghl_contact_id scoped to the venue.
-    const { data: wedding } = await admin
-      .from("weddings")
-      .select("id")
-      .eq("venue_id", venueId)
-      .eq("ghl_contact_id", contactId)
-      .maybeSingle();
+    const body = {
+      contactId,
+      conversationId: conversationId ?? null,
+      messageId: messageId ?? null,
+      messageType: messageType ?? null,
+    };
 
-    if (!wedding) {
-      // No wedding linked to this contact yet — nothing to broadcast to.
-      console.info(
-        `[ghl-webhook] InboundMessage: no wedding found for contactId=${contactId} venueId=${venueId}`,
-      );
-      return;
-    }
-
-    const weddingId = wedding.id;
-    const channelName = `wedding:${weddingId}:messages`;
-
-    // Broadcast via REST (no WebSocket needed server-side).
-    // The Messages tab client subscribes to this channel and refetches on ping.
-    const channel = admin.channel(channelName);
-    const result = await channel.send({
-      type: "broadcast",
-      event: "new-message",
-      payload: {
-        weddingId,
-        contactId,
-        conversationId: conversationId ?? null,
-        messageId: messageId ?? null,
-        messageType: messageType ?? null,
-      },
-    });
-
-    if (result !== "ok") {
-      console.warn(`[ghl-webhook] Realtime broadcast to ${channelName} returned: ${result}`);
+    // Broadcast via REST (no WebSocket needed server-side) on both channels.
+    for (const channelName of [`contact:${contactId}:messages`, `venue:${venueId}:inbox`]) {
+      const result = await admin.channel(channelName).send({
+        type: "broadcast",
+        event: "new-message",
+        payload: body,
+      });
+      if (result !== "ok") {
+        console.warn(`[ghl-webhook] Realtime broadcast to ${channelName} returned: ${result}`);
+      }
     }
   } catch (err) {
     // Best-effort — log and continue so the webhook always returns 200.

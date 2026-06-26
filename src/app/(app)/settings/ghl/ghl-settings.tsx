@@ -37,7 +37,7 @@ function LiveCounts({ counts }: { counts: GhlCounts }) {
         <p className="text-2xl font-bold text-foreground">
           {counts.totalContacts.toLocaleString()}
         </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">Contacts in GHL</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Contacts synced</p>
       </div>
       <div className="rounded-lg border border-border bg-muted/30 p-4">
         <p className="text-2xl font-bold text-foreground">
@@ -75,7 +75,7 @@ function ConnectForm({ canManage }: { canManage: boolean }) {
       toast.error(result.error);
       return;
     }
-    toast.success("GoHighLevel connected.");
+    toast.success("VenueFlow connected.");
     router.refresh();
   }
 
@@ -96,7 +96,7 @@ function ConnectForm({ canManage }: { canManage: boolean }) {
           className="font-mono text-[16px] sm:text-sm"
         />
         <p className="text-xs text-muted-foreground">
-          Found in your GHL sub-account under Settings → Integrations → Private
+          Found in your account under Settings → Integrations → Private
           Integration Token.
         </p>
       </div>
@@ -115,13 +115,13 @@ function ConnectForm({ canManage }: { canManage: boolean }) {
           className="font-mono text-[16px] sm:text-sm"
         />
         <p className="text-xs text-muted-foreground">
-          Found in GHL under Settings → Business Info → Location ID.
+          Found under Settings → Business Info → Location ID.
         </p>
       </div>
 
       {canManage && (
         <Button type="submit" disabled={saving}>
-          {saving ? "Connecting…" : "Connect GoHighLevel"}
+          {saving ? "Connecting…" : "Connect VenueFlow"}
         </Button>
       )}
     </form>
@@ -151,7 +151,7 @@ export function GhlSettings({
       toast.error(result.error);
       return;
     }
-    toast.success("GoHighLevel disconnected.");
+    toast.success("VenueFlow disconnected.");
     router.refresh();
   }
 
@@ -177,7 +177,7 @@ export function GhlSettings({
             <p className="mt-1 text-sm text-muted-foreground">
               {connected
                 ? `Connected · Location ${locationId ?? "unknown"} · mode: ${mode}`
-                : "Not connected — GHL features are disabled."}
+                : "Not connected — messaging and invoicing are disabled."}
             </p>
           </div>
           <span
@@ -200,7 +200,7 @@ export function GhlSettings({
 
         {connected && !liveCounts && (
           <p className="mt-4 text-sm text-muted-foreground">
-            Live counts unavailable — GHL may be unreachable. Use &ldquo;Test
+            Live counts unavailable — connection may be unreachable. Use &ldquo;Test
             connection&rdquo; to retry.
           </p>
         )}

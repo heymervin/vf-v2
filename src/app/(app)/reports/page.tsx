@@ -519,19 +519,19 @@ export default async function ReportsPage() {
           <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Pipeline (live)
           </p>
-          <h2 className="mb-5 text-base font-semibold text-foreground">GHL opportunities</h2>
+          <h2 className="mb-5 text-base font-semibold text-foreground">Pipeline opportunities</h2>
           {ghlPipeline !== null ? (
             <GhlPipelineSection aggregate={ghlPipeline} />
           ) : (
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
               <p className="text-sm text-muted-foreground">
-                Connect GoHighLevel to see live pipeline data.
+                Connect VenueFlow to see live pipeline data.
               </p>
               <Link
                 href="/settings/ghl"
                 className="mt-3 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
               >
-                Connect GHL
+                Connect VenueFlow
               </Link>
             </div>
           )}
