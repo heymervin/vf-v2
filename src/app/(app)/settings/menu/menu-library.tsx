@@ -43,7 +43,7 @@ import {
 // Constants
 // ---------------------------------------------------------------------------
 
-const COURSES = ["Starter", "Main", "Dessert", "Children", "Evening"] as const;
+const COURSES = ["Starter", "Main", "Dessert", "Children", "Evening", "Drinks"] as const;
 type Course = (typeof COURSES)[number];
 
 // DB stores Title-case; spec says course is free-text Title-case
@@ -53,6 +53,7 @@ const COURSE_VALUES: Record<Course, string> = {
   Dessert: "Dessert",
   Children: "Children",
   Evening: "Evening",
+  Drinks: "Drinks",
 };
 
 const ALL_ALLERGENS = [

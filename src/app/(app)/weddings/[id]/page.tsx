@@ -15,6 +15,7 @@ import {
   FileCheck2,
   CreditCard,
   MessageCircle,
+  StickyNote,
 } from "lucide-react";
 import { getTenantContext } from "@/lib/tenant";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +26,7 @@ import { WeddingStatusBadge } from "@/components/status-badges";
 import { NextActionCallout } from "@/components/next-action-callout";
 import { pickNextAction } from "@/lib/weddings/next-action";
 import { WeddingTasks } from "./wedding-tasks";
+import { WeddingNotes } from "./wedding-notes";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -657,6 +659,21 @@ export default async function WeddingHubPage({
           </CardHeader>
           <CardContent>
             <WeddingTasks tasks={tasks} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Notes (editable — beats Sonas's immutable notes) ─────────────── */}
+      <div className="mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <StickyNote className="size-4 text-fun-amber-strong" aria-hidden />
+              Notes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <WeddingNotes weddingId={id} notes={wedding.notes} />
           </CardContent>
         </Card>
       </div>

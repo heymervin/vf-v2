@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -15,8 +15,11 @@ import {
   Heart,
   Banknote,
   MessageSquare,
+  Building2,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -33,7 +36,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { signOut } from "@/app/(app)/actions";
+import { setActiveVenue, signOut } from "@/app/(app)/actions";
 
 // ---------------------------------------------------------------------------
 // Nav structure — grouped by workflow. Dashboard is the home; the rest cluster
@@ -84,6 +87,8 @@ const secondaryNav: NavLink[] = [
 interface AppSidebarProps {
   venueName: string;
   userEmail: string | undefined;
+  venues: { id: string; name: string }[];
+  activeVenueId: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -124,12 +129,76 @@ function NavItem({
 }
 
 // ---------------------------------------------------------------------------
+// Venue switcher — only for users who can reach more than one venue (agency
+// owners). The plumbing (setActiveVenue cookie + getTenantContext) already
+// exists; this just surfaces it.
+// ---------------------------------------------------------------------------
+
+function VenueSwitcher({
+  venues,
+  activeVenueId,
+}: {
+  venues: { id: string; name: string }[];
+  activeVenueId: string;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const active = venues.find((v) => v.id === activeVenueId);
+
+  function switchTo(id: string) {
+    if (id === activeVenueId) return;
+    startTransition(async () => {
+      const res = await setActiveVenue(id);
+      if (res.ok) router.refresh();
+    });
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          disabled={pending}
+          className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-white/10 min-h-[44px] disabled:opacity-50"
+          aria-label="Switch venue"
+        >
+          <Building2 className="size-4 shrink-0 text-sidebar-foreground/60" />
+          <span className="min-w-0 flex-1 truncate font-medium text-sidebar-foreground">
+            {active?.name ?? "Select venue"}
+          </span>
+          <ChevronsUpDown className="size-3.5 shrink-0 text-sidebar-foreground/40" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        {venues.map((v) => (
+          <DropdownMenuItem
+            key={v.id}
+            className="cursor-pointer"
+            onSelect={() => switchTo(v.id)}
+          >
+            <Check
+              className={cn(
+                "size-4",
+                v.id === activeVenueId ? "opacity-100" : "opacity-0",
+              )}
+            />
+            <span className="truncate">{v.name}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Sidebar inner content — shared between desktop and mobile sheet
 // ---------------------------------------------------------------------------
 
 function SidebarContent({
   venueName,
   userEmail,
+  venues,
+  activeVenueId,
   collapsed = false,
   onNavClick,
 }: AppSidebarProps & { collapsed?: boolean; onNavClick?: () => void }) {
@@ -160,6 +229,13 @@ function SidebarContent({
           </span>
         )}
       </div>
+
+      {/* Venue switcher — only when the user has more than one venue */}
+      {!collapsed && venues.length > 1 && (
+        <div className="shrink-0 border-b border-sidebar-border px-3 py-2">
+          <VenueSwitcher venues={venues} activeVenueId={activeVenueId} />
+        </div>
+      )}
 
       {/* Primary nav — grouped sections */}
       <nav
@@ -254,21 +330,17 @@ function SidebarContent({
 // Desktop sidebar — full width with collapsible icon rail on tablet
 // ---------------------------------------------------------------------------
 
-function DesktopSidebar({ venueName, userEmail }: AppSidebarProps) {
+function DesktopSidebar(props: AppSidebarProps) {
   return (
     <>
       {/* Tablet: icon rail (md) */}
       <aside className="hidden md:flex lg:hidden w-[64px] shrink-0 flex-col border-r border-sidebar-border">
-        <SidebarContent
-          venueName={venueName}
-          userEmail={userEmail}
-          collapsed={true}
-        />
+        <SidebarContent {...props} collapsed={true} />
       </aside>
 
       {/* Desktop: full sidebar (lg+) */}
       <aside className="hidden lg:flex w-[220px] shrink-0 flex-col border-r border-sidebar-border">
-        <SidebarContent venueName={venueName} userEmail={userEmail} />
+        <SidebarContent {...props} />
       </aside>
     </>
   );
@@ -278,7 +350,7 @@ function DesktopSidebar({ venueName, userEmail }: AppSidebarProps) {
 // Mobile topbar + sheet sidebar
 // ---------------------------------------------------------------------------
 
-function MobileNav({ venueName, userEmail }: AppSidebarProps) {
+function MobileNav(props: AppSidebarProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -300,11 +372,7 @@ function MobileNav({ venueName, userEmail }: AppSidebarProps) {
           <SheetHeader className="sr-only">
             <SheetTitle>Navigation</SheetTitle>
           </SheetHeader>
-          <SidebarContent
-            venueName={venueName}
-            userEmail={userEmail}
-            onNavClick={() => setOpen(false)}
-          />
+          <SidebarContent {...props} onNavClick={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
 
@@ -319,11 +387,11 @@ function MobileNav({ venueName, userEmail }: AppSidebarProps) {
 // Public export — composes both into one component
 // ---------------------------------------------------------------------------
 
-export function AppSidebar({ venueName, userEmail }: AppSidebarProps) {
+export function AppSidebar(props: AppSidebarProps) {
   return (
     <>
-      <DesktopSidebar venueName={venueName} userEmail={userEmail} />
-      <MobileNav venueName={venueName} userEmail={userEmail} />
+      <DesktopSidebar {...props} />
+      <MobileNav {...props} />
     </>
   );
 }

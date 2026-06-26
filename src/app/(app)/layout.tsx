@@ -35,7 +35,12 @@ export default async function AppLayout({
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar (desktop/tablet) + mobile topbar + mobile sheet — client component */}
-      <AppSidebar venueName={ctx.venue.name} userEmail={ctx.user.email} />
+      <AppSidebar
+        venueName={ctx.venue.name}
+        userEmail={ctx.user.email}
+        venues={ctx.venues}
+        activeVenueId={ctx.venue.id}
+      />
 
       {/* Right column: topbar + scrollable content */}
       <div className="flex flex-1 min-w-0 flex-col overflow-hidden">

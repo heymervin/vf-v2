@@ -37,6 +37,8 @@ export type TenantContext =
         mode: "bundled" | "standalone";
       };
       role: MembershipRole;
+      /** All venues this user can switch between (agency owners see many). */
+      venues: { id: string; name: string }[];
       access: AccessState;
       billing: {
         stripeCustomerId: string | null;
@@ -143,9 +145,16 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
 
   const accessState = computeAccessState(venue.trial_ends_at, billingRow ?? null);
 
+  // The full set of venues this user can switch between — already loaded above.
+  const venues = (memberships as MembershipWithVenue[])
+    .map((m) => m.venues)
+    .filter((v): v is VenueRow => v !== null)
+    .map((v) => ({ id: v.id, name: v.name }));
+
   return {
     ok: true,
     user: { id: user.id, email: user.email },
+    venues,
     venue: {
       id: venue.id,
       name: venue.name,
