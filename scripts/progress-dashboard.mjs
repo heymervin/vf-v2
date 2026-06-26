@@ -26,8 +26,8 @@ const SLICES = [
     note: "Phone-first event-day cockpit at runsheet/day: NOW/NEXT + run-of-show + supplier check-in / tap-to-call. 'Day mode' link on the run-sheet." },
   { id: "1/8", title: "Proposals + contracts + e-sign → GHL", status: "block", phase: "Next", owner: "Hybrid",
     note: "Needs live GHL creds to verify + the white-label branding decision (couples see a leadconnector signing URL)." },
-  { id: "6",  title: "2-way messaging → GHL",         status: "block", phase: "Now",   owner: "GHL",
-    note: "Code is simple (ghlClient.sendMessage exists) but needs a live GHL sub-account to verify." },
+  { id: "6",  title: "2-way messaging → GHL",         status: "done",  phase: "Now",   owner: "GHL",
+    note: "DONE on origin/main: the conversations module (venue Inbox + per-contact messaging, GHL-backed) ships this. Merged in." },
   { id: "9",  title: "Provisional date holds",        status: "block", phase: "Next",  owner: "VF2",
     note: "Needs a DB migration — this worktree's DB (Project B) has no DB password to apply / regen types." },
   { id: "10", title: "Multi-stakeholder contacts",    status: "block", phase: "Next",  owner: "VF2",
@@ -36,6 +36,26 @@ const SLICES = [
     note: "Needs the Gmail/Google OAuth path (not built yet)." },
   { id: "15", title: "AI copilot drafted replies",    status: "block", phase: "Later", owner: "VF2",
     note: "Greenfield — needs an LLM provider decision; sends via GHL." },
+
+  // ── Sonas-scope items (sonas-scope-audit workflow, code-grounded) ──────────
+  { id: "S1", title: "Editable event notes",          status: "done",  phase: "Now",   owner: "VF2",
+    note: "Surface the dead-selected weddings.notes via updateWeddingNotes + a textarea card on the hub. Sonas notes are immutable — this is the differentiator." },
+  { id: "S2", title: "Post-wedding nurture (GHL tag)", status: "done", phase: "Now",   owner: "VF2",
+    note: "Daily cron flips passed weddings → completed + PUTs 'vf2-wedding-completed' GHL tag (tag-first = exactly-once). 5/5 tests. Sonas has zero post-wedding lifecycle." },
+  { id: "S3", title: "Seating capacity warnings",     status: "done",  phase: "Now",   owner: "VF2",
+    note: "Over-cap tables tint their count red + assigning to a full table warns. You could silently over-fill before." },
+  { id: "S4", title: "Venue switcher (multi-site UI)", status: "done", phase: "Now",   owner: "VF2",
+    note: "Surface the existing setActiveVenue() plumbing as a sidebar dropdown for agency owners. No schema — ctx now exposes the switchable venue list." },
+  { id: "S5", title: "Weddings status-pipeline chips", status: "done", phase: "Now",   owner: "VF2",
+    note: "Planning/Confirmed/Completed smart-list chips on the weddings list. Pure client, no schema." },
+  { id: "S6", title: "Drinks / bar (menu category)",  status: "done",  phase: "Now",   owner: "VF2",
+    note: "Add 'Drinks' to the menu COURSES — free-text course flows through kitchen counts, chef sheet, BEO, portal. Bar tabs (POS) deferred." },
+  { id: "S7", title: "Tastings module",               status: "block", phase: "Next",  owner: "VF2",
+    note: "2 new tables (tasting_events + tasting_bookings) + capacity check. Needs a migration + a 'who books' (public vs portal) decision." },
+  { id: "S8", title: "Duplicate-enquiry detection",   status: "block", phase: "Next",  owner: "VF2",
+    note: "Soft name/phone match via the already-installed pg_trgm index. Needs a find_possible_duplicate_contacts SQL fn (migration)." },
+  { id: "S9", title: "People / multi-stakeholder tab", status: "block", phase: "Next", owner: "VF2",
+    note: "= gap #10. weddings.contact_id is 1:1 — needs a wedding_contacts join table (migration)." },
 ];
 
 const DELIVERABLES = [

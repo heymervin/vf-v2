@@ -38,23 +38,23 @@ h1{font-size:26px;letter-spacing:-.02em;margin:0 0 2px}
 </style></head><body><div class="wrap">
 
 <h1>VenueFlow v2 — Build Progress</h1>
-<p class="sub">Gap-implementation loop · <span class="pulse"></span>building autonomously · auto-refreshes every 30s · 2026-06-26 08:18 UTC</p>
+<p class="sub">Gap-implementation loop · <span class="pulse"></span>building autonomously · auto-refreshes every 30s · 2026-06-26 10:50 UTC</p>
 
 <div class="bar">
-  <i class="d" style="width:60.00%"></i>
+  <i class="d" style="width:66.67%"></i>
   <i class="b" style="width:0.00%"></i>
-  <i class="x" style="width:40.00%"></i>
+  <i class="x" style="width:33.33%"></i>
 </div>
 <div class="legend">
-  <span><span class="dot d"></span><b>9 done + verified</b></span>
+  <span><span class="dot d"></span><b>16 done + verified</b></span>
   <span><span class="dot b"></span><b>0 buildable</b> (in the loop)</span>
-  <span><span class="dot x"></span><b>6 blocked</b> (need you / external)</span>
+  <span><span class="dot x"></span><b>8 blocked</b> (need you / external)</span>
   <span>· typecheck + lint + unit tests green per slice</span>
 </div>
 
 <div class="cols">
   <div class="col">
-    <h2 class="head d">✅ Done + verified <span class="n">9</span></h2>
+    <h2 class="head d">✅ Done + verified <span class="n">16</span></h2>
     <div class="card done"><div class="t">#2 · CSV contact import</div>
       <div class="m">parseCsv + importContacts (dedupe by email, RLS insert) + Import buttons. 7/7 csv tests.</div>
       <div class="tags"><span class="tag now">Now</span><span class="tag vf2">VF2</span></div></div>
@@ -82,19 +82,37 @@ h1{font-size:26px;letter-spacing:-.02em;margin:0 0 2px}
     <div class="card done"><div class="t">#16 · Mobile event-day mode</div>
       <div class="m">Phone-first event-day cockpit at runsheet/day: NOW/NEXT + run-of-show + supplier check-in / tap-to-call. 'Day mode' link on the run-sheet.</div>
       <div class="tags"><span class="tag later">Later</span><span class="tag vf2">VF2</span></div></div>
+    <div class="card done"><div class="t">#6 · 2-way messaging → GHL</div>
+      <div class="m">DONE on origin/main: the conversations module (venue Inbox + per-contact messaging, GHL-backed) ships this. Merged in.</div>
+      <div class="tags"><span class="tag now">Now</span><span class="tag ghl">GHL</span></div></div>
+    <div class="card done"><div class="t">#S1 · Editable event notes</div>
+      <div class="m">Surface the dead-selected weddings.notes via updateWeddingNotes + a textarea card on the hub. Sonas notes are immutable — this is the differentiator.</div>
+      <div class="tags"><span class="tag now">Now</span><span class="tag vf2">VF2</span></div></div>
+    <div class="card done"><div class="t">#S2 · Post-wedding nurture (GHL tag)</div>
+      <div class="m">Daily cron flips passed weddings → completed + PUTs 'vf2-wedding-completed' GHL tag (tag-first = exactly-once). 5/5 tests. Sonas has zero post-wedding lifecycle.</div>
+      <div class="tags"><span class="tag now">Now</span><span class="tag vf2">VF2</span></div></div>
+    <div class="card done"><div class="t">#S3 · Seating capacity warnings</div>
+      <div class="m">Over-cap tables tint their count red + assigning to a full table warns. You could silently over-fill before.</div>
+      <div class="tags"><span class="tag now">Now</span><span class="tag vf2">VF2</span></div></div>
+    <div class="card done"><div class="t">#S4 · Venue switcher (multi-site UI)</div>
+      <div class="m">Surface the existing setActiveVenue() plumbing as a sidebar dropdown for agency owners. No schema — ctx now exposes the switchable venue list.</div>
+      <div class="tags"><span class="tag now">Now</span><span class="tag vf2">VF2</span></div></div>
+    <div class="card done"><div class="t">#S5 · Weddings status-pipeline chips</div>
+      <div class="m">Planning/Confirmed/Completed smart-list chips on the weddings list. Pure client, no schema.</div>
+      <div class="tags"><span class="tag now">Now</span><span class="tag vf2">VF2</span></div></div>
+    <div class="card done"><div class="t">#S6 · Drinks / bar (menu category)</div>
+      <div class="m">Add 'Drinks' to the menu COURSES — free-text course flows through kitchen counts, chef sheet, BEO, portal. Bar tabs (POS) deferred.</div>
+      <div class="tags"><span class="tag now">Now</span><span class="tag vf2">VF2</span></div></div>
   </div>
   <div class="col">
     <h2 class="head b">🔨 Buildable — in the loop <span class="n">0</span></h2>
     
   </div>
   <div class="col">
-    <h2 class="head x">⛔ Blocked — need you / external <span class="n">6</span></h2>
+    <h2 class="head x">⛔ Blocked — need you / external <span class="n">8</span></h2>
     <div class="card block"><div class="t">#1/8 · Proposals + contracts + e-sign → GHL</div>
       <div class="m">Needs live GHL creds to verify + the white-label branding decision (couples see a leadconnector signing URL).</div>
       <div class="tags"><span class="tag next">Next</span><span class="tag hybrid">Hybrid</span></div></div>
-    <div class="card block"><div class="t">#6 · 2-way messaging → GHL</div>
-      <div class="m">Code is simple (ghlClient.sendMessage exists) but needs a live GHL sub-account to verify.</div>
-      <div class="tags"><span class="tag now">Now</span><span class="tag ghl">GHL</span></div></div>
     <div class="card block"><div class="t">#9 · Provisional date holds</div>
       <div class="m">Needs a DB migration — this worktree's DB (Project B) has no DB password to apply / regen types.</div>
       <div class="tags"><span class="tag next">Next</span><span class="tag vf2">VF2</span></div></div>
@@ -107,6 +125,15 @@ h1{font-size:26px;letter-spacing:-.02em;margin:0 0 2px}
     <div class="card block"><div class="t">#15 · AI copilot drafted replies</div>
       <div class="m">Greenfield — needs an LLM provider decision; sends via GHL.</div>
       <div class="tags"><span class="tag later">Later</span><span class="tag vf2">VF2</span></div></div>
+    <div class="card block"><div class="t">#S7 · Tastings module</div>
+      <div class="m">2 new tables (tasting_events + tasting_bookings) + capacity check. Needs a migration + a 'who books' (public vs portal) decision.</div>
+      <div class="tags"><span class="tag next">Next</span><span class="tag vf2">VF2</span></div></div>
+    <div class="card block"><div class="t">#S8 · Duplicate-enquiry detection</div>
+      <div class="m">Soft name/phone match via the already-installed pg_trgm index. Needs a find_possible_duplicate_contacts SQL fn (migration).</div>
+      <div class="tags"><span class="tag next">Next</span><span class="tag vf2">VF2</span></div></div>
+    <div class="card block"><div class="t">#S9 · People / multi-stakeholder tab</div>
+      <div class="m">= gap #10. weddings.contact_id is 1:1 — needs a wedding_contacts join table (migration).</div>
+      <div class="tags"><span class="tag next">Next</span><span class="tag vf2">VF2</span></div></div>
   </div>
 </div>
 
