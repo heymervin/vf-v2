@@ -7,7 +7,7 @@ import { ghlClient } from "@/lib/ghl/client";
 import { GhlSettings } from "./ghl-settings";
 import type { GhlCounts } from "./actions";
 
-export const metadata = { title: "GoHighLevel" };
+export const metadata = { title: "VenueFlow" };
 
 export default async function GhlSettingsPage() {
   const ctx = await getTenantContext();
@@ -64,11 +64,10 @@ export default async function GhlSettingsPage() {
       </Link>
 
       <h1 className="text-3xl font-bold tracking-[-0.022em] leading-[1.1] text-foreground">
-        GoHighLevel
+        VenueFlow
       </h1>
       <p className="mt-3 text-sm text-muted-foreground">
-        Connect your GoHighLevel sub-account to sync contacts and pipeline data
-        into VenueFlow.
+        Connect your account to sync contacts and pipeline data into VenueFlow.
       </p>
 
       <div className="mt-8">

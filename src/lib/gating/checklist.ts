@@ -111,7 +111,7 @@ export function computeSetupChecklist(state: ChecklistState): ChecklistStep[] {
     },
     {
       key: "ghl",
-      label: "Connect GoHighLevel",
+      label: "Connect VenueFlow",
       done: state.ghlConnected,
       unlocks: ["ghl_features"],
     },

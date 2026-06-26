@@ -494,8 +494,8 @@ export default async function WeddingHubPage({
       accent: "bg-fun-pink text-fun-pink-foreground",
       iconColor: "text-fun-pink-strong",
       countLabel: wedding.ghl_contact_id
-        ? "View GHL conversations"
-        : "Connect GHL to view",
+        ? "View conversations"
+        : "Connect VenueFlow to view",
     },
     {
       label: "Payments",
@@ -623,7 +623,7 @@ export default async function WeddingHubPage({
                 {wedding.source && (
                   <KeyFactRow
                     label="Source"
-                    value={wedding.source === "ghl_webhook" ? "GHL booking" : "Manual"}
+                    value={wedding.source === "ghl_webhook" ? "VenueFlow booking" : "Manual"}
                   />
                 )}
               </div>

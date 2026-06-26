@@ -156,7 +156,7 @@ function MessagesPageHeader({
       </Link>
       <PageHeader
         title="Messages"
-        subtitle={`GHL conversations for ${coupleName} — read, reply, and receive live.`}
+        subtitle={`Conversations for ${coupleName} — read, reply, and receive live.`}
       />
     </div>
   );

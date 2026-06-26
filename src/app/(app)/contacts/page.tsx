@@ -79,7 +79,7 @@ export default async function ContactsPage({
           Contacts
         </h1>
         <p className="mt-5 text-sm text-muted-foreground">
-          Booked couples for {ctx.venue.name}, synced from GHL.
+          Booked couples for {ctx.venue.name}, synced from VenueFlow.
         </p>
       </div>
 
@@ -105,7 +105,7 @@ function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
         <span>Wedding date</span>
         <span>Guests</span>
         <span>Value</span>
-        <span>GHL</span>
+        <span>VenueFlow</span>
       </div>
 
       <ul className="divide-y divide-border">
@@ -154,7 +154,7 @@ function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                      aria-label="Open in GHL"
+                      aria-label="Open in VenueFlow"
                     >
                       <ExternalLink className="size-3.5" />
                     </a>
@@ -192,7 +192,7 @@ function EmptyState({ filtered }: { filtered: boolean }) {
             No contacts yet
           </h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-            Contacts appear here when an opportunity is marked as won in GHL.
+            Contacts appear here when an opportunity is marked as won in VenueFlow.
           </p>
         </>
       )}

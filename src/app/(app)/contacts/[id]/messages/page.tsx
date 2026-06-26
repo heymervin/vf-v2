@@ -112,7 +112,7 @@ function Header({ contactId, name }: { contactId: string; name: string }) {
         <ArrowLeft className="size-4" aria-hidden />
         Back to {name}
       </Link>
-      <PageHeader title="Messages" subtitle={`GHL conversations with ${name} — read, reply, and receive live.`} />
+      <PageHeader title="Messages" subtitle={`Conversations with ${name} — read, reply, and receive live.`} />
     </div>
   );
 }

@@ -229,11 +229,11 @@ function GhlConnectPrompt() {
     <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-4">
       <AlertCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
       <div className="min-w-0">
-        <p className="text-sm font-medium text-foreground">GHL not connected</p>
+        <p className="text-sm font-medium text-foreground">VenueFlow not connected</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Connect your GHL account in{" "}
+          Connect your VenueFlow account in{" "}
           <a href="/settings/ghl" className="text-primary underline underline-offset-2">
-            Settings &rarr; GHL
+            Settings &rarr; VenueFlow
           </a>{" "}
           to send invoices directly from VenueFlow.
         </p>
@@ -321,7 +321,7 @@ export function PaymentsClient({
 
   function handleSendInvoice(m: MilestoneWithStatus) {
     if (!ghlContactId) {
-      toast.error("This wedding has no linked GHL contact.");
+      toast.error("This wedding has no linked contact.");
       return;
     }
     startTransition(async () => {
@@ -335,7 +335,7 @@ export function PaymentsClient({
       });
       if (!result.ok) {
         if (result.error === "no-ghl-connection") {
-          toast.error("No GHL connection. Connect in Settings → GHL.");
+          toast.error("No connection. Connect in Settings → VenueFlow.");
         } else {
           toast.error(result.error);
         }
@@ -353,7 +353,7 @@ export function PaymentsClient({
             : item
         )
       );
-      toast.success("Invoice sent via GHL");
+      toast.success("Invoice sent");
     });
   }
 
@@ -376,7 +376,7 @@ export function PaymentsClient({
             : item
         )
       );
-      toast.success("Status refreshed from GHL");
+      toast.success("Status refreshed");
     });
   }
 
@@ -453,7 +453,7 @@ export function PaymentsClient({
                     <p className="text-xs text-muted-foreground">
                       Due {formatDate(m.due_date)}
                       {m.ghl_invoice_id && (
-                        <span className="ml-2 text-primary">· GHL invoice linked</span>
+                        <span className="ml-2 text-primary">· Invoice linked</span>
                       )}
                     </p>
                   </div>
@@ -492,7 +492,7 @@ export function PaymentsClient({
                           variant="outline"
                           size="sm"
                           onClick={() => handleRefreshStatus(m)}
-                          title="Refresh status from GHL"
+                          title="Refresh status"
                         >
                           <RefreshCw className="size-3.5" aria-hidden />
                         </Button>
@@ -501,10 +501,10 @@ export function PaymentsClient({
                           variant="outline"
                           size="sm"
                           onClick={() => handleSendInvoice(m)}
-                          title="Send GHL invoice"
+                          title="Send invoice"
                         >
                           <Send className="size-3.5" aria-hidden />
-                          <span className="hidden sm:inline">Send via GHL</span>
+                          <span className="hidden sm:inline">Send invoice</span>
                         </Button>
                       )
                     )}
@@ -515,7 +515,7 @@ export function PaymentsClient({
                         href={`https://app.gohighlevel.com/invoices/${m.ghl_invoice_id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title="View in GHL"
+                        title="View invoice"
                         className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground"
                       >
                         <ExternalLink className="size-3.5" aria-hidden />
