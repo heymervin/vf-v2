@@ -23,7 +23,7 @@ export async function importGhlContactsAction(): Promise<
     return ok({ imported });
   } catch (e) {
     console.error("[importGhlContacts]", e);
-    return err("GHL sync failed — check your connection in Settings.");
+    return err("VenueFlow sync failed — check your connection in Settings.");
   }
 }
 

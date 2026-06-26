@@ -113,7 +113,7 @@ export function KpiCards({ kpis }: KpiCardsProps) {
     {
       label: "Avg booking value",
       value: kpis.avgBookingValueMinor > 0 ? gbp(kpis.avgBookingValueMinor) : "—",
-      note: kpis.avgBookingValueMinor > 0 ? "from GHL pipeline" : "Connect GHL",
+      note: kpis.avgBookingValueMinor > 0 ? "from pipeline" : "Connect VenueFlow",
     },
     {
       label: "Booked revenue YTD",

@@ -168,8 +168,8 @@ const INTEGRATIONS: TileSection = {
     {
       href: "/settings/ghl",
       icon: Zap,
-      title: "GoHighLevel",
-      desc: "Connect your GHL sub-account to sync contacts and pipeline data.",
+      title: "VenueFlow",
+      desc: "Connect your VenueFlow account to sync contacts and pipeline data.",
     },
   ],
 };

@@ -37,7 +37,7 @@ export default async function ConversationsPage({
   if (!client) {
     return (
       <div className="mx-auto max-w-[1400px]">
-        <PageHeader title="Inbox" subtitle="All your GHL conversations in one place." />
+        <PageHeader title="Inbox" subtitle="All your conversations in one place." />
         <ConnectPrompt reason="no-ghl" />
       </div>
     );
@@ -76,7 +76,7 @@ export default async function ConversationsPage({
     <div className="mx-auto max-w-[1400px]">
       <PageHeader
         title="Inbox"
-        subtitle="All your GHL conversations — read, reply, and triage in one place."
+        subtitle="All your conversations — read, reply, and triage in one place."
       />
       <InboxClient
         conversations={conversations}

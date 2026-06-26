@@ -50,7 +50,7 @@ export async function sendMessageByContactAction(
   const { ghlContactId, type, message, subject } = parsed.data;
 
   const client = await ghlClient(ctx.venue.id);
-  if (!client) return err("GHL is not connected for this venue. Connect GHL in Settings.");
+  if (!client) return err("VenueFlow is not connected for this venue. Connect in Settings.");
 
   try {
     const created = await client.sendMessage({
@@ -88,7 +88,7 @@ export async function getThreadMessagesAction(
   }
 
   const client = await ghlClient(ctx.venue.id);
-  if (!client) return err("GHL is not connected for this venue.");
+  if (!client) return err("VenueFlow is not connected for this venue.");
 
   try {
     const messages = await client.getMessages(parsed.data.conversationId);

@@ -354,7 +354,7 @@ export function ConversationsPane({
           </div>
           <p className="text-sm font-medium text-foreground">No conversations found</p>
           <p className="mt-1 max-w-xs text-xs text-muted-foreground">
-            No GHL conversation threads for {contactName} yet. Messages sent or received via GHL
+            No conversation threads for {contactName} yet. Messages sent or received via VenueFlow
             will appear here.
           </p>
         </div>
@@ -496,19 +496,19 @@ export function ConnectPrompt({ reason }: { reason: "no-ghl" | "no-contact" }) {
         <MessageCircle className="size-6" aria-hidden />
       </div>
       <p className="text-sm font-medium text-foreground">
-        {reason === "no-ghl" ? "GHL is not connected" : "No GHL contact linked"}
+        {reason === "no-ghl" ? "VenueFlow is not connected" : "No VenueFlow contact linked"}
       </p>
       <p className="mt-1 max-w-xs text-xs text-muted-foreground">
         {reason === "no-ghl"
-          ? "Connect your GoHighLevel account in Settings to view and send messages here."
-          : "This record has no linked GHL contact. Messages will appear here once the contact is connected."}
+          ? "Connect your VenueFlow account in Settings to view and send messages here."
+          : "This record has no linked VenueFlow contact. Messages will appear here once the contact is connected."}
       </p>
       {reason === "no-ghl" && (
         <a
           href="/settings/ghl"
           className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          Connect GHL
+          Connect VenueFlow
         </a>
       )}
     </div>

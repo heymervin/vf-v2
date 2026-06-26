@@ -138,7 +138,7 @@ export function InboxClient({
                 <p className="mt-1 max-w-xs text-xs text-muted-foreground">
                   {filter === "unread"
                     ? "No unread threads. Switch to All to see every conversation."
-                    : "Messages sent or received via GHL will appear here."}
+                    : "Messages sent or received via VenueFlow will appear here."}
                 </p>
               </div>
             ) : (

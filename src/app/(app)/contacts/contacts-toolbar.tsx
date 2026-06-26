@@ -64,7 +64,7 @@ export function ContactsToolbar({
     const n = result.data.imported;
     toast.success(
       n > 0
-        ? `Imported ${n} contact${n === 1 ? "" : "s"} from GHL.`
+        ? `Imported ${n} contact${n === 1 ? "" : "s"} from VenueFlow.`
         : "Already up to date.",
     );
     router.refresh();
@@ -118,7 +118,7 @@ export function ContactsToolbar({
           className="ml-auto"
         >
           <RefreshCw className={syncing ? "animate-spin" : ""} />
-          {syncing ? "Syncing…" : "Sync from GHL"}
+          {syncing ? "Syncing…" : "Sync from VenueFlow"}
         </Button>
       )}
     </div>

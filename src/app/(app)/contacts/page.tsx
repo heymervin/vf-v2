@@ -108,7 +108,7 @@ function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
         <span>Wedding date</span>
         <span>Guests</span>
         <span>Budget</span>
-        <span>GHL</span>
+        <span>VenueFlow</span>
       </div>
 
       <ul className="divide-y divide-border">
@@ -156,7 +156,7 @@ function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                      aria-label="Open in GHL"
+                      aria-label="Open in VenueFlow"
                     >
                       <ExternalLink className="size-3.5" />
                     </a>
@@ -191,8 +191,8 @@ function EmptyState({ filtered, ghlConnected }: { filtered: boolean; ghlConnecte
           <h2 className="text-lg font-semibold text-foreground">No contacts yet</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
             {ghlConnected
-              ? 'Use "Sync from GHL" above to import your contacts.'
-              : "Add contacts manually or connect GHL in Settings to import them."}
+              ? 'Use "Sync from VenueFlow" above to import your contacts.'
+              : "Add contacts manually or connect VenueFlow in Settings to import them."}
           </p>
         </>
       )}
