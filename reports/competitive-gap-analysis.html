@@ -1,0 +1,952 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VenueFlow v2 — Wedding-Software Gap Analysis</title>
+<style>
+:root{--ink:#1a1a2e;--mut:#6b7280;--line:#e5e7eb;--bg:#fafafa;--card:#fff;
+--green:#16a34a;--amber:#d97706;--blue:#2563eb;--red:#dc2626;--gray:#6b7280;--pink:#db2777}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+.wrap{max-width:1200px;margin:0 auto;padding:40px 28px 80px}
+h1{font-size:30px;letter-spacing:-.02em;margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 22px}
+.banner{background:#fef2f2;border:1.5px solid var(--red);border-radius:12px;padding:14px 18px;margin:0 0 14px;color:#7f1d1d;font-size:13.5px;line-height:1.55}.banner b{color:var(--red)}
+.arch{background:#eff6ff;border:1.5px solid var(--blue);border-radius:12px;padding:14px 18px;margin:0 0 24px;color:#1e3a8a;font-size:13.5px;line-height:1.55}.arch b{color:var(--blue)}
+h2{font-size:20px;letter-spacing:-.01em;margin:42px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--ink)}
+h3{font-size:15px;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.lead{font-size:15.5px;line-height:1.65}
+.score{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 0}
+.pill{flex:1;min-width:120px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-align:center}
+.pill .n{font-size:26px;font-weight:700;line-height:1}
+.pill .l{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+.pill.built .n{color:var(--green)}.pill.partial .n{color:var(--amber)}.pill.missing .n{color:var(--red)}.pill.planned .n{color:var(--blue)}.pill.cut .n{color:var(--gray)}
+ul.clean{margin:0;padding-left:20px}ul.clean li{margin:7px 0}
+.b{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:999px;color:#fff}
+.b.built{background:var(--green)}.b.partial{background:var(--amber)}.b.planned{background:var(--blue)}.b.missing{background:var(--red)}.b.cut{background:var(--gray)}
+.sev{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+.sev.high{background:#fee2e2;color:#991b1b}.sev.medium{background:#fef3c7;color:#92400e}.sev.low{background:#f3f4f6;color:#4b5563}
+table{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{padding:8px 10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);position:sticky;top:0}
+.mtx th.cc{text-align:center;width:34px}
+.mtx td.yes,.mtx td.no{text-align:center;font-size:15px}
+.mtx td.yes{color:var(--green)}.mtx td.no{color:#d1d5db}
+.mtx td.cap{max-width:420px}.mtx td.cap>div{font-weight:500}
+.mtx td.vf2{text-align:center;white-space:nowrap}
+.note{color:var(--mut);font-size:12px;margin-top:3px}
+.ev{color:#9ca3af;font-size:11px;margin-top:3px;font-family:ui-monospace,Menlo,monospace}
+tr.modrow td{background:var(--ink);color:#fff;font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;border:none}
+.gaps td.who{color:var(--mut);font-size:12px;max-width:160px}
+.gaps td.rec{font-size:12.5px;max-width:430px}
+.gaps td.cap{white-space:nowrap}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin:10px 0 0}
+.legend span{white-space:nowrap}
+.road{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.rcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.rcard h3{color:var(--pink)}.rcard ul{margin:0 0 10px;padding-left:18px}.rcard li{margin:7px 0;font-size:13px}
+.rcard .why{font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:10px;margin:0}
+.cut li{color:#4b5563}
+@media(max-width:860px){.road{grid-template-columns:1fr}}
+.foot{margin-top:50px;color:#9ca3af;font-size:12px;text-align:center}
+</style></head><body><div class="wrap">
+
+<h1>VenueFlow v2 — Wedding-Software Gap Analysis</h1>
+<p class="sub">VF2 vs Sonas, Perfect Venue, Tripleseat, Planning Pod, HoneyBook, Dubsado, Aisle Planner, EventTemple, Prismm · 2026-06-26 · code-grounded</p>
+
+<div class="arch"><b>🏗️ Architecture (how to read this):</b> VenueFlow is an UPPER LAYER on top of GoHighLevel — GHL's API is the backend for CRM, communications, and pipeline. All wedding-planning data, INCLUDING contacts, lives in VenueFlow's own Supabase DB (each contact is a first-class VF2 record linked to its GHL contact). So native comms / SMS / WhatsApp / nurture / marketing and SaaS billing are intentionally NOT VF2's job; where the matrix marks them missing or cut, that is the architecture by design, not a gap to close.</div>
+
+<div class="banner"><b>⚠️ Correction (2026-06-26):</b> VenueFlow will NOT use Stripe or Resend (confirmed 2026-06-26). Email moves to Gmail 2-way sync; SaaS billing is handled outside VF2. The research below is code-grounded and mentions Stripe (venue billing) and Resend (email rail) as built — treat those as LEGACY CODE BEING RETIRED, not strengths, and do not build new features on them.</div>
+
+<div class="card lead">VF2 is far past MVP: it ships a complete post-booking wedding workspace (run-sheet, 2D floor-plan + drag-drop seating, guest/RSVP/dietary, menu, suppliers, payments-as-milestones), a magic-link couple portal with self-service editing, a proposal builder with discounts/VAT, a rule-based AI copilot no competitor has, and a genuinely deep GHL pre-sales integration (~2,700 lines, OAuth, AES-256-GCM tokens, bidirectional contact sync, opportunity-won → wedding webhook). Its Postgres-RLS multi-tenant spine and guided onboarding wizard are real architectural advantages over Sonas/Tripleseat's "fiddly setup" reputation. Two things I verified change the strategic picture versus the matrix and the stored memory: (1) Stripe IS built — for VENUE subscription billing (checkout + customer portal + signature-verified, idempotent webhook + a working trialing/active/expired read-only gate in tenant.ts), so the "no Stripe / gate needs changing" memory is stale; (2) Resend IS the live email rail and already powers the lead auto-responder, a cron-driven native sequence runner, and a daily brief — so several email capabilities the matrix marks "cut to GHL" are actually native-capable today. The real, honest gaps cluster in contracts-to-cash: sendProposal is a verified 3-line no-op (couple never notified), contract e-sign is a toast placeholder with no provider, and there is no accounting/Xero sync. Secondary gaps are CRM/ops hygiene (CSV import unwired, no two-way calendar sync, couple cannot message staff back) and reporting depth (no forecasting, no custom report builder, no cross-venue roll-up). The through-line: the data models are almost all there and best-in-class in breadth — the gaps are delivery/notification edges and a few integrations, most of which are cheap to close because the email and payment rails already exist.
+
+[CORRECTION 2026-06-26 — VenueFlow will NOT use Stripe or Resend (confirmed 2026-06-26). Email moves to Gmail 2-way sync; SaaS billing is handled outside VF2. The research below is code-grounded and mentions Stripe (venue billing) and Resend (email rail) as built — treat those as LEGACY CODE BEING RETIRED, not strengths, and do not build new features on them.]</div>
+
+<div class="score">
+  <div class="pill built"><div class="n">52</div><div class="l">Built</div></div>
+  <div class="pill partial"><div class="n">23</div><div class="l">Partial / stub</div></div>
+  <div class="pill missing"><div class="n">36</div><div class="l">Missing</div></div>
+  <div class="pill cut"><div class="n">13</div><div class="l">Cut by design</div></div>
+  <div class="pill"><div class="n">125</div><div class="l">Capabilities mapped</div></div>
+</div>
+
+<h2>Where VenueFlow already wins</h2>
+<div class="card"><ul class="clean"><li>Complete post-booking wedding workspace in one product: run-sheet (reorder, supplier assignment, event-day check-in), 2D floor-plan editor + drag-drop guest-to-seat, guest/RSVP/dietary/meal-choice, menu library + per-wedding selection, suppliers + document hub, payment milestones. Breadth matches or exceeds every single competitor; only Sonas is comparably wide.</li><li>Magic-link couple portal with real two-way self-service (couples edit guests, RSVPs, +1s, per-course meal choices with live chosen-by lists, see timeline/seating/payment-progress/docs) — EventTemple and Prismm have no couple portal at all.</li><li>Rule-based AI copilot (at-risk weddings, overdue payments, quiet leads, upcoming run-sheets) — a triage layer NO competitor in this set has, including Sonas which has zero AI. A concrete differentiator even though it is rules, not an LLM.</li><li>Deepest pre-sales integration in the field: the entire CRM/comms layer is GHL via ~2,700 lines (OAuth 2.0, AES-256-GCM encrypted tokens, bidirectional contact sync, opportunity-won webhook → auto-create wedding, GHL invoice status enrichment). This is an architectural moat, not an add-on connector.</li><li>Postgres RLS tenant isolation (venue_id scoping on every table, security_invoker report views) + agency-owner tier seeing all venues — a security/architecture strength competitors don't expose.</li><li>Guided onboarding wizard (venue → space → hours with seeding) and full venue brand/profile/package/menu/custom-field configuration — directly counters the 'setup is fiddly' complaints leveled at Sonas and Tripleseat.</li><li>Strong reporting baseline already shipped: KPI cards (conversion, booked revenue YTD, on-time payments, portal adoption, AOV), leads-by-stage funnel + source pie, payment-health, and a live GHL pipeline-value aggregate that degrades gracefully when disconnected.</li></ul></div>
+
+<h2>Biggest gaps (ranked)</h2>
+<table class="gaps"><thead><tr><th>Gap</th><th>VF2</th><th>Severity</th><th>Who has it</th><th>Recommendation</th></tr></thead>
+<tbody>
+  <tr>
+    <td class="cap"><strong>Proposal delivery (send to couple)</strong></td>
+    <td><span class="b partial">partial</span></td>
+    <td><span class="sev high">high</span></td>
+    <td class="who">all 8 CRM competitors (sonas, perfectVenue, tripleseat, planningPod, honeybook, dubsado, aislePlanner, eventTemple)</td>
+    <td class="rec">sendProposal is a verified 3-line DB status='sent' no-op — the couple is never notified. The fix is cheap and not blocked: the Resend rail (src/lib/email/send.ts) already sends lead auto-responders and sequence emails. Wire sendProposal to render a proposal email (portal/PDF link) through sendEmail, set sent_at, and add a viewed_at timestamp on portal open. This is the single highest-leverage gap to close: low effort, closes a 'send is fake' credibility hole that any demo will expose.</td>
+  </tr>
+  <tr>
+    <td class="cap"><strong>Contract e-signature</strong></td>
+    <td><span class="b partial">partial</span></td>
+    <td><span class="sev high">high</span></td>
+    <td class="who">7 competitors (all but sonas — perfectVenue, tripleseat, planningPod, honeybook, dubsado, aislePlanner, eventTemple)</td>
+    <td class="rec">Portal 'sign contract' is a toast placeholder ('opens your e-signature document') with no provider in src/. Either integrate a real e-sign provider (Dropbox Sign / SignWell are cheapest to embed) OR ship a lightweight native typed/drawn-signature-on-PDF stored to wedding_documents with a signed_at + IP/audit row. Note for sales: Sonas also lacks true e-sign, so a native magic-link sign-in-portal flow leapfrogs Sonas while matching the rest of the field. This is the second-highest priority in contracts-to-cash.</td>
+  </tr>
+  <tr>
+    <td class="cap"><strong>Accounting sync (Xero / QuickBooks / Sage)</strong></td>
+    <td><span class="b missing">missing</span></td>
+    <td><span class="sev medium">medium</span></td>
+    <td class="who">sonas (Xero/Sage), perfectVenue, planningPod, dubsado (QBO/Xero), eventTemple</td>
+    <td class="rec">No Xero/QBO/Sage client exists (verified). Real gap for finance-conscious venues, but heavier than the two above and partially mitigated because GHL invoices carry the payment rail. Recommend deferring to Later; when built, a Xero one-way invoice/payment push (not full two-way reconciliation) covers 80% of the demand. Frame in sales as 'on the roadmap; GHL invoicing handles collection today.'</td>
+  </tr>
+  <tr>
+    <td class="cap"><strong>Two-way calendar sync (Google/Outlook/iCal)</strong></td>
+    <td><span class="b missing">missing</span></td>
+    <td><span class="sev high">high</span></td>
+    <td class="who">sonas, perfectVenue, tripleseat, planningPod, honeybook, dubsado, aislePlanner</td>
+    <td class="rec">Near-universal among competitors; VF2 stores appointments natively only. Start with one-way iCal feed export of appointments (cheap, covers 'see it in my Google Calendar') then layer Google two-way via the same Google OAuth that the planned Gmail sync needs. High severity because 'does it sync to my calendar' is a near-default buyer question.</td>
+  </tr>
+  <tr>
+    <td class="cap"><strong>CSV contact import</strong></td>
+    <td><span class="b partial">partial</span></td>
+    <td><span class="sev low">low</span></td>
+    <td class="who">planningPod, aislePlanner</td>
+    <td class="rec">Export is wired (toCsv/csvCell on the contacts list) but there is NO parser/import — verified only toCsv is exported. Cheap win: add a CSV parse + upsert-contact mapping reusing the existing upsert-contact.ts GHL field mapping. Low competitor coverage but it's a frequent onboarding ask ('import my existing leads') and unblocks switching venues off a competitor.</td>
+  </tr>
+  <tr>
+    <td class="cap"><strong>Couple → staff two-way messaging</strong></td>
+    <td><span class="b partial">partial</span></td>
+    <td><span class="sev high">high</span></td>
+    <td class="who">sonas, tripleseat, planningPod, honeybook, dubsado</td>
+    <td class="rec">The portal 'Contact venue' tab is a footer placeholder — couples cannot DM staff; staff only see mirrored GHL conversations. 5 competitors have in-portal couple↔staff chat. Lowest-effort path: route couple portal messages into the existing GHL conversation thread for that contact (the mirror already exists one-way) so staff reply in GHL and it appears in-portal. Closes a visible portal hole without building a new messaging stack.</td>
+  </tr>
+  <tr>
+    <td class="cap"><strong>Banquet Event Order (BEO) generation</strong></td>
+    <td><span class="b missing">missing</span></td>
+    <td><span class="sev medium">medium</span></td>
+    <td class="who">sonas, perfectVenue, tripleseat, planningPod, aislePlanner, eventTemple</td>
+    <td class="rec">No consolidated BEO export, though all the source data (menu, guests, dietary, run-sheet, floor plan) already exists. This is a doc-assembly task, not new data modeling — generate a single printable/PDF BEO from existing wedding relations. Medium severity: it's table-stakes for venue ops handoff to kitchen/staff and a common RFP checkbox.</td>
+  </tr>
+  <tr>
+    <td class="cap"><strong>Reporting depth (forecasting, custom report builder, cross-venue roll-up)</strong></td>
+    <td><span class="b missing">missing</span></td>
+    <td><span class="sev medium">medium</span></td>
+    <td class="who">tripleseat (Insights, 25+ reports, forecasting), perfectVenue, eventTemple, planningPod</td>
+    <td class="rec">VF2 reports are solid current-state KPIs but have no pace/forecast/YoY, no user-defined report builder, and no agency roll-up despite the agency-owner RLS tier existing. Prioritize a cross-venue roll-up first (foundations already present via RLS union — highest value for the agency-owner buyer), then simple pace/forecast off booked-revenue trend. Defer a full custom report builder.</td>
+  </tr>
+  <tr>
+    <td class="cap"><strong>Multi-stakeholder contacts per event</strong></td>
+    <td><span class="b missing">missing</span></td>
+    <td><span class="sev medium">medium</span></td>
+    <td class="who">tripleseat, aislePlanner, planningPod</td>
+    <td class="rec">weddings.contact_id is 1:1 — no roster for partner/family/planner/vendors on a wedding. Medium severity for the wedding vertical (a couple is two people + often a planner). Add a wedding_contacts join with role, reusing the contacts table; modest schema change with real day-to-day value.</td>
+  </tr>
+  <tr>
+    <td class="cap"><strong>Provisional date holds</strong></td>
+    <td><span class="b missing">missing</span></td>
+    <td><span class="sev medium">medium</span></td>
+    <td class="who">sonas, perfectVenue, tripleseat, planningPod</td>
+    <td class="rec">No hold-with-expiry concept; only confirmed appointments. A standard pre-sales lock for venues juggling enquiries on the same date. Add a tentative-hold status with an expiry on the availability/appointment model. Medium effort, clearly expected by venue sales teams.</td>
+  </tr></tbody></table>
+
+<h2>Feature coverage matrix</h2>
+<div class="legend">
+  <span>● = competitor has it · · = doesn't</span>
+  <span>VF2: <span class="b built">built</span> <span class="b partial">partial</span> <span class="b planned">planned</span> <span class="b missing">missing</span> <span class="b cut">cut</span></span>
+  <span>Cols: <b>Son</b>=Sonas · <b>PV</b>=Perfect Venue · <b>Tri</b>=Tripleseat · <b>PPod</b>=Planning Pod · <b>HB</b>=HoneyBook · <b>Dub</b>=Dubsado · <b>AP</b>=Aisle Planner · <b>ET</b>=EventTemple · <b>Pri</b>=Prismm</span>
+</div>
+<table class="mtx" style="margin-top:10px"><thead><tr>
+  <th>Capability</th><th class="cc" title="Sonas">Son</th><th class="cc" title="Perfect Venue">PV</th><th class="cc" title="Tripleseat">Tri</th><th class="cc" title="Planning Pod">PPod</th><th class="cc" title="HoneyBook">HB</th><th class="cc" title="Dubsado">Dub</th><th class="cc" title="Aisle Planner">AP</th><th class="cc" title="EventTemple">ET</th><th class="cc" title="Prismm">Pri</th><th class="cc">VF2</th><th class="cc">Sev</th>
+</tr></thead><tbody><tr class="modrow"><td colspan="12">CRM / Enquiries</td></tr>
+<tr>
+      <td class="cap"><div>Centralized inbox / lead capture inbox for all inquiries</div><div class="note">VF2 has a contacts list but no native unified messaging inbox; live conversations mirror from GHL only.</div><div class="ev">/src/app/(app)/contacts/page.tsx — contact list with RLS-scoped queries; no unified inbox (comms delegated to GHL)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Embeddable web inquiry / lead capture forms on venue website</div><div class="ev">/src/app/(public)/f/[venueSlug]/page.tsx + actions.ts — public enquiry form; embed code generation in /settings/forms</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Lead status / pipeline stage management (enquiry → booked)</div><div class="note">Live pipeline is GHL's job in bundled mode; VF2 status derived from wedding join.</div><div class="ev">/src/app/(app)/pipeline/page.tsx — native 5-stage Kanban for standalone venues only; bundled venues redirect to /weddings (live pipeline owned by GHL)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Lead source tracking &amp; attribution reporting</div><div class="ev">/src/app/(app)/reports/page.tsx — Leads by source pie chart; contact source filtering in contacts list</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Automated lead auto-responder / inquiry confirmation email</div><div class="note">Auto-responders are GHL's domain in VF2's architecture.</div><div class="ev">delegated to GHL — native comms/nurture sequences run in GHL (settings/sequences configures GHL)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Inactive / stalled lead alerts to prevent lead loss</div><div class="ev">/src/lib/copilot/insights.ts — quiet-lead detection (couple invited &gt;7 days ago, never logged in)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Conversion analytics (enquiry→viewing, viewing→booking)</div><div class="ev">/src/app/(app)/reports/page.tsx — stage conversion rates table (enquiry → responded → viewing → appointment → booked)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Multi-contact per event (couple, family, planner, vendors)</div><div class="note">VF2 weddings.contact_id is 1:1; no secondary stakeholders on a wedding.</div><div class="ev">weddings link single contact_id; no multi-stakeholder contact roster per wedding</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Lead tagging / filtering by event type, budget, season</div><div class="ev">/src/app/(app)/contacts/page.tsx — source/status filtering; custom fields supported; no rich budget/season tag faceting</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Calendar &amp; Availability</td></tr>
+<tr>
+      <td class="cap"><div>Centralized color-coded event/booking calendar</div><div class="note">VF2 calendar is appointment-focused (viewings/calls), not a full multi-space event-availability board.</div><div class="ev">/src/app/(app)/appointments/page.tsx — weekly appointment calendar (booked/attended/no_show/cancelled); appointment-centric, not a full booking calendar</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>External calendar sync (Google / Outlook / iCal)</div><div class="note">Two-way calendar sync is near-universal among competitors; VF2 has none. Per memory, email=Google sync planned but calendar sync not built.</div><div class="ev">no Google/Outlook/iCal sync in codebase; appointments stored natively only</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev high">high</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Double-booking prevention / conflict alerts</div><div class="ev">/src/app/(public)/book/actions.ts — slot generation from venue_hours + meeting_type durations/buffers prevents overlap on booking widget</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Provisional date holds / tentative reservations before confirmation</div><div class="note">Date holds are a standard pre-sales lock; VF2 lacks a hold-with-expiry concept.</div><div class="ev">no provisional date-hold mechanism; only confirmed appointments</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Multi-venue / multi-space availability management</div><div class="ev">/src/app/(app)/settings/spaces/page.tsx — spaces with capacity + availability block-out dates (settings/availability)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Public self-service booking widget (book a viewing/call online)</div><div class="ev">/src/app/(public)/book/[venueSlug]/[meetingType]/page.tsx — calendar picker + form submit; slot generation in book/actions.ts</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Block-out / availability calendar for venue closures</div><div class="ev">/src/app/(app)/settings/availability — block-out dates for functions</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Bookings Lifecycle</td></tr>
+<tr>
+      <td class="cap"><div>Event creation &amp; lifecycle management (inquiry→confirmed→completed)</div><div class="ev">/src/app/(app)/weddings/[id]/page.tsx — wedding record is core post-booking entity; created via GHL opportunity-won webhook (/src/lib/ghl/webhooks.ts)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Customizable event statuses / workflow stages</div><div class="note">Deliberate: VF2 fixes the workflow spine; venues configure content/identity not stages.</div><div class="ev">weddings carry status (planning, etc.); statuses are fixed spine, not venue-customizable per memory (configurability = content not workflow)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Event detail capture (date, headcount, budget, areas, type)</div><div class="ev">/src/app/(public)/f/[venueSlug]/actions.ts — captures names, date, guest count, budget; wedding detail editable</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Multi-event-type support (non-wedding events on same workflow)</div><div class="note">VF2 is intentionally wedding-venue focused.</div><div class="ev">product is wedding-specific (weddings table); no generic event-type abstraction</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Booking status automation driven by payment activity</div><div class="ev">/src/app/(app)/weddings/[id]/payments/actions.ts — milestone status enriched from GHL invoice status; no auto-transition of wedding status</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Express/Direct self-service end-to-end booking with deposit</div><div class="note">Couple payment is a stub; cut to GHL.</div><div class="ev">booking widget creates appointment only; no self-serve confirm+pay-deposit flow</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Proposals / Contracts / E-sign</td></tr>
+<tr>
+      <td class="cap"><div>Proposal builder with line items, discounts, pricing</div><div class="ev">/src/app/(app)/money/proposals/[id]/build/actions.ts saveProposalDraft (180–276); /src/lib/money/proposal.ts computeProposalTotals (53–112) — line-item CRUD, per-item + proposal-level discount, VAT</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Send proposal to client (email delivery / notification)</div><div class="note">Send is a no-op beyond status flag; couple is not notified. Most competitors deliver+track. Likely intended via GHL.</div><div class="ev">/src/app/(app)/money/proposals/[id]/build/actions.ts:286–313 sendProposal — DB status='sent' update only, no email send (verified: 3-line update)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev high">high</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Banquet Event Order (BEO) generation</div><div class="note">Data to build a BEO exists (menu/guests/runsheet) but no BEO doc artifact.</div><div class="ev">no BEO document generator; run-sheet + menu + guests exist as separate views but no consolidated BEO export</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Customizable contract templates</div><div class="ev">documents table stores contract files (kind='contract') but no template builder</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Digital e-signature on contracts</div><div class="note">Sonas also lacks true e-sign, but 7 competitors have it. VF2 button is non-functional.</div><div class="ev">/src/app/(portal)/portal/portal-client.tsx:1010 — contract sign is a toast placeholder ('opens your e-signature document'); contract status field exists; no DocuSign/HelloSign integration (verified: no e-sign provider in src/)</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev high">high</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Contract/proposal status tracking (sent, viewed, signed)</div><div class="ev">proposal status (draft/sent) + document status (pending/signed) fields exist; no viewed/opened tracking</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Document storage / hub per event</div><div class="ev">/src/app/(app)/weddings/[id]/suppliers/actions.ts upsertDocument — wedding_documents (kind: contract/insurance/invoice/supplier/other, storage_path, status)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Payments / Invoicing / Accounting</td></tr>
+<tr>
+      <td class="cap"><div>Invoice generation &amp; delivery</div><div class="ev">/src/app/(app)/weddings/[id]/payments/actions.ts upsertMilestone — milestone sent as GHL invoice; GHL handles delivery (/src/lib/ghl/invoices)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Payment milestones / installment schedules with deposit calc</div><div class="ev">/src/app/(app)/weddings/[id]/payments/actions.ts — milestone CRUD with due_date + status (upcoming/due/paid/overdue); milestoneStatus in /src/lib/money/proposal.ts:165–210</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Online card payment processing for couples (Stripe/Square)</div><div class="note">Deliberately cut — couple Stripe dropped; payment collection delegated to GHL invoices.</div><div class="ev">/src/app/(portal)/portal/portal-client.tsx:941,1734 — couple payment is a toast stub ('opens your secure payment page'); no Stripe in src/ (verified). Couples pay via GHL invoices.</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Automated payment reminders</div><div class="note">Automated reminders are GHL's job; VF2 has no native scheduler beyond Vercel Cron.</div><div class="ev">no scheduled reminder logic in src/; reminders delegated to GHL</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Payment status tracking / progress visibility</div><div class="ev">/src/app/(portal)/portal/(authed)/page.tsx — couple portal payment progress bar + milestone breakdown; reports payment health section</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Accounting sync (Xero / QuickBooks / Sage)</div><div class="note">Sonas (Xero/Sage), Planning Pod &amp; Dubsado (QBO/Xero) have it; VF2 has none.</div><div class="ev">no Xero/QuickBooks client in src/ (verified: no xero match)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="yes" title="Dubsado">●</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Refund processing</div><div class="ev">no native payment rail; refunds handled in GHL/Stripe upstream</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Gratuity / service-charge / security-deposit handling</div><div class="ev">no gratuity or escrow accounting in proposal/milestone model</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Run-sheet / Timeline</td></tr>
+<tr>
+      <td class="cap"><div>Customizable event timeline / run-sheet with items</div><div class="ev">/src/app/(app)/weddings/[id]/runsheet/actions.ts addEvent/updateEvent — title, time, duration_min, category, owner, notes, supplier link</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Timeline item ordering / reordering (chronological)</div><div class="ev">/src/app/(app)/weddings/[id]/runsheet/actions.ts reorderEvent — sort_order for chronological display</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Vendor/staff assignment per timeline item</div><div class="ev">/src/app/(app)/weddings/[id]/runsheet — event.owner + event.supplier_id FK links suppliers to items</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Timeline sharing / PDF download to vendors &amp; couple</div><div class="ev">/src/app/(portal)/portal/(authed)/page.tsx — couple sees read-only run-sheet; no PDF export of timeline</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Auto-update timeline when supplier details change</div><div class="ev">supplier link is static FK; no auto-propagation of supplier changes into timeline notes</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Automated timeline reminders to vendors/staff during event</div><div class="ev">no scheduled reminder logic; comms delegated to GHL</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Floor plan / Seating</td></tr>
+<tr>
+      <td class="cap"><div>2D floor plan editor (drag-and-drop, to-scale)</div><div class="ev">/src/app/(app)/settings/spaces/[id]/floor/page.tsx — floor template editor; /src/app/(app)/weddings/[id]/floorplan/floorplan-client.tsx — interactive canvas; /src/lib/floorplan/types.ts</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="yes" title="Prismm">●</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Drag-and-drop guest-to-table/seat assignment</div><div class="ev">/src/app/(app)/weddings/[id]/floorplan/actions.ts upsertGuestSeat — guest drag-drop with optimistic updates; seated count tracking</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="yes" title="Prismm">●</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>3D / photorealistic floor plan visualization</div><div class="note">Sonas/Tripleseat/Prismm offer 3D; VF2 is 2D only. Differentiator for high-end venues.</div><div class="ev">floorplan/types.ts is 2D layout (Table, RoomElement); no 3D rendering</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Prismm">●</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Multiple layout variations per event (ceremony/reception)</div><div class="ev">/src/app/(app)/weddings/[id]/floorplan — per-wedding seeded from space template; one active layout per wedding</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="yes" title="Prismm">●</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Client/couple access to view/edit seating</div><div class="ev">/src/app/(portal)/portal/portal-client.tsx — seating tab in couple portal; floor plan data loaded RLS-scoped</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Floor plan locked until space has a template (gating)</div><div class="note">VF2-specific UX guard; not a competitor capability.</div><div class="ev">/src/app/(app)/weddings/[id]/floorplan/page.tsx:112–145 — gating until space has floor template</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Pre-built furniture/decor object library</div><div class="ev">RoomElement supports walls/bars/stages from template; limited object library vs Prismm's thousands</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="yes" title="Prismm">●</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Virtual tours / VR venue walkthroughs</div><div class="ev">no 3D/VR/Matterport walkthrough</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Prismm">●</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Guest list / RSVP / Dietary</td></tr>
+<tr>
+      <td class="cap"><div>Guest list CRUD (add/edit/delete, bulk)</div><div class="note">HoneyBook/Dubsado/EventTemple lack native guest lists.</div><div class="ev">/src/app/(app)/weddings/[id]/guests/actions.ts addGuest/updateGuest/deleteGuest/bulkUpdateRsvp</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="yes" title="Prismm">●</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>RSVP status tracking (invited/yes/no/pending)</div><div class="ev">/src/app/(app)/weddings/[id]/guests — RSVP status + session_type (day/evening/both); buildRsvpCounts in /src/lib/guests/summary.ts</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="yes" title="Prismm">●</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Guest self-serve online RSVP (form / QR / event website)</div><div class="note">Aisle Planner/Planning Pod let guests self-RSVP; VF2 couple manages all RSVPs.</div><div class="ev">guest RSVP edited by couple in portal, not by individual guests; no per-guest RSVP form/QR or event website</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Dietary requirements / allergen tracking per guest</div><div class="ev">/src/app/(app)/weddings/[id]/guests/page.tsx dietaryBreakdown (33–63); dietary as tag array per guest; buildDietaryBreakdown in /src/lib/guests/summary.ts</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="yes" title="Prismm">●</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Per-guest meal/menu choice selection &amp; aggregation</div><div class="ev">/src/app/(portal)/portal/(authed)/page.tsx — per-guest, per-course meal choice (menu_item_id JSONB); chosenByMap aggregation (115–142)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Plus-one / partner / children management</div><div class="ev">/src/app/(portal)/portal — +1 partner name editable per guest in couple portal</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Guest stat cards (total/confirmed/pending/needs table)</div><div class="ev">/src/app/(app)/weddings/[id]/guests/page.tsx — stat cards + dietary breakdown summary</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Name badge / place card generation</div><div class="ev">no badge/place-card PDF generation</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Menu / Catering</td></tr>
+<tr>
+      <td class="cap"><div>Menu library CRUD (dishes, course, price, allergens, tags)</div><div class="ev">/src/app/(app)/settings/menu/page.tsx — menu library; price_per_head_minor, allergens, dietary_tags, sort_order</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Per-wedding menu selection (course → item mapping)</div><div class="ev">/src/app/(app)/weddings/[id]/menu/actions.ts addMenuSelection/removeMenuSelection; gating until library has active item (menu/page.tsx:204–207)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Multi-service menu (arrival/reception/main/evening) with per-head/guest-type pricing</div><div class="note">Sonas has adult/child per-head tiers; VF2 single per-head price.</div><div class="ev">course-based selection + price_per_head_minor; no per-guest-type (adult/child) pricing tiers</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Automatic allergen cross-check against menu selections</div><div class="note">Sonas's auto allergen cross-check is industry-leading; VF2 surfaces data but no auto-conflict alerts.</div><div class="ev">allergens stored on items + dietary tags on guests; no automated cross-check/flagging engine</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Couple portal menu self-selection with live chosen-by list</div><div class="ev">/src/app/(portal)/portal/(authed)/page.tsx groupMenuByCourse (115–142) — couple picks one item/course with live chosen-by guest list</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Chef/kitchen overview (full menu+table+guest+allergen view)</div><div class="note">Sonas's chef overview is a standout; VF2 has the data, no kitchen view.</div><div class="ev">data exists (guests + menu + dietary) but no dedicated chef/kitchen display view</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Provisioning / stock calc from menu selections</div><div class="note">Deliberately cut — VF2 is not a catering ERP.</div><div class="ev">kitchen stock/inventory deliberately CUT (catering-ERP out of scope per inventory)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Food/wine tasting scheduling &amp; booking</div><div class="ev">no tasting-booking flow; generic appointment booking only (viewing/call)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Bar / Drinks</td></tr>
+<tr>
+      <td class="cap"><div>Bar / beverage menu setup &amp; pricing</div><div class="note">Most competitors also weak here; Sonas/Planning Pod strongest. Low priority.</div><div class="ev">no dedicated bar/drinks module; would live in menu library only as items</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Bar packages / tab management / prepaid bar</div><div class="ev">no bar-tab or drinks-package concept</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Couple selection of arrival/reception drinks</div><div class="ev">no drinks selection in couple portal (menu only)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Suppliers / Docs</td></tr>
+<tr>
+      <td class="cap"><div>Supplier / vendor directory &amp; per-event roster</div><div class="ev">/src/app/(app)/weddings/[id]/suppliers/actions.ts upsertSupplier — per-wedding suppliers + venue-level reusable directory</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Supplier document / paperwork storage (contracts, insurance)</div><div class="ev">/src/app/(app)/weddings/[id]/suppliers — wedding_documents with kind classification + status</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Supplier event-day check-in board</div><div class="ev">/src/app/(app)/weddings/[id]/runsheet — supplier check-in (name, contact, phone, checked_in_at)</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Supplier collaboration portal (vendors access event details)</div><div class="note">Tripleseat/Planning Pod give vendors portal access; VF2 has none (and Sonas/PV also lack a true vendor portal).</div><div class="ev">suppliers are internal records; no vendor-facing login/portal</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Prismm">●</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Supplier bulk email/SMS outreach</div><div class="note">Delegated to GHL.</div><div class="ev">supplier bulk comms via GHL when connected; no native send</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Vendor invoice / payment tracking</div><div class="ev">supplier docs can store invoices but no payable tracking/budget vs vendor</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Couple / Client portal</td></tr>
+<tr>
+      <td class="cap"><div>Branded couple/client portal with authentication</div><div class="note">EventTemple/Prismm lack a couple portal.</div><div class="ev">/src/app/(portal)/portal/login/page.tsx magic-link; resolveCoupleContext in portal-data.ts (auth_token → couple_accounts → wedding_id), RLS-gated</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Couple self-service editing (guests, menu, RSVP, +1)</div><div class="ev">/src/app/(portal)/portal/actions.ts — couple-scoped addGuest/updateMenuSelection with optimistic updates + server validation</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Portal tabs (timeline, menu, guests, seating, payments, docs)</div><div class="ev">/src/app/(portal)/portal/portal-client.tsx — wedding/timeline/menu/guests/seating/payments/docs/contact tabs</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Couple→staff two-way secure messaging / DM</div><div class="note">5 competitors have in-portal couple↔staff messaging; VF2 couples cannot message back. Staff can view/reply via GHL mirror only.</div><div class="ev">/src/app/(portal)/portal/portal-client.tsx:1046–1065 — 'Contact venue' tab is footer placeholder; couples cannot DM staff (verified stub)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev high">high</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Couple task / progress checklist (visible-to-couple filtered)</div><div class="ev">/src/app/(portal)/portal/(authed)/page.tsx — progress bar for couple tasks (visible_to_couple filtered)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Couple document access &amp; download (contracts/invoices)</div><div class="ev">/src/app/(portal)/portal/portal-client.tsx:1020–1037 — docs tab</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Couple online payment within portal</div><div class="note">Cut — couple Stripe dropped.</div><div class="ev">/src/app/(portal)/portal/portal-client.tsx:941 — payment is toast stub; couples pay via GHL invoice link, not VF2</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Event website builder (couple-facing public site + RSVP)</div><div class="ev">no event-website builder</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Reporting / Analytics</td></tr>
+<tr>
+      <td class="cap"><div>KPI dashboard (conversion, revenue, bookings, AOV)</div><div class="ev">/src/app/(app)/reports/page.tsx:129–356 — KpiCards (conversion, booked revenue YTD, on-time payments, portal adoption, avg booking value)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Leads-by-stage funnel &amp; leads-by-source charts</div><div class="ev">/src/app/(app)/reports/reports-charts.tsx LeadsByStageChart + source pie</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Payment health (collected/outstanding/overdue + upcoming)</div><div class="ev">/src/app/(app)/reports/reports-charts.tsx PaymentHealthSection; top-10 upcoming milestones</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Live pipeline value aggregate from CRM</div><div class="ev">/src/lib/ghl/reports.ts getPipelineAggregate — sum of opportunity values by stage from GHL; graceful degrade when disconnected</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Revenue forecasting / predictive analytics / pace reporting</div><div class="note">Tripleseat Insights (25+ reports, forecasting) is best-in-class; VF2 has no forecasting.</div><div class="ev">reports are current-state KPIs; no forecasting/pace/YoY projection</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Custom report builder with filtering &amp; export</div><div class="ev">fixed report views (report_* RLS views); no user-defined report builder</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Multi-venue / chain roll-up reporting</div><div class="note">Agency-owner tier exists (RLS union) but reporting not aggregated across venues.</div><div class="ev">reports are single-venue scoped; agency-owner sees all venues per memory but no cross-venue roll-up report</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Marketing / Automation</td></tr>
+<tr>
+      <td class="cap"><div>Automated email workflows / sequences by event stage</div><div class="note">Deliberately delegated to GHL; VF2 configures but GHL executes.</div><div class="ev">/src/app/(app)/settings/sequences — configures GHL nurture; native sequences delegated to GHL</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Email template library with merge fields</div><div class="ev">no native template library; email = Google 2-way sync + GHL templates per memory</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Two-way email inbox / Gmail sync</div><div class="note">Planned per product decision (Google sync, not Resend); not built.</div><div class="ev">email = Google 2-way sync per memory (venueflow-email-and-brochure); not yet in src/</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 planned"><span class="b planned">planned</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>SMS reminders / notifications</div><div class="ev">SMS delegated to GHL; no native SMS</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Mailchimp / newsletter export integration</div><div class="ev">email marketing is GHL's domain</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Brochure generation &amp; delivery</div><div class="ev">/src/app/(app)/settings/brochure — generate PDF or custom URL; delivery is GHL's job per memory</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">AI / Intelligence</td></tr>
+<tr>
+      <td class="cap"><div>AI-driven engagement / triage insights (at-risk, overdue, quiet leads)</div><div class="note">VF2 differentiator — no competitor has this. Rule-based, not LLM, but a clear gap-filler vs Sonas's zero AI.</div><div class="ev">/src/lib/copilot/insights.ts computeInsights — 4 rules (at-risk weddings, overdue payments, quiet leads, upcoming run-sheet); /src/app/(app)/copilot/page.tsx</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>AI email reply / drafting assistant</div><div class="note">Perfect Venue's AI Reply + HoneyBook AI builder are standouts; VF2 has triage AI but no comms AI.</div><div class="ev">/src/app/(app)/copilot/copilot-answer-sheet.tsx exists (Q&amp;A) but no AI email composer; copilot is insight-triage not email gen</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="HoneyBook">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>AI workflow / automation builder (natural language)</div><div class="note">HoneyBook-only; niche.</div><div class="ev">no automation builder (automations cut to GHL)</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="HoneyBook">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>AI meeting notetaker / summaries</div><div class="ev">not present</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="HoneyBook">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>AI diagram / floor-plan generation from BEO</div><div class="ev">no AI diagram auto-generation (Social Tables/CventIQ feature)</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Prismm">●</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Integrations</td></tr>
+<tr>
+      <td class="cap"><div>CRM integration / OAuth-backed bidirectional contact sync</div><div class="note">VF2's entire pre-sales layer is GHL — deeper than competitors' add-on connectors.</div><div class="ev">/src/lib/ghl/client.ts (380 lines) + contacts-sync.ts + crypto.ts (AES-256-GCM) — OAuth 2.0, encrypted tokens, bidirectional GHL contact sync (~2,700 lines total)</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Webhook listener for inbound events (e.g. opportunity-won)</div><div class="ev">/src/app/api/ghl/webhooks/route.ts + /src/lib/ghl/webhooks.ts — opportunity-won → create wedding; invoice status updates</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Payment gateway integration (Stripe/Square/PartyPay)</div><div class="note">Cut — payment rail is GHL's.</div><div class="ev">no native Stripe; payments via GHL invoices (verified: no stripe in src/)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 cut"><span class="b cut">cut</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Accounting integration (Xero / QuickBooks)</div><div class="ev">no Xero/QBO client (verified)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="yes" title="Dubsado">●</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Zapier / no-code automation bridge</div><div class="ev">no Zapier/public webhook surface; GHL is the automation hub</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>PMS integration (Opera/Mews/Stayntouch) for hotel venues</div><div class="note">Hotel-vertical only; not VF2's market.</div><div class="ev">no PMS connectors</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Public API for custom integrations</div><div class="ev">no public API surface beyond GHL webhooks</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Roles / Multi-venue</td></tr>
+<tr>
+      <td class="cap"><div>Role-based access control (owner/admin/staff/read-only)</div><div class="ev">/src/lib/tenant.ts getTenantContext — staff role hierarchy via memberships; /src/app/(app)/settings/team/page.tsx role assignment</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Staff invitation / account creation</div><div class="note">Verified: inviteMember exists with invited/active/disabled status. Inventory's 'Staff Account Creation: stub' is outdated.</div><div class="ev">/src/app/(app)/settings/team/actions.ts:168 inviteMember — auth.admin.inviteUserByEmail, redirect to /api/invite/accept (CORRECTION: inventory marked this 'not implemented' but it IS built)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Custom role creation with bespoke permissions</div><div class="ev">fixed role set (owner/admin/staff/read-only); no custom-role builder</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>RLS / tenant isolation (venue_id scoping)</div><div class="note">VF2 architectural strength (Postgres RLS); competitors don't expose this.</div><div class="ev">/src/lib/supabase/server.ts RLS session client; venue_id scoping on all tables; report_* views security_invoker=on</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Multi-venue management under one account</div><div class="note">Foundations present (agency-owner RLS) but multi-venue UX/reporting shallow vs Tripleseat/EventTemple chain management.</div><div class="ev">agency-owner tier sees ALL venues (platform_admins + RLS union per memory); per-venue config exists but no in-app venue-switcher roll-up surface verified</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="no">·</td><td class="yes" title="EventTemple">●</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Custom fields to extend contact/wedding data</div><div class="ev">/src/app/(app)/settings/custom-fields — extend contact/wedding fields; GHL custom-field mapping in upsert-contact.ts</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Mobile / Event-day</td></tr>
+<tr>
+      <td class="cap"><div>Responsive web access on mobile devices</div><div class="ev">Next.js 16 app is web-responsive by default; no mobile-specific optimization claimed/verified</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="yes" title="EventTemple">●</td><td class="yes" title="Prismm">●</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Native mobile app (iOS / Android)</div><div class="note">Perfect Venue/Tripleseat/HoneyBook have native apps; VF2 web-only. Sonas/PP/AP also lack one.</div><div class="ev">no native app; web-only (same gap as Sonas/Planning Pod/Aisle Planner)</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Event-day execution tools (supplier check-in, live run-sheet)</div><div class="ev">/src/app/(app)/weddings/[id]/runsheet — supplier check-in board + timeline status toggle (mark done); usable on mobile web</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Guest check-in / QR scanning at event</div><div class="note">Ticketing-adjacent; not core wedding-venue need.</div><div class="ev">no guest check-in/QR scan (Planning Pod ticketing feature)</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Push notifications for urgent items</div><div class="ev">no push notification infra (no native app)</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 missing"><span class="b missing">missing</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr class="modrow"><td colspan="12">Onboarding &amp; Configuration</td></tr>
+<tr>
+      <td class="cap"><div>Guided onboarding wizard (venue → space → hours)</div><div class="note">VF2 strength vs Sonas/Tripleseat's 'fiddly' setup complaints.</div><div class="ev">/src/app/onboarding/wizard.tsx + step1-venue/step2-space/step3-hours — wizard with progress + initial seeding</div></td>
+      <td class="no">·</td><td class="yes" title="Perfect Venue">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="HoneyBook">●</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Venue profile &amp; brand configuration (name, tagline, accent, timezone)</div><div class="ev">/src/app/(app)/settings/profile/page.tsx — venue name, legal_name, tagline, address, accent_seed, timezone + hours CRUD</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Package / bundle library configuration</div><div class="ev">/src/app/(app)/settings/packages/page.tsx — package bundles with line items</div></td>
+      <td class="yes" title="Sonas">●</td><td class="no">·</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 built"><span class="b built">built</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>CSV import of contacts/guests</div><div class="note">CORRECTION vs inventory: export IS wired (downloadCsv button); import parsing is the unwired part.</div><div class="ev">/src/app/(app)/contacts/csv.ts — toCsv EXPORT wired to contacts-list.tsx:416; CSV IMPORT/parse not in UI (verified: only toCsv exported, no parse fn)</div></td>
+      <td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Planning Pod">●</td><td class="no">·</td><td class="no">·</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev low">low</span></td>
+    </tr>
+<tr>
+      <td class="cap"><div>Billing / plan &amp; subscription management</div><div class="note">No Stripe billing (dropped); gate logic needs change per memory — venue read-only after trial not yet reconciled.</div><div class="ev">/src/app/(app)/settings/billing — tier/usage UI + assertCanMutate gating; no in-app Stripe billing (per memory venue goes read-only after trial)</div></td>
+      <td class="yes" title="Sonas">●</td><td class="yes" title="Perfect Venue">●</td><td class="yes" title="Tripleseat">●</td><td class="yes" title="Planning Pod">●</td><td class="yes" title="HoneyBook">●</td><td class="yes" title="Dubsado">●</td><td class="yes" title="Aisle Planner">●</td><td class="no">·</td><td class="no">·</td>
+      <td class="vf2 partial"><span class="b partial">partial</span></td>
+      <td><span class="sev medium">medium</span></td>
+    </tr></tbody></table>
+
+<h2>Modern edge — how to beat the field</h2>
+<div class="card"><ul class="clean"><li>Magic-link contracts-to-cash in one couple flow: VF2 already has the portal, proposal builder, milestones, the Resend email rail, AND verified venue Stripe plumbing. Chaining propose → e-sign (native magic-link signature) → deposit-pay into a single passwordless couple journey would BEAT the field, where these are typically 2-3 disjointed tools. This is VF2's sharpest wedge.</li><li>Lean into the AI copilot as a comms-action layer, not just triage: it already detects at-risk/overdue/quiet — add one-click AI-drafted replies/nudges (Perfect Venue's 'AI Reply' and HoneyBook's AI builder are the only comparables, and neither pairs it with this depth of wedding data). 'AI tells you who's slipping AND drafts the message' beats both.</li><li>Lead scoring on top of the existing quiet-lead rule: convert the binary quiet-lead flag into a 0-100 score (recency, budget, source, stage velocity) surfaced in the contacts list. No competitor in this set scores leads; it's a credible 'we're the smart one' headline.</li><li>Native magic-link e-signature beats Sonas (which lacks e-sign) and differentiates from the DocuSign-bolt-on crowd: couples sign inside the portal they already use, no second login, audit row stored in wedding_documents. Sell as 'sign in the same place you plan.'</li><li>Mobile event-day mode: the run-sheet, supplier check-in board, and live timeline-status toggle already work on mobile web. Polish them into a dedicated event-day view (large tap targets, offline-tolerant, 'mark done') — Tripleseat/Planning Pod gesture at this; a purpose-built wedding-day cockpit on mobile web (no app-store friction) is a winnable edge over the no-native-app competitors (Sonas, Planning Pod, Aisle Planner).</li><li>Chef/kitchen overview from data VF2 already holds: guests × menu choice × dietary/allergen in one printable kitchen sheet. Sonas's chef overview is a noted standout; VF2 has all the data and merely lacks the view — a cheap way to match a best-in-class Sonas feature.</li><li>Cross-venue agency roll-up reporting: the agency-owner RLS union already exists; a single aggregated dashboard across all owned venues is a feature Tripleseat/EventTemple charge enterprise money for, and VF2's tenancy model makes it nearly free to build — a strong differentiator for the agency-owner ICP.</li></ul></div>
+
+<h2>Roadmap</h2>
+<div class="road">
+  <div class="rcard">
+    <h3>Now / quick wins (days, not weeks)</h3>
+    <ul><li>Make sendProposal real: render + send a proposal email via the existing src/lib/email/send.ts Resend rail, set sent_at, add viewed_at on portal open (closes the verified 3-line no-op).</li><li>Wire CSV import: add a parser to contacts/csv.ts (currently export-only) and reuse upsert-contact.ts field mapping for the upsert.</li><li>Retire the legacy Stripe (billing) and Resend (email) code — VenueFlow will not use them. Email moves to Gmail 2-way sync; SaaS billing is handled outside VF2. Re-scope any item that assumed those rails.</li><li>Add proposal/contract status enrichment: surface viewed/opened on the existing draft/sent fields now that delivery exists.</li></ul>
+    <p class="why">These are low-effort, high-credibility fixes that sit on rails already in the codebase (Resend, Stripe, upsert-contact). They close the most demo-exposing holes (a 'Send' button that doesn't send, no import) and stop the team from rebuilding things that already exist.</p>
+  </div>
+  <div class="rcard">
+    <h3>Next (this quarter)</h3>
+    <ul><li>Native magic-link contract e-sign in the portal (typed/drawn signature → wedding_documents + signed_at/audit) — replaces the toast placeholder and leapfrogs Sonas.</li><li>Couple → staff messaging by routing portal messages into the existing GHL conversation thread (one-way mirror already exists) so staff reply in GHL and it appears in-portal.</li><li>One-way iCal feed export of appointments as the first calendar-sync step; scope Google two-way to ride the planned Gmail OAuth.</li><li>BEO generator: assemble a printable/PDF BEO from existing menu/guests/dietary/run-sheet/floor-plan data.</li><li>AI copilot → one-click AI-drafted replies for at-risk/quiet leads, sent via the Resend rail.</li></ul>
+    <p class="why">These convert existing data and rails into the contracts-to-cash and ops completeness that buyers compare directly against the field, while each reuses infrastructure already present (portal, GHL conversations, Resend, wedding relations) to keep effort contained.</p>
+  </div>
+  <div class="rcard">
+    <h3>Later (strategic, heavier lift)</h3>
+    <ul><li>Accounting integration: one-way Xero/QBO invoice + payment push (defer full two-way reconciliation).</li><li>Google/Outlook two-way calendar sync (full bidirectional, on the Gmail-sync OAuth).</li><li>Couple deposit payment in-portal via a couple-facing Stripe checkout (the venue-side Stripe plumbing is a template; couple flow is currently a toast stub — only build if the 'cut to GHL' decision is revisited).</li><li>Cross-venue agency roll-up reporting on the existing RLS union + lightweight pace/forecast off booked-revenue trend.</li><li>Multi-stakeholder wedding_contacts roster (partner/family/planner) and provisional date-holds with expiry.</li><li>Lead scoring (0-100) layered on the existing quiet-lead rule.</li><li>3D floor-plan / native mobile app — only if moving up-market to high-end venues warrants it; both are large and have viable web/2D substitutes today.</li></ul>
+    <p class="why">Higher-effort or lower-frequency items, or ones that touch deliberate cut decisions (couple Stripe). Each is a real competitive gap but none blocks core sales; sequence by ICP value — agency roll-up and accounting first for the agency-owner and finance buyers respectively.</p>
+  </div></div>
+
+<h2>Deliberately cut — do not build (frame in sales)</h2>
+<div class="card"><ul class="clean cut"><li>Couple online card payments (Stripe/Square) in-portal — deliberately cut; couples pay via GHL invoice links. Frame in sales as: 'Payments are collected through your GHL invoicing, so you keep one billing rail and one reconciliation point — VenueFlow tracks status, milestones, and payment health on top.' (Note: venue-side Stripe for VF2 subscription billing IS built — don't conflate the two.)</li><li>Automated payment reminders, marketing email sequences, SMS, Mailchimp export, supplier bulk comms — delegated to GHL. Frame as: 'Your nurture, reminders, and broadcasts run in GHL where your whole marketing engine already lives; VenueFlow configures and triggers them rather than creating a second siloed comms tool.' (Caveat: a native Resend sequence runner DOES exist for transactional/auto-responder email — so 'we have native comms too' is fair to say.)</li><li>Customizable event statuses / workflow stages — intentionally a fixed spine. Frame as: 'The wedding workflow is opinionated and proven so every venue and every couple gets a consistent, no-setup-required process; you customize content and brand, not the plumbing.' This is the anti-GHL moat — say it as a strength.</li><li>Kitchen stock / provisioning / catering-ERP — out of scope. Frame as: 'VenueFlow is a wedding-venue workspace, not a catering ERP; we give your chef the menu/guest/allergen overview they need without forcing inventory software on you.'</li><li>Multi-event-type (non-wedding) abstraction, PMS connectors, guest QR check-in/ticketing, public API/Zapier — out of scope for the wedding-venue ICP. Frame as: 'Purpose-built for wedding venues, not a generic events platform — that focus is why the workflow needs zero configuration.' Mention GHL as the automation/integration hub when a Zapier-style ask comes up.</li></ul></div>
+
+<p class="foot">Generated from a multi-agent research workflow (9 product inventories + code audit → consolidated matrix → synthesis). VF2 status grounded in source file paths.</p>
+</div></body></html>

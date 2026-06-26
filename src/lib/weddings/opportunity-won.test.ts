@@ -65,11 +65,14 @@ let mockOpportunity: { id: string; status: string } = {
 let mockGhlClientNull = false;
 
 // Spies referenced inside hoisted vi.mock factories must themselves be hoisted.
-const { ghlRequestSpy, createWeddingSpy, inviteSpy } = vi.hoisted(() => ({
+const { ghlRequestSpy, createWeddingSpy, inviteSpy, upsertContactSpy } = vi.hoisted(() => ({
   ghlRequestSpy: vi.fn().mockResolvedValue({}),
   createWeddingSpy: vi.fn(),
   inviteSpy: vi.fn(),
+  upsertContactSpy: vi.fn(),
 }));
+
+const FAKE_NATIVE_CONTACT_ID = "contact-native-0001";
 
 // Controls createWeddingFromOpportunity return value
 let mockCreateWeddingResult: {
@@ -138,6 +141,10 @@ vi.mock("@/lib/weddings/create", () => ({
   createWeddingFromOpportunity: createWeddingSpy,
 }));
 
+vi.mock("@/lib/ghl/upsert-contact", () => ({
+  upsertGhlContact: upsertContactSpy,
+}));
+
 // ── import under test ──────────────────────────────────────────────────────────
 
 import { handleOpportunityWon } from "./opportunity-won";
@@ -190,6 +197,8 @@ beforeEach(() => {
   ghlRequestSpy.mockReset();
   createWeddingSpy.mockReset();
   inviteSpy.mockReset();
+  upsertContactSpy.mockReset();
+  upsertContactSpy.mockResolvedValue(FAKE_NATIVE_CONTACT_ID);
   ghlRequestSpy.mockResolvedValue({});
   createWeddingSpy.mockImplementation(async () => mockCreateWeddingResult);
   inviteSpy.mockImplementation(
@@ -215,6 +224,9 @@ describe("handleOpportunityWon", () => {
     expect(args.ghlContactId).toBe(FAKE_CONTACT_ID);
     expect(args.coupleEmail).toBe("alice@example.com");
     expect(args.coupleNames).toBe("Alice Smith");
+    // The upserted native contact id is linked onto the wedding.
+    expect(upsertContactSpy).toHaveBeenCalledOnce();
+    expect(args.contactId).toBe(FAKE_NATIVE_CONTACT_ID);
 
     expect(result.weddingId).toBe(FAKE_WEDDING_ID);
     expect(result.alreadyExisted).toBe(false);

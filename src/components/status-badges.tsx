@@ -1,5 +1,6 @@
 import {
   CheckCircle2,
+  Circle,
   Clock,
   Eye,
   FileCheck2,
@@ -137,6 +138,36 @@ interface WeddingStatusBadgeProps {
 
 export function WeddingStatusBadge({ status, className }: WeddingStatusBadgeProps) {
   const { variant, label, Icon } = WEDDING_MAP[status] ?? WEDDING_MAP.planning
+  return (
+    <Badge variant={variant} className={className}>
+      <Icon aria-hidden />
+      {label}
+    </Badge>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// ContactStatusBadge — traffic-light lead lifecycle (no 8-stage pipeline)
+// ---------------------------------------------------------------------------
+
+// "lead" = no booked wedding yet; "booked" = a wedding references this contact.
+export type ContactStatus = "lead" | "booked"
+
+const CONTACT_MAP: Record<
+  ContactStatus,
+  { variant: BadgeVariant; label: string; Icon: React.ElementType }
+> = {
+  lead:   { variant: "warning", label: "Lead",   Icon: Circle },
+  booked: { variant: "success", label: "Booked", Icon: CheckCircle2 },
+}
+
+interface ContactStatusBadgeProps {
+  status: ContactStatus
+  className?: string
+}
+
+export function ContactStatusBadge({ status, className }: ContactStatusBadgeProps) {
+  const { variant, label, Icon } = CONTACT_MAP[status] ?? CONTACT_MAP.lead
   return (
     <Badge variant={variant} className={className}>
       <Icon aria-hidden />

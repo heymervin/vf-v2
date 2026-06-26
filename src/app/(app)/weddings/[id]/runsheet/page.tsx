@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText, Smartphone } from "lucide-react";
 import { getTenantContext } from "@/lib/tenant";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
@@ -94,13 +94,29 @@ export default async function RunsheetPage({
         title="Run-sheet"
         subtitle={`${wedding.couple_names} · ${formattedDate}`}
         actions={
-          <Link
-            href={`/weddings/${id}`}
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-xs transition-all hover:border-foreground/30 hover:shadow-sm"
-          >
-            <ArrowLeft className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            {wedding.couple_names}
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/weddings/${id}/runsheet/day`}
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-xs transition-all hover:border-foreground/30 hover:shadow-sm"
+            >
+              <Smartphone className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              Day mode
+            </Link>
+            <Link
+              href={`/weddings/${id}/beo`}
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-xs transition-all hover:border-foreground/30 hover:shadow-sm"
+            >
+              <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              Print BEO
+            </Link>
+            <Link
+              href={`/weddings/${id}`}
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-xs transition-all hover:border-foreground/30 hover:shadow-sm"
+            >
+              <ArrowLeft className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              {wedding.couple_names}
+            </Link>
+          </div>
         }
       />
 

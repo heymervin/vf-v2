@@ -2,6 +2,7 @@ import "server-only";
 import { ghlClient } from "@/lib/ghl/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createWeddingFromOpportunity } from "@/lib/weddings/create";
+import { upsertGhlContact } from "@/lib/ghl/upsert-contact";
 
 export interface HandleOpportunityWonInput {
   venueId: string;
@@ -87,11 +88,15 @@ export async function handleOpportunityWon(
     [contact.firstName, contact.lastName].filter(Boolean).join(" ") ||
     contact.email;
 
+  // Upsert the native contact (the person) and link it on the wedding.
+  const contactId = await upsertGhlContact(admin, venueId, contact);
+
   const { weddingId, alreadyExisted, coupleAccounts } =
     await createWeddingFromOpportunity({
       venueId,
       ghlOpportunityId,
       ghlContactId,
+      contactId: contactId ?? undefined,
       coupleNames,
       coupleEmail: contact.email,
     });

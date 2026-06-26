@@ -98,6 +98,8 @@ export interface CreateWeddingFromOpportunityInput {
   venueId: string;
   ghlOpportunityId: string;
   ghlContactId: string;
+  /** Native VF2 contact id to link as weddings.contact_id (the person record). */
+  contactId?: string;
   coupleNames: string;
   coupleEmail: string;
   /** ISO date string e.g. "2027-06-12" */
@@ -117,12 +119,19 @@ export async function createWeddingFromOpportunity(
   // ── idempotency check ──────────────────────────────────────────────────────
   const { data: existing } = await admin
     .from("weddings")
-    .select("id")
+    .select("id, contact_id")
     .eq("venue_id", input.venueId)
     .eq("ghl_opportunity_id", input.ghlOpportunityId)
     .maybeSingle();
 
   if (existing) {
+    // Backfill the contact link on a wedding imported before contacts were synced.
+    if (input.contactId && !existing.contact_id) {
+      await admin
+        .from("weddings")
+        .update({ contact_id: input.contactId })
+        .eq("id", existing.id);
+    }
     return { weddingId: existing.id, alreadyExisted: true, coupleAccounts: [] };
   }
 
@@ -136,6 +145,7 @@ export async function createWeddingFromOpportunity(
       couple_names: input.coupleNames,
       source: "ghl_webhook",
       status: "planning",
+      ...(input.contactId !== undefined && { contact_id: input.contactId }),
       ...(input.weddingDate !== undefined && { wedding_date: input.weddingDate }),
       ...(input.totalValueMinor !== undefined && { total_value_minor: input.totalValueMinor }),
     })

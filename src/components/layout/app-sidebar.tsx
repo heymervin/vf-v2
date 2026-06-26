@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  Kanban,
   CalendarDays,
   BarChart3,
   Sparkles,
@@ -36,23 +35,45 @@ import {
 import { signOut } from "@/app/(app)/actions";
 
 // ---------------------------------------------------------------------------
-// Nav structure
+// Nav structure — grouped by workflow. Dashboard is the home; the rest cluster
+// into CRM (people + scheduling), Weddings (booked workspace + money), and
+// Insights. No Pipeline: V2 has no pre-sales stages — GHL owns pre-sales.
 // ---------------------------------------------------------------------------
 
-const primaryNav = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Weddings", href: "/weddings", icon: Heart },
-  { label: "Money", href: "/money", icon: Banknote },
-  { label: "Contacts", href: "/contacts", icon: Users },
-  { label: "Pipeline", href: "/pipeline", icon: Kanban },
-  { label: "Appointments", href: "/appointments", icon: CalendarDays },
-  { label: "Reports", href: "/reports", icon: BarChart3 },
-  { label: "Copilot", href: "/copilot", icon: Sparkles },
-] as const;
+type NavLink = {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
 
-const secondaryNav = [
+const navSections: { heading?: string; items: NavLink[] }[] = [
+  { items: [{ label: "Dashboard", href: "/dashboard", icon: LayoutDashboard }] },
+  {
+    heading: "CRM",
+    items: [
+      { label: "Contacts", href: "/contacts", icon: Users },
+      { label: "Appointments", href: "/appointments", icon: CalendarDays },
+    ],
+  },
+  {
+    heading: "Weddings",
+    items: [
+      { label: "Weddings", href: "/weddings", icon: Heart },
+      { label: "Money", href: "/money", icon: Banknote },
+    ],
+  },
+  {
+    heading: "Insights",
+    items: [
+      { label: "Reports", href: "/reports", icon: BarChart3 },
+      { label: "Copilot", href: "/copilot", icon: Sparkles },
+    ],
+  },
+];
+
+const secondaryNav: NavLink[] = [
   { label: "Settings", href: "/settings", icon: Settings },
-] as const;
+];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,8 +82,6 @@ const secondaryNav = [
 interface AppSidebarProps {
   venueName: string;
   userEmail: string | undefined;
-  /** Bundled (GHL-backed) venues hide the native CRM nav (Contacts/Pipeline). */
-  bundled: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -109,13 +128,10 @@ function NavItem({
 function SidebarContent({
   venueName,
   userEmail,
-  bundled,
   collapsed = false,
   onNavClick,
 }: AppSidebarProps & { collapsed?: boolean; onNavClick?: () => void }) {
   const pathname = usePathname();
-
-  const nav = primaryNav;
 
   const initial = (userEmail ?? "V").charAt(0).toUpperCase();
 
@@ -143,21 +159,33 @@ function SidebarContent({
         )}
       </div>
 
-      {/* Primary nav */}
+      {/* Primary nav — grouped sections */}
       <nav
-        className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4"
+        className="flex flex-1 flex-col overflow-y-auto px-3 py-4"
         aria-label="Main navigation"
       >
-        {nav.map((item) => (
-          <span key={item.href} onClick={onNavClick}>
-            <NavItem
-              href={item.href}
-              icon={item.icon}
-              label={item.label}
-              active={isActive(item.href)}
-              collapsed={collapsed}
-            />
-          </span>
+        {navSections.map((section, i) => (
+          <div
+            key={section.heading ?? "home"}
+            className={cn("flex flex-col gap-1", i > 0 && "mt-4")}
+          >
+            {section.heading && !collapsed && (
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-sidebar-foreground/40">
+                {section.heading}
+              </p>
+            )}
+            {section.items.map((item) => (
+              <span key={item.href} onClick={onNavClick}>
+                <NavItem
+                  href={item.href}
+                  icon={item.icon}
+                  label={item.label}
+                  active={isActive(item.href)}
+                  collapsed={collapsed}
+                />
+              </span>
+            ))}
+          </div>
         ))}
 
         <Separator className="my-3 bg-sidebar-border" />
@@ -224,7 +252,7 @@ function SidebarContent({
 // Desktop sidebar — full width with collapsible icon rail on tablet
 // ---------------------------------------------------------------------------
 
-function DesktopSidebar({ venueName, userEmail, bundled }: AppSidebarProps) {
+function DesktopSidebar({ venueName, userEmail }: AppSidebarProps) {
   return (
     <>
       {/* Tablet: icon rail (md) */}
@@ -232,14 +260,13 @@ function DesktopSidebar({ venueName, userEmail, bundled }: AppSidebarProps) {
         <SidebarContent
           venueName={venueName}
           userEmail={userEmail}
-          bundled={bundled}
           collapsed={true}
         />
       </aside>
 
       {/* Desktop: full sidebar (lg+) */}
       <aside className="hidden lg:flex w-[220px] shrink-0 flex-col border-r border-sidebar-border">
-        <SidebarContent venueName={venueName} userEmail={userEmail} bundled={bundled} />
+        <SidebarContent venueName={venueName} userEmail={userEmail} />
       </aside>
     </>
   );
@@ -249,7 +276,7 @@ function DesktopSidebar({ venueName, userEmail, bundled }: AppSidebarProps) {
 // Mobile topbar + sheet sidebar
 // ---------------------------------------------------------------------------
 
-function MobileNav({ venueName, userEmail, bundled }: AppSidebarProps) {
+function MobileNav({ venueName, userEmail }: AppSidebarProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -274,7 +301,6 @@ function MobileNav({ venueName, userEmail, bundled }: AppSidebarProps) {
           <SidebarContent
             venueName={venueName}
             userEmail={userEmail}
-            bundled={bundled}
             onNavClick={() => setOpen(false)}
           />
         </SheetContent>
@@ -291,11 +317,11 @@ function MobileNav({ venueName, userEmail, bundled }: AppSidebarProps) {
 // Public export — composes both into one component
 // ---------------------------------------------------------------------------
 
-export function AppSidebar({ venueName, userEmail, bundled }: AppSidebarProps) {
+export function AppSidebar({ venueName, userEmail }: AppSidebarProps) {
   return (
     <>
-      <DesktopSidebar venueName={venueName} userEmail={userEmail} bundled={bundled} />
-      <MobileNav venueName={venueName} userEmail={userEmail} bundled={bundled} />
+      <DesktopSidebar venueName={venueName} userEmail={userEmail} />
+      <MobileNav venueName={venueName} userEmail={userEmail} />
     </>
   );
 }

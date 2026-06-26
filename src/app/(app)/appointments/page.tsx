@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/tenant";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { feedToken } from "@/lib/calendar/ical-token";
 import { AppointmentsBoard } from "./appointments-board";
 
 export const metadata = { title: "Appointments" };
@@ -125,6 +126,9 @@ export default async function AppointmentsPage({ searchParams }: PageProps) {
 
   const appointments = await loadWeekAppointments(ctx.venue.id, weekStart);
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const feedUrl = `${appUrl}/api/calendar/${ctx.venue.id}?token=${feedToken(ctx.venue.id)}`;
+
   return (
     <div className="mx-auto max-w-[1400px]">
       <div className="mb-8">
@@ -135,6 +139,25 @@ export default async function AppointmentsPage({ searchParams }: PageProps) {
           Viewings and calls for your venue.
         </p>
       </div>
+
+      <details className="mb-6 rounded-lg border border-border bg-card">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-foreground">
+          Subscribe in Google / Apple Calendar
+        </summary>
+        <div className="border-t border-border px-4 py-3">
+          <p className="mb-2 text-xs text-muted-foreground">
+            Add this private, read-only feed URL to your calendar app to see your
+            venue&apos;s appointments. Anyone with the link can view them — keep it
+            secret.
+          </p>
+          <input
+            readOnly
+            value={feedUrl}
+            aria-label="Calendar feed URL"
+            className="w-full select-all rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-xs text-foreground"
+          />
+        </div>
+      </details>
 
       <AppointmentsBoard
         appointments={appointments}
